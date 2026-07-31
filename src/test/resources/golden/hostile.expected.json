@@ -1,0 +1,50 @@
+{
+  "room": {
+    "w": 12,
+    "l": 10,
+    "h": 8
+  },
+  "items": [
+    {
+      "id": "item-id-11111111-2222-4333-8444-555555555555",
+      "serial": 1,
+      "dragOrder": 0,
+      "w_in": 12,
+      "l_in": 12,
+      "h_in": 12,
+      "x_px": 10,
+      "y_px": 10,
+      "color": "hsl(0,55%,42%)",
+      "name": "",
+      "customId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "baseHeight_in": 0,
+      "planned": false
+    },
+    {
+      "id": "item-id-22222222-3333-4444-8555-666666666666",
+      "serial": 5,
+      "dragOrder": 2,
+      "w_in": 1000,
+      "l_in": 1,
+      "h_in": 12,
+      "x_px": 0,
+      "y_px": 0,
+      "color": "hsl(360,100%,100%)",
+      "name": "kept",
+      "customId": "OK-1",
+      "baseHeight_in": 1000000,
+      "planned": true
+    }
+  ],
+  "itemCounter": 0,
+  "dragOrderCounter": 0,
+  "layerFeet": 8,
+  "planMode": false,
+  "metricMode": false,
+  "layerCollision": false,
+  "presets": [
+    null,
+    null,
+    null
+  ]
+}

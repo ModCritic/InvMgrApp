@@ -1,0 +1,118 @@
+/*
+ * Scrollbars for the room view.
+ *
+ * The original app never styled these — the room fits on screen at the reference resolution,
+ * so the browser's own scrollbars simply never appeared. JavaFX is not so lucky: its default
+ * scrollbars are a pale grey that looks glaringly wrong against a #181818 room, and they do
+ * appear as soon as the window is smaller than the room.
+ *
+ * Rather than invent a palette, this reuses the exact scrollbar tokens the original DID
+ * define, for the one scrollbar it styled (the preset row inside the Add Item dialog,
+ * SPEC-DESIGN-SYSTEM.md: #1a1a1a track, #888 thumb, 6px radius, #aaa on hover).
+ */
+
+.scroll-pane > .corner {
+    -fx-background-color: #1a1a1a;
+}
+
+.scroll-bar:horizontal,
+.scroll-bar:vertical {
+    -fx-background-color: #1a1a1a;
+}
+
+.scroll-bar:horizontal .track,
+.scroll-bar:vertical .track {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: transparent;
+}
+
+.scroll-bar:horizontal .thumb,
+.scroll-bar:vertical .thumb {
+    -fx-background-color: #888;
+    /* 6px radius is the one documented exception to squared corners here. */
+    -fx-background-radius: 6;
+}
+
+.scroll-bar:horizontal .thumb:hover,
+.scroll-bar:vertical .thumb:hover {
+    -fx-background-color: #aaa;
+}
+
+/*
+ * The little arrow buttons at each end. The browser's scrollbars in the original had none, so
+ * they are collapsed to nothing rather than restyled.
+ */
+.scroll-bar:horizontal .increment-button,
+.scroll-bar:horizontal .decrement-button,
+.scroll-bar:vertical .increment-button,
+.scroll-bar:vertical .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-shape: " ";
+    -fx-padding: 0;
+}
+
+/*
+ * The auto-growing Name field on the Add Item and Edit Item dialogs.
+ *
+ * A JavaFX TextArea is not one control but four nested ones — the area, a scroll pane, a
+ * viewport, and a "content" region that actually holds the text. The content comes with its own
+ * pale background and its own padding, and neither can be reached from an inline style, because
+ * an inline style applies only to the node it is set on. Left alone the field would be a light
+ * grey box with its text inset twice over. Clearing both leaves the area's own background and
+ * padding as the only ones that show.
+ */
+.name-field,
+.name-field .scroll-pane,
+.name-field .viewport,
+.name-field .content {
+    -fx-background-color: transparent;
+}
+
+.name-field .content {
+    -fx-padding: 0;
+}
+
+/*
+ * ...and no scrollbars inside it.
+ *
+ * The field is resized to fit its text after every keystroke, so there is nothing to scroll to
+ * — but JavaFX lays the text out a pixel or two taller than the 26 px the reference measures
+ * for a single line, and put up a vertical bar for those two pixels. It rendered as a small
+ * grey dot floating at the right-hand end of the name, which is exactly the kind of thing that
+ * looks like a bug because it is one.
+ *
+ * Nothing is lost by hiding them: the longest name the app accepts is 200 characters, which at
+ * this size wraps to three lines in a 560 px box — well under the height cap that would make
+ * scrolling possible at all.
+ */
+.name-field .scroll-bar:vertical,
+.name-field .scroll-bar:horizontal {
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+    -fx-opacity: 0;
+}
+
+/*
+ * Grayscale text antialiasing, applied to everything.
+ *
+ * JavaFX defaults to LCD subpixel antialiasing, which fringes glyph edges with blue and orange.
+ * The original is a web page rendered with grayscale antialiasing, so its text has no colour
+ * fringing at all — visible when the reference screenshots are zoomed. Matching it makes a
+ * side-by-side comparison of text meaningful instead of noisy.
+ *
+ * Note the selectors: this property is NOT inherited in JavaFX CSS, so putting it on `.root`
+ * does nothing at all. Each kind of text-bearing control has to be named.
+ */
+.label,
+.text,
+.text-field,
+.text-input,
+.button,
+.button > .text {
+    -fx-font-smoothing-type: gray;
+}

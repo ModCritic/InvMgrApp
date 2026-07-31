@@ -1,0 +1,19 @@
+{
+  "room": {
+    "w": 12,
+    "l": 10,
+    "h": 8
+  },
+  "items": [],
+  "itemCounter": 0,
+  "dragOrderCounter": 0,
+  "layerFeet": 8,
+  "planMode": false,
+  "metricMode": false,
+  "layerCollision": false,
+  "presets": [
+    null,
+    null,
+    null
+  ]
+}

@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  InvMgr — the one and only build file.
+
+  Reading guide, because this is the file you'll look at most:
+    <properties>   version numbers and settings, declared once and reused below
+    <dependencies> outside libraries this app uses
+    <build>        the tools that do the actual work, each one a <plugin>
+
+  OD-2 (CLAUDE.md) locked this in as Maven, and Java 17 everywhere. Neither is a
+  preference: Gluon's GraalVM for Android native images is a JDK 17 build, so
+  Java 21 code would compile fine on the desktop and then fail on the phone.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.modcritic</groupId>
+    <artifactId>invmgr</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>InvMgr</name>
+    <description>Top-down room inventory manager with a walkable 3D view</description>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- 17, not 21. See OD-2. The container's JDK is 21 and that is fine —
+             `release 17` makes it emit Java 17 class files regardless. -->
+        <maven.compiler.release>17</maven.compiler.release>
+
+        <!-- JavaFX 21 is correct *with* release 17: JavaFX 21's own class files are
+             Java 17 (major version 61), which is why Gluon's samples pair them too. -->
+        <javafx.version>21</javafx.version>
+
+        <mainClass>com.modcritic.invmgr.Launcher</mainClass>
+
+        <junit.version>5.14.4</junit.version>
+        <testfx.version>4.0.18</testfx.version>
+        <surefire.version>3.5.6</surefire.version>
+        <javafx.plugin.version>0.0.8</javafx.plugin.version>
+        <gluonfx.plugin.version>1.0.29</gluonfx.plugin.version>
+
+        <!-- Build-time only, and only under the desktop-jar profile. -->
+        <shade.plugin.version>3.6.0</shade.plugin.version>
+
+        <!-- Which Mac the desktop-jar profile builds for. See the profile for why this
+             is the one platform that cannot be covered twice in the same jar.
+               mac-aarch64  Apple Silicon — M1 and later (the default)
+               mac          Intel Macs — build with -Dmacos.classifier=mac -->
+        <macos.classifier>mac-aarch64</macos.classifier>
+
+        <!-- Overridden to "android" by the android profile at the bottom. -->
+        <gluonfx.target>host</gluonfx.target>
+    </properties>
+
+    <dependencies>
+        <!-- The only shipped dependency, and it stays that way. OD-1/OD-3 forbid
+             Gluon Attach (GPLv3, no classpath exception) and Gluon Mobile (validates
+             its licence over the network, which "no network access, ever" rules out).
+             The APK proven working on real hardware used OpenJFX alone. -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-controls</artifactId>
+            <version>${javafx.version}</version>
+        </dependency>
+
+        <!-- ==== test-only below this line ==================================
+             Everything here is <scope>test</scope>, which means Maven puts it on
+             the classpath when compiling and running tests and leaves it out of the
+             packaged app entirely. That exclusion is what makes TestFX's copyleft
+             licence harmless here — see CLAUDE.md §8's test-only carve-out. Do not
+             move any of these to compile scope. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- EUPL-1.1 — test scope only, permanently. -->
+            <groupId>org.testfx</groupId>
+            <artifactId>testfx-junit5</artifactId>
+            <version>${testfx.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Only for SwingFXUtils, which converts a JavaFX screenshot into something
+                 ImageIO can write to a PNG. That is how the design-verification tests leave
+                 comparable screenshots behind in target/screenshots.
+
+                 Same OpenJFX project and licence as the shipped artifacts (GPLv2 + Classpath
+                 Exception), and test scope keeps it out of the app — the phone build must not
+                 carry a Swing bridge. -->
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-swing</artifactId>
+            <version>${javafx.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <!-- Runs the tests during `mvn test`. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${surefire.version}</version>
+            </plugin>
+
+            <!-- `mvn javafx:run` — the desktop run command. -->
+            <plugin>
+                <groupId>org.openjfx</groupId>
+                <artifactId>javafx-maven-plugin</artifactId>
+                <version>${javafx.plugin.version}</version>
+                <configuration>
+                    <mainClass>${mainClass}</mainClass>
+                    <options>
+                        <!-- Prints which rendering pipeline Prism actually picked.
+                             This is the single most important 3D diagnostic we have:
+                             the software pipeline cannot draw 3D at all and fails
+                             *silently* — a black view, no error. See OD-1 item 4. -->
+                        <option>-Dprism.verbose=true</option>
+
+                        <!-- These two are REQUIRED for 3D in this container, and
+                             measured, not guessed. Verified at M0 (2026-07-26):
+
+                               without them → "Failed Graphics Hardware Qualifier
+                                               check. System GPU doesn't meet the es2
+                                               pipe requirement" → silent fallback to
+                                               the software pipeline → SCENE3D false,
+                                               i.e. the 3D view would draw nothing
+                               with them    → ES2 initialises on Mesa/X.org (llvmpipe)
+                                               → SCENE3D true
+
+                             The container has no real GPU, only Mesa's software
+                             OpenGL, which fails Prism's hardware check. forceGPU
+                             skips that check; order=es2 stops it preferring `sw`.
+                             Rendering is then slow but genuinely 3D-capable, which is
+                             what matters for development.
+
+                             Note: on a machine with no working OpenGL at all, forcing
+                             the GPU removes the safety net — the app would fail rather
+                             than fall back. That is the correct trade here (a silent
+                             black 3D view is worse), but it is why these live in the
+                             run configuration and not in the app's own code. -->
+                        <option>-Dprism.forceGPU=true</option>
+                        <option>-Dprism.order=es2</option>
+                    </options>
+                </configuration>
+            </plugin>
+
+            <!-- Android/native packaging. Not used until M6, but every setting below
+                 was paid for with a failed build during the OD-1 spike, so it lives
+                 here from the start rather than being rediscovered later.
+                 SPIKE-OD-1.md §12.3 has the full post-mortem. -->
+            <plugin>
+                <groupId>com.gluonhq</groupId>
+                <artifactId>gluonfx-maven-plugin</artifactId>
+                <version>${gluonfx.plugin.version}</version>
+                <configuration>
+                    <target>${gluonfx.target}</target>
+                    <mainClass>${mainClass}</mainClass>
+
+                    <!-- JavaFX builds the App object reflectively, via
+                         clazz.getConstructor().newInstance(). A native image strips
+                         anything it can't see being called directly, so without this
+                         the app dies with NoSuchMethodException: App.<init>() and
+                         shows a black screen. Passing App.class to launch() is not
+                         enough on its own. -->
+                    <reflectionList>
+                        <list>com.modcritic.invmgr.App</list>
+                    </reflectionList>
+
+                    <nativeImageArgs>
+                        <!-- All four flags fix the *build machine*, not the app.
+                             Root cause of every one: Gluon's GraalVM is JDK 17.0.3
+                             from April 2022, running in a 2026 container.
+
+                             Its cgroup v2 detection throws a NullPointerException
+                             inside native-image's own progress reporter. -->
+                        <arg>-J-XX:-UseContainerSupport</arg>
+                        <!-- ...but with container awareness off, the JVM sizes its
+                             thread pools off the *host* (16 CPUs) while the container
+                             caps process count, so it dies with "unable to create
+                             native thread". Declare the real limits by hand. -->
+                        <arg>-J-XX:ActiveProcessorCount=2</arg>
+                        <arg>-J-Xmx10g</arg>
+                        <arg>-J-XX:ParallelGCThreads=2</arg>
+                    </nativeImageArgs>
+
+                    <!-- Deliberately NOT set: enableSWRendering. Turning it on would
+                         force Prism's software pipeline and kill the 3D view outright
+                         (OD-1 item 5). -->
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <!-- ============================================================
+                 `mvn -Pdesktop-jar -DskipTests package`
+                   -> target/invmgr-<version>.jar, run with `java -jar`
+
+                 A single self-contained jar, for handing the app to someone to
+                 try. It is NOT how the app ships: M6 ships an APK, and this
+                 profile must stay out of that build's way.
+
+                 WHY A PROFILE AND NOT THE MAIN BUILD. The dependencies below
+                 pull in JavaFX's native libraries for *four* platforms, so that
+                 one jar runs on Windows, macOS (both chips) and Linux without
+                 knowing in advance which is which. Three of those four are dead
+                 weight on any given machine, and all four would be dead weight
+                 inside an Android APK. Keeping them in a profile means the
+                 ordinary `mvn test` and the `-Pandroid` build never see them.
+
+                 LICENCES. maven-shade-plugin is Apache-2.0 and is a *build*
+                 tool — it runs on this machine and is never part of anything
+                 that gets distributed, so it carries no obligation into the
+                 app. The JavaFX artifacts are the same OpenJFX project and the
+                 same licence (GPLv2 + Classpath Exception) already used by the
+                 shipped dependency; only the platform classifier differs. See
+                 CLAUDE.md §8 and the audit table in MANUAL.md.
+                 ============================================================ -->
+            <id>desktop-jar</id>
+
+            <dependencies>
+                <!-- In JavaFX 11 and later the artifact without a classifier is
+                     an empty shell whose POM points at the one for the platform
+                     you happen to be building on. The real class files and the
+                     real .dll/.dylib/.so live in the classified jars, so making
+                     the result run anywhere means asking for all of them by
+                     name. The class files are byte-identical across platforms;
+                     Windows' .dll and Linux's .so have different filenames, so
+                     they sit side by side without interfering.
+
+                     THE ONE PLATFORM THAT CANNOT BE COVERED TWICE: macOS.
+                     Apple Silicon and Intel use the *same* seven filenames
+                     (libglass.dylib and friends), and JavaFX loads them by name
+                     from the root of the jar with no per-architecture folder to
+                     tell them apart. Listing both simply means one silently
+                     overwrites the other — the first build here did exactly
+                     that, and produced a jar whose "Mac support" was Intel-only
+                     without saying so anywhere. So it is a deliberate choice,
+                     made once, above in <properties>, and stated out loud
+                     rather than left to whichever dependency happened to be
+                     listed first. -->
+                <!-- Verified after building: `head -c 8` on the packed dylibs
+                     shows the Mach-O CPU type, so which architecture actually
+                     ended up in the jar is checkable rather than assumed. -->
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>win</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${macos.classifier}</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-graphics</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>linux</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>win</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${macos.classifier}</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-controls</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>linux</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>win</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>${macos.classifier}</classifier>
+                </dependency>
+                <dependency>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-base</artifactId>
+                    <version>${javafx.version}</version>
+                    <classifier>linux</classifier>
+                </dependency>
+            </dependencies>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>${shade.plugin.version}</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+                                    <createDependencyReducedPom>false</createDependencyReducedPom>
+
+                                    <transformers>
+                                        <!-- Puts Launcher in the manifest, which is what
+                                             makes `java -jar` work with no arguments.
+                                             Launcher and not App: see Launcher's own notes
+                                             for why the class holding main must not be the
+                                             JavaFX Application class. -->
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                            <mainClass>${mainClass}</mainClass>
+                                        </transformer>
+                                        <!-- JavaFX finds its rendering pipeline through a
+                                             service file. Twelve jars each carry a copy;
+                                             without merging them the last one silently wins
+                                             and the app starts to a blank window. -->
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                    </transformers>
+
+                                    <filters>
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                            <excludes>
+                                                <!-- Every JavaFX jar declares itself a
+                                                     module. Inside one flat jar those
+                                                     declarations contradict each other and
+                                                     the JVM refuses to start. Dropping them
+                                                     is what puts JavaFX on the classpath
+                                                     instead, which is the arrangement
+                                                     Launcher already exists to support. -->
+                                                <exclude>module-info.class</exclude>
+                                                <exclude>META-INF/versions/*/module-info.class</exclude>
+                                                <!-- Signatures of the original jars, which
+                                                     no longer match once repacked. Left in,
+                                                     they abort startup with a security
+                                                     exception. -->
+                                                <exclude>META-INF/*.SF</exclude>
+                                                <exclude>META-INF/*.DSA</exclude>
+                                                <exclude>META-INF/*.RSA</exclude>
+                                            </excludes>
+                                        </filter>
+                                    </filters>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <!-- `mvn -Pandroid gluonfx:build gluonfx:package` -->
+            <id>android</id>
+            <properties>
+                <gluonfx.target>android</gluonfx.target>
+            </properties>
+        </profile>
+    </profiles>
+</project>

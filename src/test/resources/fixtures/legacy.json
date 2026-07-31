@@ -1,0 +1,48 @@
+{
+  "room": {
+    "w": 20,
+    "l": 14,
+    "h": 9
+  },
+  "items": [
+    {
+      "id": "i123_456",
+      "serial": 7,
+      "w_in": 24,
+      "l_in": 24,
+      "h_in": 24,
+      "x_px": 48,
+      "y_px": 48,
+      "color": "hsl(30,55%,42%)",
+      "name": "Old Format Box",
+      "customId": "",
+      "baseHeight_in": 0,
+      "planned": false
+    },
+    {
+      "id": "i123_789",
+      "serial": 8,
+      "w_in": 12,
+      "l_in": 12,
+      "h_in": 12,
+      "x_px": 240,
+      "y_px": 120,
+      "color": "hsl(200,55%,42%)",
+      "name": "",
+      "customId": "",
+      "baseHeight_in": 24,
+      "planned": false
+    }
+  ],
+  "itemCounter": 8,
+  "dragOrderCounter": 0,
+  "layerFeet": 9,
+  "planMode": false,
+  "metricMode": true,
+  "floorCollision": true,
+  "presets": [
+    null,
+    null,
+    null
+  ]
+}

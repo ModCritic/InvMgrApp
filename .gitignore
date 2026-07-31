@@ -1,0 +1,37 @@
+# Build output
+build/
+out/
+target/
+bin/
+*.class
+*.jar
+*.war
+
+# Gradle
+.gradle/
+gradle-app.setting
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Android signing — NEVER commit these
+*.keystore
+*.jks
+keystore.properties
+local.properties
+
+# Local scratch
+*.log
+tmp/
+
+# Screenshots written by the design-verification tests.
+target/screenshots/

@@ -1,0 +1,52 @@
+{
+  "room": {
+    "w": 500,
+    "l": -3,
+    "h": "tall"
+  },
+  "items": [
+    {
+      "id": "../../etc/passwd",
+      "w_in": 12,
+      "name": "dropped: id fails SAFE_ID_RE"
+    },
+    null,
+    "not an object at all",
+    {
+      "id": "item-id-11111111-2222-4333-8444-555555555555",
+      "serial": 0,
+      "w_in": 99999,
+      "l_in": 0.5,
+      "h_in": null,
+      "x_px": -40,
+      "y_px": 1e9,
+      "color": "javascript:alert(1)",
+      "name": 12345,
+      "customId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "baseHeight_in": -1,
+      "planned": "yes"
+    },
+    {
+      "id": "item-id-22222222-3333-4444-8555-666666666666",
+      "serial": 5,
+      "dragOrder": 2,
+      "w_in": 1000,
+      "l_in": 1,
+      "h_in": 12,
+      "x_px": 0,
+      "y_px": 0,
+      "color": "hsl(360,100%,100%)",
+      "name": "kept",
+      "customId": "OK-1",
+      "baseHeight_in": 1000000,
+      "planned": true
+    }
+  ],
+  "itemCounter": -5,
+  "dragOrderCounter": 1e12,
+  "layerFeet": "waist high",
+  "planMode": "false",
+  "metricMode": 1,
+  "layerCollision": "true",
+  "presets": "not an array"
+}
