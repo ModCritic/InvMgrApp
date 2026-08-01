@@ -178,6 +178,29 @@
                         <list>com.modcritic.invmgr.App</list>
                     </reflectionList>
 
+                    <!-- A native image contains no resource unless it is named here.
+                         The same trap as reflectionList above, one layer down: the
+                         build succeeds, the app starts, and a getResourceAsStream that
+                         works on every desktop returns null on the phone.
+
+                         The two fonts are the interface's typeface and the two button
+                         glyphs it cannot draw. Without them the app throws at startup
+                         from Fonts.load, which is the intended outcome — the
+                         alternative is every word silently rendering in a proportional
+                         system face.
+
+                         canvas.css was already exposed to this before the fonts
+                         existed: on the phone App.start would have hit a
+                         NullPointerException on its getResource call. Listed here for
+                         the same reason.
+
+                         Inert on the desktop build. Set now so M6 does not have to
+                         rediscover it. -->
+                    <resourcesList>
+                        <list>com/modcritic/invmgr/ui/fonts/.*\.ttf$</list>
+                        <list>com/modcritic/invmgr/ui/canvas\.css$</list>
+                    </resourcesList>
+
                     <nativeImageArgs>
                         <!-- All four flags fix the *build machine*, not the app.
                              Root cause of every one: Gluon's GraalVM is JDK 17.0.3

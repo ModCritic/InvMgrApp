@@ -6,10 +6,14 @@ import com.modcritic.invmgr.engine.TextFormat;
 import com.modcritic.invmgr.engine.UndoHistory;
 import com.modcritic.invmgr.model.AppState;
 import com.modcritic.invmgr.model.Item;
+import com.modcritic.invmgr.persist.AppDataDir;
+import com.modcritic.invmgr.persist.Autosave;
+import com.modcritic.invmgr.persist.AutosavePolicy;
 import com.modcritic.invmgr.persist.SaveFormat;
 import com.modcritic.invmgr.ui.AddItemDialog;
 import com.modcritic.invmgr.ui.DragGhost;
 import com.modcritic.invmgr.ui.EditItemDialog;
+import com.modcritic.invmgr.ui.Fonts;
 import com.modcritic.invmgr.ui.ItemListPanel;
 import com.modcritic.invmgr.ui.ItemTooltip;
 import com.modcritic.invmgr.ui.LayerSliderDrawer;
@@ -25,6 +29,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import javafx.animation.Animation;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.ConditionalFeature;
 import javafx.application.Platform;
@@ -40,6 +51,7 @@ import javafx.scene.transform.Scale;
 import javafx.stage.FileChooser;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 /**
  * The InvMgr application window.
@@ -76,6 +88,43 @@ public class App extends Application {
     /** Which rung of {@link UiScale#STEPS_PERCENT} the interface is currently drawn at. */
     private int uiScaleIndex = UiScale.defaultIndex();
 
+    // ------------------------------------------------------------------ autosave (M4)
+
+    /** Where the app keeps its own copy of the room. Null switches autosave off entirely. */
+    private Autosave autosave;
+
+    private final AutosavePolicy autosavePolicy = new AutosavePolicy();
+
+    /**
+     * The last text handed to the autosave, and the entire change detector.
+     *
+     * <p>A change is noticed by serializing the state on a timer and comparing it to this, rather
+     * than by every mutation calling something. A dirty flag would be cheaper and is the obvious
+     * design, but there are a dozen places that change the state today and a thirteenth arrives
+     * with every feature; one that forgets to raise the flag loses the user's work and nothing
+     * announces it. Comparing the text cannot be forgotten by code that has not been written yet.
+     * {@code SerializationCostTest} measures the price at the 500-item cap — 0.63 ms, once a
+     * second — and fails if that ever stops being negligible.
+     *
+     * <p>Set to {@code null} to force the next tick to treat the state as changed, which is how
+     * a failed write gets retried.
+     */
+    private String lastAutosaved;
+
+    /** One thread, so writes never overlap and never block the interface. */
+    private ExecutorService autosaveWriter;
+
+    /** The newest text waiting to be written; older ones are dropped rather than queued. */
+    private final AtomicReference<String> pendingAutosave = new AtomicReference<>();
+
+    /** Whether the last write failed, so the status bar reports it once and not every tick. */
+    private volatile boolean autosaveFailing;
+
+    private Timeline autosaveTimer;
+
+    /** What to tell the user about the restore, held until the status bar exists to say it in. */
+    private String startupNote;
+
     private Overlays root;
     private ItemTooltip tooltip;
     private DragGhost dragGhost;
@@ -85,8 +134,28 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) {
+        // First, before any control exists. The fonts load themselves the moment anything reads
+        // Tokens, so this is not strictly required — but pinning it to a known line means a badly
+        // built jar fails here, with a stack trace and no window, instead of part-way through
+        // building the interface. M6 also needs somewhere to set java.io.tmpdir before this runs;
+        // Fonts explains why.
+        Fonts.ensureLoaded();
+
         this.stage = stage;
-        state = loadStateFromArguments();
+
+        // Autosave is prepared before the state is chosen, because the state may come out of it.
+        //
+        // When nothing has already pointed it somewhere, the real app-data directory is used --
+        // but only if JavaFX launched this App. A directly-constructed App is a UI test, and a
+        // dozen test classes sharing one autosave would restore each other's rooms and fail in
+        // ways that look nothing like the cause. AutosaveTest calls useAutosaveDirectory with a
+        // temporary folder and so drives this same path deliberately, because a shipped path no
+        // test ever takes is how M3.5 shipped a fix that could never have worked.
+        if (autosave == null && getParameters() != null) {
+            useAutosaveDirectory(AppDataDir.current());
+        }
+        backUpPreviousSession();
+        state = chooseStartingState();
 
         undoHistory = new UndoHistory();
         canvas = new RoomCanvasView(state);
@@ -149,6 +218,13 @@ public class App extends Application {
         // control, which left the app opening with a caret blinking in the width box -- and a
         // focused width box means one stray keystroke changes the room size.
         canvas.requestFocus();
+
+        // Last, so it reports over a built interface rather than into a status bar that does not
+        // exist yet.
+        startAutosave();
+        if (startupNote != null) {
+            statusBar.show(startupNote);
+        }
 
         reportRenderingPipeline();
     }
@@ -590,13 +666,198 @@ public class App extends Application {
         canvas.refreshItemAppearance();
     }
 
+    // ------------------------------------------------------------------ autosave (M4)
+
+    /**
+     * Points the autosave at a directory, creating it if need be.
+     *
+     * <p>Must be called before {@link #start}, since the starting state can come from what is
+     * already there. The app itself calls this with the real app-data directory; the autosave
+     * test calls it with a temporary one so it drives exactly this code and not a copy of it.
+     */
+    public void useAutosaveDirectory(Path directory) {
+        autosave = new Autosave(directory);
+    }
+
+    /** The autosave in use, or {@code null} when there is none. Exposed for the tests. */
+    public Autosave autosave() {
+        return autosave;
+    }
+
+    /**
+     * Copies the previous session's autosave aside before this session can overwrite it.
+     *
+     * <p>Runs before the restore, and regardless of whether the file can be parsed. A file that
+     * fails to load is the one most worth keeping a copy of, and it is about to be replaced.
+     */
+    private void backUpPreviousSession() {
+        if (autosave == null) {
+            return;
+        }
+        try {
+            autosave.takeSessionBackup();
+        } catch (IOException e) {
+            // Not fatal and not worth a status line: the backups are a convenience, and the
+            // autosave itself still works. Losing the app over a full disk would be worse.
+            System.err.println("Could not back up the previous autosave: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Where the room comes from on launch.
+     *
+     * <p>A file named on the command line wins, because that is the user asking for a specific
+     * file by name and nothing should quietly override it. Otherwise the autosave is restored
+     * <b>silently</b> — the user's decision, 2026-08-01: the app reopens where it was left, the
+     * way a desktop application is expected to, with no prompt to answer every launch.
+     *
+     * <p>The undo history is deliberately not restored, matching what a Load already does.
+     */
+    private AppState chooseStartingState() {
+        AppState fromArguments = stateFromArguments();
+        if (fromArguments != null) {
+            return fromArguments;
+        }
+        if (autosave == null) {
+            return new AppState();
+        }
+        Autosave.Restored restored = autosave.restore();
+        if (restored.problem() != null) {
+            // Say so. The room coming up empty when it should not is exactly the moment a user
+            // needs to know a backup exists rather than assuming their work is gone.
+            System.err.println(restored.problem());
+            startupNote = restored.problem() + " A backup is in " + autosave.backupDir() + ".";
+            return new AppState();
+        }
+        if (!restored.hasState()) {
+            return new AppState();
+        }
+        startupNote = "Restored your last session.";
+        return restored.state();
+    }
+
+    /**
+     * Starts the timer that notices changes and writes them.
+     *
+     * <p>One tick a second. The tick itself decides nothing about timing — {@link AutosavePolicy}
+     * does — and it never writes on the FX thread, because a slow or network disk would freeze
+     * the interface for as long as the write took.
+     */
+    private void startAutosave() {
+        if (autosave == null) {
+            return;
+        }
+        // Seed the comparison with what is already on screen, so a launch that changes nothing
+        // writes nothing. After a restore this text is the file's own contents, since a load
+        // followed by a save is byte-identical (M1).
+        lastAutosaved = SaveFormat.save(state);
+
+        autosaveWriter = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "invmgr-autosave");
+            // Daemon: this thread must never be the reason the app fails to exit. The final
+            // write in stop() is synchronous and does not depend on it.
+            thread.setDaemon(true);
+            return thread;
+        });
+
+        autosaveTimer = new Timeline(new KeyFrame(Duration.seconds(1), event -> autosaveTick()));
+        autosaveTimer.setCycleCount(Animation.INDEFINITE);
+        autosaveTimer.play();
+    }
+
+    /** Looks for a change, and writes if one is due. */
+    private void autosaveTick() {
+        long now = System.currentTimeMillis();
+        String json = SaveFormat.save(state);
+        if (!json.equals(lastAutosaved)) {
+            lastAutosaved = json;
+            autosavePolicy.noteChange(now);
+        }
+        if (autosavePolicy.isDue(now)) {
+            autosavePolicy.noteWrite();
+            queueAutosaveWrite(json);
+        }
+    }
+
+    /**
+     * Hands text to the writing thread, replacing anything still waiting.
+     *
+     * <p>Replacing rather than queueing matters on a slow disk: a queue would spend its time
+     * writing states the user has already moved past, and the newest one — the only one that
+     * matters — would be last in line.
+     */
+    private void queueAutosaveWrite(String json) {
+        if (pendingAutosave.getAndSet(json) == null) {
+            autosaveWriter.execute(this::drainAutosaveWrites);
+        }
+    }
+
+    private void drainAutosaveWrites() {
+        String json;
+        while ((json = pendingAutosave.getAndSet(null)) != null) {
+            try {
+                autosave.write(json);
+                autosaveFailing = false;
+            } catch (IOException e) {
+                reportAutosaveFailure(e);
+            }
+        }
+    }
+
+    private void reportAutosaveFailure(IOException failure) {
+        boolean firstFailure = !autosaveFailing;
+        autosaveFailing = true;
+        System.err.println("Autosave failed: " + failure.getMessage());
+        Platform.runLater(() -> {
+            // Clearing this makes the next tick see a change and try again. Without it the state
+            // matches what we believe was written, so nothing would ever retry.
+            lastAutosaved = null;
+            if (firstFailure && statusBar != null) {
+                statusBar.show("Autosave failed: " + failure.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Writes one last time on the way out, on this thread.
+     *
+     * <p>Synchronous on purpose. Handing the final write to the background thread and returning
+     * would race the JVM shutting down, and the work lost would be everything since the last
+     * tick — the most recent thing the user did.
+     */
+    @Override
+    public void stop() {
+        if (autosaveTimer != null) {
+            autosaveTimer.stop();
+        }
+        if (autosave != null) {
+            try {
+                String json = SaveFormat.save(state);
+                if (!json.equals(lastAutosaved) || autosavePolicy.isDirty() || autosaveFailing) {
+                    autosave.write(json);
+                }
+            } catch (IOException e) {
+                System.err.println("Final autosave failed: " + e.getMessage());
+            }
+        }
+        if (autosaveWriter != null) {
+            autosaveWriter.shutdown();
+            try {
+                autosaveWriter.awaitTermination(2, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     // ------------------------------------------------------------------ misc
 
     /**
-     * Opens a save file if one was named on the command line, otherwise starts with an empty
-     * default room — the same 12 × 10 × 8 ft room the original opens with.
+     * Opens a save file if one was named on the command line.
+     *
+     * @return the loaded room, or {@code null} if no file was named or it could not be read
      */
-    private AppState loadStateFromArguments() {
+    private AppState stateFromArguments() {
         // getParameters() is null unless JavaFX itself launched the class, which is not the case
         // when something constructs App directly — the UI tests do exactly that. Treat it as "no
         // arguments" rather than letting a NullPointerException take the window down before it
@@ -604,20 +865,32 @@ public class App extends Application {
         Parameters parameters = getParameters();
         List<String> args = parameters == null ? List.of() : parameters.getRaw();
         if (args.isEmpty()) {
-            return new AppState();
+            return null;                             // nothing asked for; the autosave decides
         }
         Path path = Path.of(args.get(0));
         try {
             SaveFormat.LoadResult result = SaveFormat.load(Files.readString(path));
             if (!result.isSuccess()) {
                 System.err.println(result.error() + " (" + path + ")");
-                return new AppState();
+                return failedToOpen();
             }
             return result.state();
         } catch (IOException e) {
             System.err.println("Could not read " + path + ": " + e.getMessage());
-            return new AppState();
+            return failedToOpen();
         }
+    }
+
+    /**
+     * An empty room, for when a file was named on the command line and would not open.
+     *
+     * <p>Deliberately not {@code null}, which would fall through to the autosave. Someone who
+     * names a file is asking for that file; quietly showing them a different room instead —
+     * their last session, which looks plausible and is not what they asked for — would be worse
+     * than an empty one and an error on the console.
+     */
+    private AppState failedToOpen() {
+        return new AppState();
     }
 
     /**
@@ -638,7 +911,8 @@ public class App extends Application {
     private void reportRenderingPipeline() {
         System.out.println("InvMgr — java " + System.getProperty("java.version")
                 + ", javafx " + System.getProperty("javafx.runtime.version")
-                + ", scene3d " + isScene3dSupported());
+                + ", scene3d " + isScene3dSupported()
+                + ", fonts " + Fonts.TEXT_FAMILY + " + " + Fonts.SYMBOL_FAMILY);
     }
 
     public RoomCanvasView canvas() {

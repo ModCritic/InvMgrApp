@@ -248,6 +248,49 @@ class ChromeAppearanceTest extends ApplicationTest {
                 Tokens.TOGGLE_FIT_BG, 6);
     }
 
+    @Test
+    @DisplayName("the ⤓ and ■ glyphs are painted in the middle of their buttons")
+    void buttonGlyphsAreCentred() {
+        // Keep the pointer away: hovering changes a button's background, and the ink search takes
+        // its background reading from a corner of the button it is looking at.
+        moveTo(app.statusBar());
+        WaitForAsyncUtils.waitForFxEvents();
+
+        WritableImage shot = capture("m3-glyph-centring");
+
+        // ⤓ is the one that was wrong. Drawn in Noto Sans Math, whose line box is sized for tall
+        // operators, it used to be centred as a line box and so came to rest with six pixels of
+        // air above it and none at all below — the bar of the arrow sat on the button's border.
+        GlyphInk.assertCentred("export ⤓", shot, app.listPanel().exportButton(), 1);
+
+        // ■ is the control, and it is why this is a font problem and not a layout one: same
+        // centring code, but the text face, and it was already right. If a future change breaks
+        // centring generally, this fails alongside the other one instead of leaving the cause
+        // ambiguous.
+        GlyphInk.assertCentred("Add ■", shot, app.topBar().addButtonNode(), 1);
+    }
+
+    @Test
+    @DisplayName("the Add button stays 30x28, and so keeps the top bar the reference's height")
+    void addButtonDoesNotInflateTheTopBar() {
+        assertEquals(Tokens.ADD_BUTTON_WIDTH, app.topBar().addButtonNode().getWidth(),
+                "the Add button's width is pinned, not grown from the font");
+        assertEquals(Tokens.ADD_BUTTON_HEIGHT, app.topBar().addButtonNode().getHeight(),
+                "the Add button's height is pinned, not grown from the font");
+
+        // The bar is as tall as its tallest child, so this is the assertion that actually
+        // protects the layout: an oversized Add button moved everything below it down the window.
+        // 43 is measured off the reference screenshots, where the bar's bottom border is the row
+        // at y=42. It went to 46 when the bundled fonts arrived, and nothing caught it.
+        assertEquals(43, app.topBar().getHeight(),
+                "the top bar must stay the height the reference screenshots show");
+
+        // Every other button in the bar measures 28 too. That is what made the Add button
+        // identifiable as the single cause rather than a general drift in the bar.
+        assertEquals(28, app.topBar().saveButton().getHeight(),
+                "the ordinary top bar buttons are 28 and should stay there");
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private double centreOfX(javafx.scene.Node node) {

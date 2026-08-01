@@ -85,6 +85,54 @@ class PlannedDragTest extends ApplicationTest {
     }
 
     @Test
+    @DisplayName("the carried card leans when the hand moves and settles when it stops")
+    void theCardSwingsWhileItIsCarried() {
+        // TiltPendulumTest proves the swing is right. This proves it is CONNECTED -- that the
+        // ticker in DragGhost runs, that it is fed the pointer, and that the angle reaches the
+        // card. All of that is invisible to the arithmetic test, and a pendulum wired to nothing
+        // passes every assertion in it.
+        interact(() -> app.dragGhost().lift("Ghost [plan]", javafx.scene.paint.Color.GREEN, 200,
+                2000, 300, 2040, 312));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(0, app.dragGhost().tiltDegrees(), 0.0, "a card hangs straight when lifted");
+
+        // One big jump, which is a violent acceleration and swings it hard.
+        interact(() -> app.dragGhost().moveTo(2300, 300, false));
+        try {
+            WaitForAsyncUtils.waitFor(2, java.util.concurrent.TimeUnit.SECONDS,
+                    () -> Math.abs(app.dragGhost().tiltDegrees()) > 3);
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Fall through: the assertion says what went wrong in English.
+        }
+        assertTrue(Math.abs(app.dragGhost().tiltDegrees()) > 3,
+                "moving the hand should swing the card; it stayed at "
+                        + app.dragGhost().tiltDegrees() + "°");
+
+        // And it hangs from the point it was grabbed by, not from its middle. The card was lifted
+        // with the pointer 40 px right and 12 px down from its corner, so that spot on the card
+        // has to stay under the pointer however far it is leaning -- which is only true if the
+        // rotation pivots there. Turning about the middle instead moves it by several pixels at
+        // this angle, and the card visibly swims out from under the cursor as it swings.
+        Point2D grabPoint = app.dragGhost().node().localToScene(40, 12);
+        assertEquals(2300, grabPoint.getX(), 0.5, "the grabbed point should stay under the cursor");
+        assertEquals(300, grabPoint.getY(), 0.5, "the grabbed point should stay under the cursor");
+
+        // Now stop. The old rule had nothing running while the hand was still, so the card stayed
+        // frozen at whatever the last mouse event said until it moved again -- this is the half of
+        // the change that a test driven only by mouse events could never see.
+        try {
+            WaitForAsyncUtils.waitFor(3, java.util.concurrent.TimeUnit.SECONDS,
+                    () -> Math.abs(app.dragGhost().tiltDegrees()) < 0.5);
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Same.
+        }
+        assertEquals(0, app.dragGhost().tiltDegrees(), 0.5,
+                "a still hand should let the card settle straight again");
+
+        interact(() -> app.dragGhost().drop());
+    }
+
+    @Test
     @DisplayName("dragging a ghost from the list into the room makes it a real box")
     void draggingAGhostIntoTheRoomCommitsIt() {
         Item ghost = addGhost("Ghost", 24, 24, 12);
@@ -96,7 +144,7 @@ class PlannedDragTest extends ApplicationTest {
         moveTo(from);
         press(javafx.scene.input.MouseButton.PRIMARY);
         // A couple of intermediate moves: the drag only begins once the pointer has passed the
-        // 6 px threshold, and the ghost's tilt is computed from movement between frames.
+        // 6 px threshold.
         moveTo(new Point2D(from.getX() - 60, from.getY()));
         WaitForAsyncUtils.waitForFxEvents();
         assertTrue(app.dragGhost().isShowing(),

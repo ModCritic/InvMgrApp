@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Mutation sweep for the 2D engine.
+# Mutation sweep for the 2D engine and the persistence layer.
 #
 # WHY THIS EXISTS
 #
@@ -19,9 +19,17 @@
 # Runs in about two minutes. It deliberately runs only the headless tests — see the comment
 # on SUITE below for why, and for the two guards that stop that shortcut turning into a lie.
 #
-# Expected result as of M3: 31 mutations, 30 caught, 1 survivor. The survivor
+# Expected result as of M4: 48 mutations, 47 caught, 1 survivor. The survivor
 # ("recompute skips zeroing heights first") is NOT a gap — that pass is provably redundant,
 # because stackInOrder assigns a height to every item anyway. See the comment in Stacking.java.
+#
+# M4 added the autosave cases. One of them survived on its first run — "Windows ignores
+# %APPDATA%" — because the test asserted the result merely CONTAINED "AppData/Roaming", which
+# the fallback path also does. The test now asserts the whole path. That is what this script
+# is for, and it earned its keep the day it was extended.
+#
+# The autosave rules that live in App.java are NOT here: they need a window, and this script
+# runs headless on purpose. They are mutated by hand against AutosaveAppTest — see CLAUDE.md §5.
 #
 # Extend this whenever the engine grows. A rule that is written down but not mutated here is a
 # rule nothing is checking.
@@ -32,10 +40,17 @@ set -u
 cd "$(dirname "$0")/../.." || exit 1
 
 ENG=src/main/java/com/modcritic/invmgr/engine
+PER=src/main/java/com/modcritic/invmgr/persist
 BK=$(mktemp -d)
-trap 'cp "$BK"/*.java "$ENG"/ 2>/dev/null; rm -rf "$BK"' EXIT
+restore_all() {
+  cp "$BK"/engine/*.java "$ENG"/ 2>/dev/null
+  cp "$BK"/persist/*.java "$PER"/ 2>/dev/null
+}
+trap 'restore_all; rm -rf "$BK"' EXIT
 
-cp $ENG/*.java "$BK"/
+mkdir -p "$BK"/engine "$BK"/persist
+cp $ENG/*.java "$BK"/engine/
+cp $PER/*.java "$BK"/persist/
 
 caught=0
 survived=0
@@ -54,8 +69,10 @@ survived=0
 SUITE='com.modcritic.invmgr.engine.*Test,com.modcritic.invmgr.model.*Test,com.modcritic.invmgr.persist.*Test'
 
 # A floor, not an exact count, so adding tests does not break the script. Raise it when the
-# headless suite grows substantially.
-MIN_TESTS=140
+# headless suite grows substantially. 140 at M3; M4's persistence tests took the baseline to
+# 185, so the floor moves up with it — a floor far below the real count stops catching the
+# thing it exists to catch.
+MIN_TESTS=175
 
 run_suite() {
   DISPLAY=${DISPLAY:-:99} mvn -B test -Dtest="$SUITE" -DfailIfNoSpecifiedTests=true "$@"
@@ -89,7 +106,7 @@ run_case() {
     echo "caught    $name"
     caught=$((caught + 1))
   fi
-  cp "$BK"/*.java $ENG/
+  restore_all
 }
 
 mutate() { perl -0pi -e "$1" "$2"; }
@@ -174,6 +191,51 @@ mutate 's/double centreX = item\.x_px \+ Units\.inchesToPx\(item\.w_in\) \/ 2;\n
 run_case "a resized box keeps its corner instead of its middle"
 mutate 's/item\.w_in = Units\.clampDimension\(w_in\);/item.w_in = w_in;/' $ENG/Items.java
 run_case "a new box's width is not held to the legal range"
+
+# --- where the autosave lives (M4) ---------------------------------------------------
+mutate 's/String appData = env\.apply\("APPDATA"\);/String appData = null;/' $PER/AppDataDir.java
+run_case "Windows ignores %APPDATA% and always uses the default location"
+mutate 's/if \(candidate\.isAbsolute\(\)\) \{/if (true) {/' $PER/AppDataDir.java
+run_case "a relative XDG_DATA_HOME is honoured, putting data in the working directory"
+mutate 's/if \(os\.contains\("mac"\)\) \{/if (false) {/' $PER/AppDataDir.java
+run_case "macOS falls through to the Linux layout"
+mutate 's/return notBlank\(appData\)/return (appData != null)/' $PER/AppDataDir.java
+run_case "a blank %APPDATA% is treated as set, resolving to the working directory"
+
+# --- the autosave file itself (M4) ---------------------------------------------------
+#
+# The temporary file's DIRECTORY is the rule being broken here, not its existence. A rename is
+# atomic only within one filesystem, so putting the temporary file in the system temp directory
+# silently turns the rename into a copy — and a copy has exactly the half-written window the
+# whole design exists to close. Nothing about the finished file would look different.
+mutate 's/Path temp = Files\.createTempFile\(dir, "autosave", "\.tmp"\);/Path temp = Files.createTempFile("autosave", ".tmp");/' $PER/Autosave.java
+run_case "the temporary file goes to the system temp directory, so the rename can cross filesystems"
+mutate 's/backups\.sort\(Comparator\.comparing\(p -> p\.getFileName\(\)\.toString\(\)\)\);/backups.sort(Comparator.comparing((Path p) -> p.getFileName().toString()).reversed());/' $PER/Autosave.java
+run_case "rotation keeps the five OLDEST backups and deletes the newest"
+mutate 's/for \(int i = 0; i < backups\.size\(\) - BACKUP_COUNT; i\+\+\) \{/for (int i = 0; i < backups.size() - 50; i++) {/' $PER/Autosave.java
+run_case "rotation never trims, so backups grow without limit"
+mutate 's/&& BACKUP_NAME\.matcher\(entry\.getFileName\(\)\.toString\(\)\)\.matches\(\)//' $PER/Autosave.java
+run_case "rotation treats every file in the folder as its own, and deletes strangers"
+mutate 's/for \(int n = 2; Files\.exists\(candidate\); n\+\+\) \{/for (int n = 2; false; n++) {/' $PER/Autosave.java
+run_case "two sessions in the same second overwrite each other's backup"
+mutate 's/if \(!result\.isSuccess\(\)\) \{\n            return Restored\.broken\("Autosave " \+ result\.error\(\)\);\n        \}//' $PER/Autosave.java
+run_case "a corrupt autosave is reported as a successful restore"
+mutate 's/public static final int BACKUP_COUNT = 5;/public static final int BACKUP_COUNT = 3;/' $PER/Autosave.java
+run_case "only three backups are kept instead of the five asked for"
+
+# --- when the autosave writes (M4) ---------------------------------------------------
+mutate 's/return nowMillis - lastChangeAt >= QUIET_MILLIS\n                \|\| nowMillis - firstChangeAt >= MAX_WAIT_MILLIS;/return nowMillis - lastChangeAt >= QUIET_MILLIS;/' $PER/AutosavePolicy.java
+run_case "the ceiling is dropped, so a long unbroken drag is never written"
+mutate 's/return nowMillis - lastChangeAt >= QUIET_MILLIS\n                \|\| nowMillis - firstChangeAt >= MAX_WAIT_MILLIS;/return nowMillis - firstChangeAt >= MAX_WAIT_MILLIS;/' $PER/AutosavePolicy.java
+run_case "the quiet period is dropped, so nothing is written for a full minute"
+mutate 's/if \(!dirty\) \{\n            dirty = true;\n            firstChangeAt = nowMillis;\n        \}/dirty = true;\n        firstChangeAt = nowMillis;/' $PER/AutosavePolicy.java
+run_case "the ceiling restarts on every change, so it can never be reached"
+mutate 's/public static final long QUIET_MILLIS = 2_000;/public static final long QUIET_MILLIS = 500;/' $PER/AutosavePolicy.java
+run_case "the quiet period is a quarter of what was asked for"
+mutate 's/public static final long MAX_WAIT_MILLIS = 60_000;/public static final long MAX_WAIT_MILLIS = 300_000;/' $PER/AutosavePolicy.java
+run_case "the ceiling is five minutes instead of the sixty seconds asked for"
+mutate 's/return nowMillis - lastChangeAt >= QUIET_MILLIS/return nowMillis - lastChangeAt > QUIET_MILLIS/' $PER/AutosavePolicy.java
+run_case "the quiet period boundary is exclusive, so a write lands one tick late"
 
 echo
 echo "caught $caught, survived $survived"

@@ -3,11 +3,13 @@ package com.modcritic.invmgr;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.modcritic.invmgr.model.AppState;
 import com.modcritic.invmgr.model.Units;
 import com.modcritic.invmgr.ui.RoomCanvasView;
+import com.modcritic.invmgr.ui.Tokens;
 import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.DisplayName;
@@ -267,6 +269,47 @@ class AppUiTest extends ApplicationTest {
                 "the slider must write layerFeet into the state it was last given");
         assertEquals(replacedBefore, replaced.layerFeet,
                 "and must not still be writing into the state that was thrown away");
+    }
+
+    @Test
+    @DisplayName("every button that needs a hint has the right one, and the rest have none")
+    void buttonHintsSayWhatTheyShould() {
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // The wording is not incidental. Four of these five reproduce the original's `title`
+        // attributes exactly, and drifting from them is a loss of fidelity that nothing else in
+        // the suite would notice — a hint is not drawn until you rest on it, so no screenshot
+        // test can see it. The fifth is deliberately *not* the original's: see CLAUDE.md §5.5 D-7.
+        assertHint(app.topBar().layerCollisionButton(),
+                "Disable gravity, items collide based on height-range, not stack");
+        assertHint(app.topBar().addButtonNode(), "Add Item");
+        assertHint(app.topBar().fitButton(), "Fit to Screen");
+        assertHint(app.topBar().planButton(), "Planning Mode");
+        assertHint(app.topBar().unitsButton(), "Toggle Metric Units");
+        assertHint(app.listPanel().exportButton(), "Export Item List");
+        assertHint(app.listPanel().clearSearchButton(), "Clear Search");
+
+        // The other half of the rule, and the reason this test lists the negatives too: a button
+        // whose face already says what it does gets no hint repeating it back. The original gives
+        // these none either, and "add a hint to everything" is an easy well-meant regression.
+        assertNoHint(app.topBar().setRoomButton(), "Set Room");
+        assertNoHint(app.topBar().undoButton(), "Undo");
+        assertNoHint(app.topBar().saveButton(), "Save");
+        assertNoHint(app.topBar().loadButton(), "Load");
+    }
+
+    private void assertHint(javafx.scene.control.Button button, String expected) {
+        javafx.scene.control.Tooltip hint = button.getTooltip();
+        assertNotNull(hint, "the button that should say \"" + expected + "\" has no hint at all");
+        assertEquals(expected, hint.getText());
+        // Built by Hints, so it is dark like the rest of the app and scales with the zoom.
+        assertEquals(Tokens.FONT_FAMILY, hint.getFont().getFamily(),
+                "\"" + expected + "\" must be one of the app's own hints, not a stock JavaFX one");
+    }
+
+    private void assertNoHint(javafx.scene.control.Button button, String label) {
+        assertNull(button.getTooltip(),
+                label + " already says what it does; a hint would only repeat it");
     }
 
     @Test

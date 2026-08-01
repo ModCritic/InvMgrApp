@@ -105,9 +105,9 @@ public final class PresetSlots extends HBox {
                 filled ? Tokens.PRESET_FILLED_BG : Tokens.BUTTON_BG,
                 filled ? Color.WHITE : Tokens.TEXT_PRIMARY));
 
-        button.setTooltip(Hints.tooltip(filled
+        Hints.attach(button, filled
                 ? preset.name + ": click to use, right-click to delete"
-                : "Empty preset — click to set dimensions"));
+                : "Empty preset — click to set dimensions");
 
         button.setOnAction(event -> {
             if (filled) {
@@ -137,7 +137,7 @@ public final class PresetSlots extends HBox {
                 paint(button, Tokens.BUTTON_CONFIRM_BG_HOVER, Tokens.TEXT_PRIMARY));
         button.setOnMouseExited(event ->
                 paint(button, Tokens.BUTTON_CONFIRM_BG, Tokens.TEXT_PRIMARY));
-        button.setTooltip(Hints.tooltip("Add another preset slot"));
+        Hints.attach(button, "Add another preset slot");
         button.setOnAction(event -> {
             state.presets.add(null);
             rebuild();

@@ -10,7 +10,11 @@ import com.modcritic.invmgr.App;
 import com.modcritic.invmgr.engine.TextFormat;
 import com.modcritic.invmgr.model.Item;
 import javafx.geometry.Bounds;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextBoundsType;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -239,6 +243,85 @@ class ItemListPanelTest extends ApplicationTest {
         clickOn(app.listPanel().exportButton());
         WaitForAsyncUtils.waitForFxEvents();
         assertEquals("No items to export.", app.statusBar().text());
+    }
+
+    @Test
+    @DisplayName("the ⤓ button uses the symbol face, and the × beside it does not")
+    void theExportButtonIsDrawnInTheSymbolFace() {
+        // ⤓ is one of two characters the interface's typeface has no glyph for; × is ordinary
+        // punctuation and stays on the text face. Getting either wrong is invisible to every
+        // other test — the button still works, it just draws an empty box on some machines.
+        //
+        // The glyph is the button's *graphic* rather than its text, so that it can be centred on
+        // its ink instead of on the maths face's very tall line box — see Fonts.symbolGlyph. So
+        // the font has to be read off the graphic: the button itself will never draw a character.
+        Node glyph = app.listPanel().exportButton().getGraphic();
+        assertNotNull(glyph, "the export button's ⤓ must be a graphic, so it centres on its ink");
+        assertEquals(Tokens.FONT_FAMILY_SYMBOL, ((Text) glyph).getFont().getFamily(),
+                "the export button must use the symbol face");
+        assertEquals(TextBoundsType.VISUAL, ((Text) glyph).getBoundsType(),
+                "without VISUAL bounds the glyph is centred as a line box and sits low");
+        assertEquals(Tokens.FONT_FAMILY, app.listPanel().searchField().getFont().getFamily(),
+                "the search box must stay on the text face");
+
+        // The fill is bound to the button rather than set once, which is what keeps the hover
+        // colour working: -fx-text-fill styles a button's text, and a graphic is not text.
+        assertEquals(Tokens.TEXT_QUIET, ((Text) glyph).getFill(),
+                "the glyph must follow the button's own text colour");
+    }
+
+    @Test
+    @DisplayName("the ⤓ brightens on hover along with the button under it")
+    void theExportGlyphFollowsTheHoverColour() {
+        Text glyph = (Text) app.listPanel().exportButton().getGraphic();
+        assertEquals(Tokens.TEXT_QUIET, glyph.getFill(), "resting colour");
+
+        // Worth a test of its own because the failure is silent and one-sided. A Text node is a
+        // shape: the -fx-text-fill in the button's style string does not reach it, and a fill set
+        // once at construction would look perfectly correct until someone hovered. Binding it to
+        // the button's own textFill is what makes the existing style code keep working.
+        moveTo(app.listPanel().exportButton());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(Tokens.TEXT_PRIMARY, glyph.getFill(), "the glyph must brighten with hover");
+
+        moveTo(app.listPanel().searchField());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(Tokens.TEXT_QUIET, glyph.getFill(), "and go back when the pointer leaves");
+    }
+
+    @Test
+    @DisplayName("the export button says what it is for when you rest on it")
+    void theExportButtonCarriesAHint() {
+        Tooltip hint = app.listPanel().exportButton().getTooltip();
+        assertNotNull(hint, "a bare ⤓ needs a hint; nothing else in the panel says what it does");
+        assertEquals("Export Item List", hint.getText());
+
+        // Built by Hints rather than as a plain `new Tooltip`, or it would come up in JavaFX's
+        // pale default styling — the only light-coloured thing in the window.
+        assertEquals(Tokens.FONT_FAMILY, hint.getFont().getFamily(),
+                "the hint must be one of the app's own, not a stock JavaFX tooltip");
+        assertEquals(Tokens.FONT_TOOLTIP, hint.getFont().getSize(), 0.001);
+    }
+
+    @Test
+    @DisplayName("resting the pointer on the export button really does bring the hint up")
+    void hoveringTheExportButtonShowsTheHint() {
+        Tooltip hint = app.listPanel().exportButton().getTooltip();
+
+        // Installing a tooltip and it actually appearing are different claims, and only this one
+        // covers the wiring: a hint attached to the wrong node, or to a node that never receives
+        // the pointer, passes the test above and shows nothing.
+        moveTo(app.listPanel().exportButton());
+        try {
+            WaitForAsyncUtils.waitFor(3, java.util.concurrent.TimeUnit.SECONDS, hint::isShowing);
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Fall through: the assertion below says what went wrong in English.
+        }
+        assertTrue(hint.isShowing(), "resting on the export button should show its hint");
+        assertEquals("Export Item List", hint.getText());
+
+        // Left showing, a popup outlives the test and hangs over whatever runs next.
+        interact(hint::hide);
     }
 
     @Test

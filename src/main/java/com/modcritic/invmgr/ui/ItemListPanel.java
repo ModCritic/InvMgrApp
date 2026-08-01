@@ -15,6 +15,7 @@ import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
@@ -27,7 +28,6 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
-import javafx.scene.text.FontPosture;
 import javafx.util.Duration;
 
 /**
@@ -112,7 +112,11 @@ public final class ItemListPanel extends VBox {
         getChildren().addAll(header(), searchRow(), scroller);
 
         exportButton.setOnAction(event -> onExport.run());
+        // The one button in the panel that is a bare symbol, so the one that needs saying aloud.
+        // The original writes it as a title attribute, in the same place, for the same reason.
+        Hints.attach(exportButton, "Export Item List");
         searchField.textProperty().addListener((observable, before, after) -> rebuild());
+        Hints.attach(clearSearchButton, "Clear Search");
         clearSearchButton.setOnAction(event -> {
             searchField.clear();
             searchField.requestFocus();
@@ -195,10 +199,22 @@ public final class ItemListPanel extends VBox {
         return row;
     }
 
-    /** The square export button, and the shape the clear button borrows. */
+    /**
+     * The square export button, and the shape the clear button borrows.
+     *
+     * <p>Drawn in the symbol face, because its {@code ⤓} is one of the two characters the
+     * interface's own typeface has no glyph for. The clear button's {@code ×} is <b>not</b> —
+     * that one is ordinary punctuation, so {@link #clearButton()} builds its own button and stays
+     * on the text face. See {@link Fonts#SYMBOL_FAMILY}.
+     *
+     * <p>The glyph goes in as a <em>graphic</em> rather than as the button's text, so that it is
+     * centred on its own ink instead of on the maths face's very tall line box — see
+     * {@link Fonts#symbolGlyph}, which explains what that fixes.
+     */
     private static Button iconButton(String glyph, double size) {
-        Button button = new Button(glyph);
-        button.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_CONTROL));
+        Button button = new Button();
+        button.setGraphic(Fonts.symbolGlyph(glyph, Tokens.FONT_CONTROL, button));
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
         button.setMinSize(size, size);
         button.setPrefSize(size, size);
         button.setMaxSize(size, size);
@@ -279,7 +295,10 @@ public final class ItemListPanel extends VBox {
 
     private Label emptyMessage(String text) {
         Label label = new Label(text);
-        label.setFont(Font.font(Tokens.FONT_FAMILY, FontPosture.ITALIC, Tokens.FONT_LIST_ROW));
+        label.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_LIST_ROW));
+        // Italic, drawn by hand — see Fonts.oblique. Asking JavaFX for FontPosture.ITALIC here
+        // would silently do nothing, because the interface's typeface has no italic face.
+        label.getTransforms().add(Fonts.oblique(Tokens.FONT_LIST_ROW));
         label.setTextFill(Tokens.TEXT_STATUS);
         label.setPadding(new Insets(Tokens.LIST_EMPTY_PADDING_V, Tokens.LIST_HEADER_PADDING_H,
                 Tokens.LIST_EMPTY_PADDING_V, Tokens.LIST_HEADER_PADDING_H));
@@ -352,9 +371,13 @@ public final class ItemListPanel extends VBox {
 
             dot.setFill(Tokens.parseHsl(item.color));
             label.setText(item.displayName() + (item.planned ? " [plan]" : ""));
-            label.setFont(item.planned
-                    ? Font.font(Tokens.FONT_FAMILY, FontPosture.ITALIC, Tokens.FONT_LIST_ROW)
-                    : Font.font(Tokens.FONT_FAMILY, Tokens.FONT_LIST_ROW));
+            label.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_LIST_ROW));
+            if (item.planned) {
+                // A planned row is italic in the original. The interface's typeface has no italic
+                // face, and JavaFX — unlike a browser — will not fake one, so the slant is drawn
+                // here instead. See Fonts.oblique.
+                label.getTransforms().add(Fonts.oblique(Tokens.FONT_LIST_ROW));
+            }
 
             // A name too long for the panel wraps onto a second line and makes the row taller,
             // rather than being cut short with an ellipsis. That is what the original does —

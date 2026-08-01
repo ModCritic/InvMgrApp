@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputControl;
@@ -206,6 +207,24 @@ public final class Dialogs {
      * the same grey.
      */
     public static Button button(String text, ButtonKind kind) {
+        Button button = button(text, kind,
+                Tokens.DIALOG_BUTTON_PADDING_V, Tokens.DIALOG_BUTTON_PADDING_H);
+        button.setMinHeight(Tokens.DIALOG_BUTTON_HEIGHT);
+        button.setPrefHeight(Tokens.DIALOG_BUTTON_HEIGHT);
+        button.setMaxHeight(Tokens.DIALOG_BUTTON_HEIGHT);
+        return button;
+    }
+
+    /**
+     * The same, with the padding chosen by the caller.
+     *
+     * <p>Only {@link #symbolButton} needs this, and it needs it because the padding is written
+     * into the style string rather than set on the button. Anything that calls {@code setPadding}
+     * afterwards is quietly ignored — a JavaFX inline style outranks a value set from code, and
+     * these buttons rewrite their style on every hover, so it is overwritten again the first time
+     * the pointer crosses them. That trap cost a real line of dead code in {@code EditItemDialog}.
+     */
+    private static Button button(String text, ButtonKind kind, double paddingV, double paddingH) {
         Color resting = switch (kind) {
             case CONFIRM -> Tokens.BUTTON_CONFIRM_BG;
             case DANGER -> Tokens.BUTTON_DANGER_BG;
@@ -221,23 +240,62 @@ public final class Dialogs {
 
         Button button = new Button(text);
         button.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_CONTROL));
-        button.setMinHeight(Tokens.DIALOG_BUTTON_HEIGHT);
-        button.setPrefHeight(Tokens.DIALOG_BUTTON_HEIGHT);
-        button.setMaxHeight(Tokens.DIALOG_BUTTON_HEIGHT);
-        styleDialogButton(button, resting, border);
-        button.setOnMouseEntered(event -> styleDialogButton(button, hovered, border));
-        button.setOnMouseExited(event -> styleDialogButton(button, resting, border));
+        styleDialogButton(button, resting, border, paddingV, paddingH);
+        button.setOnMouseEntered(event ->
+                styleDialogButton(button, hovered, border, paddingV, paddingH));
+        button.setOnMouseExited(event ->
+                styleDialogButton(button, resting, border, paddingV, paddingH));
         return button;
     }
 
-    private static void styleDialogButton(Button button, Color background, Color border) {
+    /**
+     * A square dialog button whose label is a character the interface's typeface cannot draw.
+     *
+     * <p>Only the Edit dialog's {@code ↻} needs this. It exists as a wrapper rather than as a
+     * few calls at the call site because {@code swapButton} is set up where it is declared, which
+     * can hold an expression but not a second statement — and because the font decision then stays
+     * here, beside the one it is an exception to.
+     *
+     * <p>Two things differ from an ordinary {@link #button}, and both follow from the glyph:
+     *
+     * <ul>
+     *   <li>The character goes in as a <b>graphic</b>, not as the button's text, so that it is
+     *       centred on its own ink rather than on the maths face's very tall line box.
+     *       {@link Fonts#symbolGlyph} explains what that fixes and why nothing here is a measured
+     *       nudge.</li>
+     *   <li>The button is given an explicit <b>square</b> size. Left to itself it came out
+     *       46 × 30, because the width followed the glyph's advance — and a maths face's advances
+     *       are set by its widest operators, not by a small arrow. An icon button that is half as
+     *       wide again as it is tall reads as a mistake next to the app's otherwise squared-off
+     *       chrome.</li>
+     * </ul>
+     *
+     * <p>The padding goes to zero as a consequence of the second point, and it matters more than
+     * it looks. A dialog button's 14 px of side padding inside a 30 px square leaves a content box
+     * <em>zero</em> pixels wide; the glyph then happens to land in the middle only because zero is
+     * symmetric. Handing the whole square to the graphic makes the centring mean something.
+     *
+     * @see Fonts#SYMBOL_FAMILY
+     */
+    public static Button symbolButton(String text, ButtonKind kind, double size) {
+        Button button = button(text, kind, 0, 0);
+        button.setText(null);
+        button.setGraphic(Fonts.symbolGlyph(text, Tokens.FONT_CONTROL, button));
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        button.setMinSize(size, size);
+        button.setPrefSize(size, size);
+        button.setMaxSize(size, size);
+        return button;
+    }
+
+    private static void styleDialogButton(Button button, Color background, Color border,
+            double paddingV, double paddingH) {
         button.setStyle("-fx-background-color: " + Tokens.hex(background) + ";"
                 + "-fx-text-fill: " + Tokens.hex(Tokens.TEXT_PRIMARY) + ";"
                 + "-fx-border-color: " + Tokens.hex(border) + ";"
                 + "-fx-border-width: 1;"
                 + "-fx-background-radius: 0; -fx-border-radius: 0;"
-                + "-fx-padding: " + Tokens.DIALOG_BUTTON_PADDING_V + " "
-                + Tokens.DIALOG_BUTTON_PADDING_H + " " + Tokens.DIALOG_BUTTON_PADDING_V + " "
-                + Tokens.DIALOG_BUTTON_PADDING_H + ";");
+                + "-fx-padding: " + paddingV + " " + paddingH + " "
+                + paddingV + " " + paddingH + ";");
     }
 }

@@ -247,8 +247,32 @@ public final class Tokens {
 
     // -------------------------------------------------------------------- type
 
-    /** Monospace throughout the app. No second font family, ever. */
-    public static final String FONT_FAMILY = "monospace";
+    /**
+     * The interface's typeface, for every word in the app.
+     *
+     * <p>This used to be the string {@code "monospace"}, copied from the original's stylesheet.
+     * That is not a font but a generic <em>alias</em>, which each system answers with a different
+     * typeface, so the app looked different on every platform. It now names a real face that
+     * ships inside the jar — see {@link Fonts}, and {@code CLAUDE.md} §5.5 <b>D-6</b> for why
+     * departing from the original here was a deliberate decision.
+     *
+     * <p><b>Do not replace this with the literal {@code "Noto Sans Mono"}.</b> It would compile
+     * and it would run, but a {@code static final String} set to a literal is a compile-time
+     * constant, and reading one never runs the code that loads the fonts. The interface would
+     * fall back to a proportional system face without reporting anything. {@link Fonts} explains
+     * the mechanism in full; {@code FontsTest} fails if it is ever broken.
+     */
+    public static final String FONT_FAMILY = Fonts.TEXT_FAMILY;
+
+    /**
+     * The typeface for the two button glyphs the main face has no drawing for: {@code ⤓} and
+     * {@code ↻}.
+     *
+     * <p>The design system says one family and no exceptions, and that still holds for text. This
+     * is not a second design choice — it is a patch over a gap in the first font's character set.
+     * See {@link Fonts#SYMBOL_FAMILY}.
+     */
+    public static final String FONT_FAMILY_SYMBOL = Fonts.SYMBOL_FAMILY;
 
     public static final double FONT_DRAWER_LABEL = 10;
     public static final double FONT_TICK = 9;
@@ -286,14 +310,38 @@ public final class Tokens {
     public static final double BUTTON_PADDING_V = 4;
     public static final double BUTTON_PADDING_H = 10;
 
-    /** The Add button is squarer than the rest, from its own padding rule. */
-    public static final double ADD_BUTTON_PADDING_V = 2;
-    public static final double ADD_BUTTON_PADDING_H = 10;
+    /**
+     * The Add button's box, measured off the reference at exactly 30 × 28.
+     *
+     * <p>Pinned for the same reason as {@link #ROOM_FIELD_HEIGHT}, and found the same way — by
+     * measuring the screenshots the tests write against the reference ones. Left to JavaFX it came
+     * out 33 × 31, because this is the one button drawn at 18 px instead of 13, so the bundled
+     * font's line box is proportionally taller here than anywhere else in the bar.
+     *
+     * <p><b>Three pixels here moved the whole window.</b> The top bar's height is whatever its
+     * tallest child needs, so an oversized Add button pushed the bar from the reference's 42 to
+     * 46, and every single thing below it — canvas, item list, layer slider, status bar — down
+     * with it. Every <em>other</em> top-bar button already measured 28, which is what made this
+     * one identifiable as the cause rather than a general drift.
+     */
+    public static final double ADD_BUTTON_WIDTH = 30;
+    public static final double ADD_BUTTON_HEIGHT = 28;
 
     /** Width of the room's W/L/H entry fields. */
     public static final double ROOM_FIELD_WIDTH = 62;
     public static final double INPUT_PADDING_V = 3;
     public static final double INPUT_PADDING_H = 5;
+
+    /**
+     * Height of the room's W/L/H entry fields, measured off the reference at exactly 26.
+     *
+     * <p>Pinned for the same reason as {@link #DIALOG_NUMBER_HEIGHT}, and added when the app
+     * stopped borrowing the computer's typeface: a browser gives a number input a minimum height
+     * of its own that owes nothing to the font, where JavaFX sizes it from the text. Left to
+     * JavaFX these came out at 31 with the bundled font — five pixels too tall — and the stepper
+     * block, which is centred inside them, slid down with them.
+     */
+    public static final double ROOM_FIELD_HEIGHT = 26;
 
     public static final double STATUS_PADDING_V = 3;
     public static final double STATUS_PADDING_H = 10;
@@ -377,6 +425,19 @@ public final class Tokens {
 
     /** How far the ↻ rotate button sits in from the Edit dialog's top-right corner. */
     public static final double DIALOG_SWAP_INSET = 12;
+
+    /**
+     * The ↻ rotate button, which is square.
+     *
+     * <p>Pinned rather than left to the font, for the same reason as {@link #ROOM_FIELD_HEIGHT}
+     * and {@link #DIALOG_BUTTON_HEIGHT}, and with one extra wrinkle. A button sized by JavaFX
+     * takes its width from the glyph's <em>advance</em> — the space the typeface reserves for the
+     * character, not the space the character actually covers. In a maths face those advances are
+     * cut to fit the widest operators in the font, so a small arrow gets a wide berth: this came
+     * out 46 wide against 30 tall, which reads as a mistake in an interface with no other oblong
+     * icon buttons. 30 keeps the height it already had and squares it.
+     */
+    public static final double DIALOG_SWAP_BUTTON_SIZE = 30;
 
     /** A preset slot is a 28 px square on desktop. */
     public static final double PRESET_SIZE = 28;

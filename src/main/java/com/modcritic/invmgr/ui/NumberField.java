@@ -79,6 +79,13 @@ public final class NumberField extends HBox {
     public NumberField(double min, double max) {
         this(min, max, Tokens.ROOM_FIELD_WIDTH, Tokens.TOP_BAR_INPUT_BG,
                 Tokens.INPUT_PADDING_V, Tokens.INPUT_PADDING_H);
+        // Pinned rather than computed, for the same reason as dialogField() below, and measured
+        // off the reference at exactly 26. Left to JavaFX the height follows the font: once the
+        // app carried its own typeface instead of borrowing the computer's, these came out at 31
+        // and dragged the vertically-centred stepper block down out of place with them.
+        setPrefHeight(Tokens.ROOM_FIELD_HEIGHT);
+        setMinHeight(Tokens.ROOM_FIELD_HEIGHT);
+        setMaxHeight(Tokens.ROOM_FIELD_HEIGHT);
     }
 
     /** A box-dimension field for the Add, Edit and Preset dialogs. */

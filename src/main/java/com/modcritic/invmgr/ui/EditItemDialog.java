@@ -11,7 +11,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
-import javafx.scene.text.Font;
 
 /**
  * The dialog for changing a box that is already in the room — reached by clicking it, or by
@@ -54,7 +53,8 @@ public final class EditItemDialog extends ModalDialog {
     private final Button okButton = Dialogs.button("OK", Dialogs.ButtonKind.CONFIRM);
     private final Button cancelButton = Dialogs.button("Cancel", Dialogs.ButtonKind.PLAIN);
     private final Button deleteButton = Dialogs.button("Delete", Dialogs.ButtonKind.DANGER);
-    private final Button swapButton = Dialogs.button("↻", Dialogs.ButtonKind.PLAIN);
+    private final Button swapButton = Dialogs.symbolButton("↻", Dialogs.ButtonKind.PLAIN,
+            Tokens.DIALOG_SWAP_BUTTON_SIZE);
 
     private EditHandler onApply = (item, name, id, w, l, h) -> { };
     private Consumer<Item> onDelete = item -> { };
@@ -75,8 +75,14 @@ public final class EditItemDialog extends ModalDialog {
 
         // The rotate button sits over the dialog's own corner rather than in a row, which is
         // why it is floated rather than added to the column.
-        swapButton.setPadding(new Insets(2, 7, 2, 7));
-        swapButton.setTooltip(Hints.tooltip("Swap Width and Length"));
+        //
+        // It used to set its own padding here, copying the original's `padding: 2px 7px`. That
+        // never took effect: styleDialogButton writes -fx-padding into the inline style, an inline
+        // style outranks a value set from code in JavaFX, and it is rewritten on every hover — so
+        // the button always measured the 5/14 of an ordinary dialog button. Confirmed by reading
+        // getPadding() back from the live button before removing the line. The square size below
+        // decides the shape now, so there is nothing for padding to do.
+        Hints.attach(swapButton, "Swap Width and Length");
         addFloating(swapButton, Pos.TOP_RIGHT,
                 new Insets(Tokens.DIALOG_SWAP_INSET, Tokens.DIALOG_SWAP_INSET, 0, 0));
 

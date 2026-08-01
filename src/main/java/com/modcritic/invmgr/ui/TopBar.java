@@ -91,13 +91,14 @@ public final class TopBar extends FlowPane {
         load.setOnAction(event -> onLoad.run());
 
         // The hints the original writes as HTML title attributes. Only the buttons whose name
-        // does not already say what they do carry one.
-        layerCollision.setTooltip(Hints.tooltip(
-                "Items keep their current layer instead of stacking or falling"));
-        add.setTooltip(Hints.tooltip("Add Item"));
-        fit.setTooltip(Hints.tooltip("Fit to Screen"));
-        plan.setTooltip(Hints.tooltip("Planning Mode"));
-        units.setTooltip(Hints.tooltip("Toggle Metric Units"));
+        // does not already say what they do carry one. Four of these five are the original's
+        // wording exactly; Layer Collision's is the user's own — see §5.5 D-7.
+        Hints.attach(layerCollision,
+                "Disable gravity, items collide based on height-range, not stack");
+        Hints.attach(add, "Add Item");
+        Hints.attach(fit, "Fit to Screen");
+        Hints.attach(plan, "Planning Mode");
+        Hints.attach(units, "Toggle Metric Units");
 
         // Enter in any of the three fields applies the room, which is what anyone typing a
         // number expects — reaching for the button every time would be tedious.
@@ -318,21 +319,27 @@ public final class TopBar extends FlowPane {
     /**
      * The square ■ that opens the Add Item dialog.
      *
-     * <p>Bigger type and tighter padding than every other button, from the original's own rule
-     * for it — a single glyph reads as a button rather than as a stray character only if it
-     * fills the space.
+     * <p>Bigger type than every other button, from the original's own rule for it — a single glyph
+     * reads as a button rather than as a stray character only if it fills the space.
+     *
+     * <p>Its size is <b>pinned</b> rather than grown from that type, and the padding is
+     * consequently zero. See {@link Tokens#ADD_BUTTON_WIDTH} for what went wrong when it was not.
+     * Zero padding is not a look — with the box fixed, padding cannot change where a centred label
+     * lands, and leaving it at the old 2 × 10 would have squeezed the content box narrower than
+     * the glyph and invited an ellipsis.
      */
     private static Button addButton() {
         Button button = new Button("■");
         button.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_ADD_BUTTON));
+        button.setMinSize(Tokens.ADD_BUTTON_WIDTH, Tokens.ADD_BUTTON_HEIGHT);
+        button.setPrefSize(Tokens.ADD_BUTTON_WIDTH, Tokens.ADD_BUTTON_HEIGHT);
+        button.setMaxSize(Tokens.ADD_BUTTON_WIDTH, Tokens.ADD_BUTTON_HEIGHT);
         applyButtonStyle(button, Tokens.BUTTON_ADD_BG, Tokens.CONTROL_BORDER,
-                Tokens.TEXT_PRIMARY, Tokens.ADD_BUTTON_PADDING_V, Tokens.ADD_BUTTON_PADDING_H);
+                Tokens.TEXT_PRIMARY, 0, 0);
         button.setOnMouseEntered(event -> applyButtonStyle(button, Tokens.BUTTON_BG_HOVER,
-                Tokens.CONTROL_BORDER, Tokens.TEXT_PRIMARY, Tokens.ADD_BUTTON_PADDING_V,
-                Tokens.ADD_BUTTON_PADDING_H));
+                Tokens.CONTROL_BORDER, Tokens.TEXT_PRIMARY, 0, 0));
         button.setOnMouseExited(event -> applyButtonStyle(button, Tokens.BUTTON_ADD_BG,
-                Tokens.CONTROL_BORDER, Tokens.TEXT_PRIMARY, Tokens.ADD_BUTTON_PADDING_V,
-                Tokens.ADD_BUTTON_PADDING_H));
+                Tokens.CONTROL_BORDER, Tokens.TEXT_PRIMARY, 0, 0));
         return button;
     }
 

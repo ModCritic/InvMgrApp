@@ -7,7 +7,10 @@ import com.modcritic.invmgr.App;
 import com.modcritic.invmgr.model.Item;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
+import javafx.scene.control.Tooltip;
 import javafx.scene.input.MouseButton;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.paint.Color;
@@ -18,8 +21,9 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * The two things that float over the app and are positioned by hand: the item tooltip and the
- * planned-item drag ghost. Both have to stay glued to the pointer at every interface zoom level.
+ * The three things that float over the app and do not simply ride along with the interface zoom:
+ * the item tooltip, the planned-item drag ghost, and the little hints on the buttons. The first
+ * two have to stay glued to the pointer at every zoom level; the third has to grow.
  *
  * <p><b>Why this file exists.</b> Everything else in the interface is positioned by JavaFX's
  * layout, so the zoom transform simply carries it along and there is nothing to get wrong. These
@@ -31,6 +35,10 @@ import org.testfx.util.WaitForAsyncUtils;
  * screen entirely near the bottom-right. That is exactly how the user reported it on 2026-07-30,
  * and it is why every assertion below is made in scene coordinates against a range of positions
  * rather than at one convenient point.
+ *
+ * <p>The hints are here for a related but separate reason: a JavaFX tooltip is a <b>window</b>,
+ * not a control in this one, so the zoom's transform cannot reach it. It stayed its 100% size at
+ * every zoom while the button under it grew — reported by the user 2026-08-01.
  */
 class ZoomedOverlayTest extends ApplicationTest {
 
@@ -165,6 +173,160 @@ class ZoomedOverlayTest extends ApplicationTest {
         }
     }
 
+    // ------------------------------------------------------------------ the button hints
+
+    /**
+     * How far the hint's measured width may be off the size it should have grown to.
+     *
+     * <p>Two pixels, because character advances are rounded to whole pixels and a 12 px font
+     * scaled by 1.75 does not land on one. Worst observed across the ladder is 1.5 px.
+     */
+    private static final double WIDTH_TOLERANCE = 2.0;
+
+    /**
+     * The same for the height, which needs a little more room.
+     *
+     * <p>A line box is not simply the font size — it is ascent plus descent, each rounded — so it
+     * grows in whole-pixel jumps that a fractional zoom step cannot land on. Measured worst case
+     * is 175%, where the hint comes up 53 px tall against the 50.75 that exact proportion asks
+     * for; three pixels covers it with a little to spare.
+     *
+     * <p>Still far tighter than anything this is watching for. A hint that ignores the zoom
+     * entirely is out by the whole difference — 29 px against 58 at the top of the ladder — and
+     * one whose padding is pinned in pixels while only its text grows comes up 47 px there, out
+     * by eleven.
+     */
+    private static final double HEIGHT_TOLERANCE = 3.0;
+
+    @Test
+    @DisplayName("a button hint grows with the interface zoom, box and all")
+    void hintsGrowWithTheInterfaceZoom() {
+        WaitForAsyncUtils.waitForFxEvents();
+
+        Button units = app.topBar().unitsButton();
+        Tooltip hint = units.getTooltip();
+
+        // Measured at 100% rather than written down, because the size depends on the text and on
+        // the typeface, and hard-coding it would turn a font change into a failure here.
+        setZoomTo(100);
+        showHint(hint, units);
+        double width100 = hint.getWidth();
+        double height100 = hint.getHeight();
+        hideHint(hint);
+
+        for (int percent : UiScale.STEPS_PERCENT) {
+            setZoomTo(percent);
+            double factor = percent / 100.0;
+            showHint(hint, units);
+            String at = " at " + percent + "%";
+
+            // The font is the one property that reaches a shown popup, so it is the knob the
+            // whole thing turns on -- see Hints.STYLE for why the padding cannot be.
+            assertEquals(Tokens.FONT_TOOLTIP * factor, hint.getFont().getSize(), 0.001,
+                    "the hint's text should be drawn at the interface size" + at);
+
+            // And the box around the text, which is the half that silently did not follow when
+            // the padding was written in pixels instead of ems.
+            assertEquals(width100 * factor, hint.getWidth(), WIDTH_TOLERANCE,
+                    "the hint's box should grow with its text" + at);
+            assertEquals(height100 * factor, hint.getHeight(), HEIGHT_TOLERANCE,
+                    "the hint's box should grow with its text" + at);
+
+            // The hairline round the outside, which the two measurements above cannot see: it
+            // contributes one pixel per side, and one pixel is inside their tolerance. Left
+            // untested, a border pinned at 1 px survived every other assertion here.
+            // JavaFX rounds a border width to a tenth of a pixel on the way in — 0.75 comes back
+            // as 0.8 — so half a tenth is the most it can ever be out. A shade over that, because
+            // 0.8 - 0.75 in binary floating point is 0.05000000000000004 and an exact 0.05 fails.
+            // Still nowhere near enough slack to hide the failure this is here for: a border left
+            // at a flat 1 px is out by half at the bottom of the ladder.
+            assertEquals(factor, borderWidthOf(hint), 0.06,
+                    "the hint's border should thicken with everything else" + at);
+            hideHint(hint);
+        }
+    }
+
+    @Test
+    @DisplayName("a hint on a button outside the top bar scales too")
+    void theExportHintScalesAsWell() {
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // The scale is read off the button the hint belongs to, so a button in a different part
+        // of the window is a different path through the scene graph to the same transform. If
+        // that ever stops being one shared zoom, this is what notices.
+        Button export = app.listPanel().exportButton();
+        Tooltip hint = export.getTooltip();
+
+        setZoomTo(150);
+        showHint(hint, export);
+        assertEquals(Tokens.FONT_TOOLTIP * 1.5, hint.getFont().getSize(), 0.001,
+                "the export hint should be drawn at 150% like everything else at 150%");
+        hideHint(hint);
+    }
+
+    @Test
+    @DisplayName("a hint the POINTER brings up scales, not just one shown by hand")
+    void aHoveredHintScales() {
+        // This is the test that was missing, and its absence shipped the bug twice.
+        //
+        // The two above put the hint up by calling show(owner, x, y) -- deliberately, because
+        // hovering costs a 500 ms rest on each of seven rungs. But that call is also the ONLY one
+        // that records which node a popup belongs to, and JavaFX's own hover timer does not use
+        // it: all four of its show calls take a Window instead. So the first fix read the owner
+        // back off the tooltip, passed every assertion above, and did nothing whatsoever in the
+        // app, where the owner is always null. Reported by the user against the M3.2.5 jar.
+        //
+        // Hence one test that pays the 500 ms and drives a real pointer. It only needs one rung:
+        // what it is holding shut is the wiring, and the arithmetic is covered seven times over.
+        WaitForAsyncUtils.waitForFxEvents();
+        Button units = app.topBar().unitsButton();
+        Tooltip hint = units.getTooltip();
+
+        setZoomTo(200);
+        // Away first, so the pointer genuinely enters the button and starts the hover timer --
+        // TestFX leaves it wherever the last test put it, which may already be here.
+        moveTo(app.listPanel().searchField());
+        moveTo(units);
+        try {
+            WaitForAsyncUtils.waitFor(3, java.util.concurrent.TimeUnit.SECONDS, hint::isShowing);
+        } catch (java.util.concurrent.TimeoutException e) {
+            // Fall through: the assertions below say what went wrong in English.
+        }
+
+        assertTrue(hint.isShowing(), "resting on the Units button should bring its hint up");
+        assertEquals(Tokens.FONT_TOOLTIP * 2, hint.getFont().getSize(), 0.001,
+                "a hint the pointer brought up at 200% should be drawn at twice its size");
+        interact(hint::hide);
+    }
+
+    /** Puts a hint on screen the way resting on its button would, and waits for it to settle. */
+    private void showHint(Tooltip hint, Node owner) {
+        // Shown directly rather than by hovering: the point here is the size it comes up at, and
+        // driving the pointer would add a 500 ms rest and a race to every one of the seven rungs.
+        // aHoveredHintScales pays that cost once, and is what proves this shortcut is honest.
+        interact(() -> hint.show(owner, 400, 400));
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    private void hideHint(Tooltip hint) {
+        interact(hint::hide);
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    /**
+     * The width of the hairline round a showing hint.
+     *
+     * <p><b>This reaches inside JavaFX's own tooltip skin</b>, which is the only way to see the
+     * number: a {@code Tooltip} exposes its font and its overall size and nothing between them.
+     * The skin's node is the {@code Label} that draws the hint, and its border is the one being
+     * asked about. If a future JavaFX changes that shape this fails with a {@code ClassCastException}
+     * rather than quietly passing, which is the right way round for a test holding a hole shut.
+     */
+    private double borderWidthOf(Tooltip hint) {
+        javafx.scene.control.Labeled painted = (javafx.scene.control.Labeled) hint.getSkin().getNode();
+        return painted.getBorder().getStrokes().get(0).getWidths().getTop();
+    }
+
     // ------------------------------------------------------------------ helpers
 
     /** Walks the zoom ladder to a given percentage, the way a real Ctrl+scroll would. */
@@ -214,13 +376,18 @@ class ZoomedOverlayTest extends ApplicationTest {
     }
 
     private Bounds ghostBoundsInScene() {
-        // The card is rotated while it is being carried, and a rotated node's scene bounds are
-        // its bounding BOX, which is wider than the card and starts left of its corner. The tilt
-        // is zeroed here so the bounds are the card's own edges and the numbers mean what they
-        // say; the tilt itself is PlannedDragTest's business.
-        interact(() -> app.dragGhost().node().setRotate(0));
-        WaitForAsyncUtils.waitForFxEvents();
-        return inScene(app.dragGhost().node());
+        // The card is leaning while it is being carried, and a rotated node's scene bounds are its
+        // bounding BOX -- wider than the card, and starting left of its corner. So this asks for
+        // the rectangle the card was laid out at instead, and maps that up to the scene itself.
+        //
+        // It used to zero the rotation first and then measure. That no longer works and could not
+        // be made to: the lean is now advanced by a running AnimationTimer (see DragGhost), which
+        // would set it straight back. Reading the layout is better anyway -- it measures without
+        // disturbing what it is measuring. The lean itself is TiltPendulumTest's business.
+        Node card = app.dragGhost().node();
+        Bounds laidOut = new javafx.geometry.BoundingBox(card.getLayoutX(), card.getLayoutY(),
+                card.getBoundsInLocal().getWidth(), card.getBoundsInLocal().getHeight());
+        return card.getParent().localToScene(laidOut);
     }
 
     /**

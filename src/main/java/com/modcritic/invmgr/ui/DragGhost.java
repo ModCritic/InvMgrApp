@@ -1,5 +1,6 @@
 package com.modcritic.invmgr.ui;
 
+import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
@@ -8,6 +9,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.text.Font;
+import javafx.scene.transform.Rotate;
 
 /**
  * The little card that follows the pointer while a planned item is being dragged out of the
@@ -20,9 +22,11 @@ import javafx.scene.text.Font;
  * <p>Two details are doing real work:
  *
  * <ul>
- *   <li><b>It tilts with horizontal speed.</b> Up to 16° either way, proportional to how fast
- *       the pointer is moving sideways. It is the only piece of playfulness in the app, and it
- *       is what makes a drag feel like carrying something rather than sliding a rectangle.
+ *   <li><b>It swings as you carry it.</b> The card hangs from the point you grabbed it, with
+ *       weight: it leans as you start moving, hangs straight while you carry it along, and swings
+ *       past straight and settles when you stop. It is the only piece of playfulness in the app,
+ *       and it is what makes a drag feel like carrying something rather than sliding a rectangle.
+ *       The arithmetic is {@link TiltPendulum}'s; this class only feeds it and applies the result.
  *   <li><b>It fades slightly over the room.</b> Dropping to 0.8 opacity is the signal that
  *       letting go here will actually place the item — releasing anywhere else cancels.
  * </ul>
@@ -33,12 +37,6 @@ import javafx.scene.text.Font;
  */
 public final class DragGhost {
 
-    /** Degrees of tilt per pixel of sideways movement between two frames. */
-    private static final double TILT_PER_PX = 1.4;
-
-    /** The most it will ever lean, in degrees. */
-    private static final double MAX_TILT_DEGREES = 16;
-
     /** How see-through it goes once it is over the room. */
     private static final double OVER_ROOM_OPACITY = 0.8;
 
@@ -46,6 +44,60 @@ public final class DragGhost {
     private final HBox card = new HBox(Tokens.LIST_ROW_GAP);
     private final Circle dot = new Circle(Tokens.LIST_DOT_RADIUS);
     private final Label name = new Label();
+
+    /**
+     * The swing, as a rotation about the point the card was grabbed by.
+     *
+     * <p>A {@code Rotate} transform rather than {@code setRotate}, because that turns a node about
+     * the centre of its own box and there is no way to move it. A card held by its middle and a
+     * card held near one end swing quite differently, and which one this is depends on where the
+     * pointer came down on the row — so the pivot has to move with the grab. Set in {@link #lift}.
+     */
+    private final Rotate swing = new Rotate();
+
+    /** What decides the angle. See {@link TiltPendulum} for why it is a spring and not a formula. */
+    private final TiltPendulum pendulum = new TiltPendulum();
+
+    /**
+     * Where the pointer was at the last mouse event, in scene coordinates.
+     *
+     * <p>Written by {@link #moveTo} and read by {@link #ticker}, which is the whole reason it is a
+     * field. <b>The card's position follows the mouse event and its lean follows the clock</b>, and
+     * those have to be separate: the card must be under the cursor the instant the cursor moves, or
+     * dragging feels laggy, while the lean must advance on every frame whether the hand moved or
+     * not, or it freezes at whatever the last event said — which is exactly what the old
+     * event-driven version did when you stopped moving.
+     */
+    private double pointerSceneX;
+
+    /**
+     * Advances the swing once per frame while a card is being carried.
+     *
+     * <p>Running on the clock rather than on mouse events is also what makes the movement mean the
+     * same thing on every machine. The old rule measured the gap between two consecutive mouse
+     * events and had no idea how long that gap was, so the same hand movement leaned twice as far
+     * on a computer delivering half as many events. Here the elapsed time is divided out.
+     */
+    private final AnimationTimer ticker = new AnimationTimer() {
+        private long lastNanos;
+
+        @Override
+        public void handle(long nowNanos) {
+            if (lastNanos != 0) {
+                swing.setAngle(pendulum.step(pointerSceneX, (nowNanos - lastNanos) / 1e9));
+            }
+            lastNanos = nowNanos;
+        }
+
+        @Override
+        public void start() {
+            // Cleared here rather than in stop(), because the first frame after a start has no
+            // previous one to measure against and would otherwise be handed the length of the
+            // pause since the last drag.
+            lastNanos = 0;
+            super.start();
+        }
+    };
 
     /**
      * Where in the card the pointer grabbed it, so it does not jump on the first frame.
@@ -56,18 +108,9 @@ public final class DragGhost {
     private double grabOffsetX;
     private double grabOffsetY;
 
-    /**
-     * The previous frame's pointer X, which is what the tilt is computed from.
-     *
-     * <p>The one thing here kept in <b>scene</b> coordinates. The tilt is a reaction to how fast
-     * the pointer swept across the glass, and a hand movement is a physical thing that does not
-     * change when the interface is zoomed — so the lean stays identical at every zoom level,
-     * where a layer-space delta would have halved it at 200%.
-     */
-    private double lastSceneX;
-
     public DragGhost(Pane layer) {
         this.layer = layer;
+        card.getTransforms().add(swing);
 
         name.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_LIST_ROW));
         name.setTextFill(Tokens.TEXT_INPUT);
@@ -119,35 +162,46 @@ public final class DragGhost {
         javafx.geometry.Point2D pointer = toLayer(pointerX, pointerY);
         grabOffsetX = pointer.getX() - row.getX();
         grabOffsetY = pointer.getY() - row.getY();
-        lastSceneX = pointerX;
 
-        card.setRotate(0);
+        // The card hangs from where it was grabbed, so that is where it turns about. The offset is
+        // measured from the row's corner, and the card is laid out with its corner on that point,
+        // so the same two numbers are the pivot in the card's own coordinates.
+        swing.setPivotX(grabOffsetX);
+        swing.setPivotY(grabOffsetY);
+        swing.setAngle(0);
+        pendulum.reset(pointerX);
+        pointerSceneX = pointerX;
+
         card.setOpacity(1);
         card.setLayoutX(row.getX());
         card.setLayoutY(row.getY());
         if (!layer.getChildren().contains(card)) {
             layer.getChildren().add(card);
         }
+        ticker.start();
     }
 
     /**
-     * Moves the ghost to follow the pointer, leaning into the movement.
+     * Moves the ghost to follow the pointer.
+     *
+     * <p>Position only — the lean is the ticker's business, and all this does towards it is record
+     * where the pointer got to. See {@link #pointerSceneX} for why the two are split.
      *
      * @param pointerX where the pointer is, in scene coordinates
      */
     public void moveTo(double pointerX, double pointerY, boolean overRoom) {
-        double tilt = Math.max(-MAX_TILT_DEGREES,
-                Math.min(MAX_TILT_DEGREES, (pointerX - lastSceneX) * TILT_PER_PX));
-        lastSceneX = pointerX;
+        pointerSceneX = pointerX;
 
         javafx.geometry.Point2D pointer = toLayer(pointerX, pointerY);
-        card.setRotate(tilt);
         card.setLayoutX(pointer.getX() - grabOffsetX);
         card.setLayoutY(pointer.getY() - grabOffsetY);
         card.setOpacity(overRoom ? OVER_ROOM_OPACITY : 1);
     }
 
     public void drop() {
+        // Stopped first: an AnimationTimer left running would go on stepping the pendulum against
+        // a pointer position nothing updates any more, for the rest of the session.
+        ticker.stop();
         layer.getChildren().remove(card);
     }
 
@@ -163,5 +217,16 @@ public final class DragGhost {
      */
     public HBox node() {
         return card;
+    }
+
+    /**
+     * How far the card is currently leaning, in degrees, positive clockwise.
+     *
+     * <p>Not {@code node().getRotate()}, which is zero and always will be — the lean is a
+     * {@link Rotate} in the card's transform list so that it can turn about the grab point rather
+     * than about its own middle.
+     */
+    public double tiltDegrees() {
+        return swing.getAngle();
     }
 }

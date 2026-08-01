@@ -14,11 +14,15 @@ import java.io.File;
 import java.io.IOException;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Bounds;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import javafx.scene.text.TextBoundsType;
 import javafx.stage.Stage;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.DisplayName;
@@ -163,6 +167,50 @@ class DialogsTest extends ApplicationTest {
         assertEquals("Blue Bin", app.editDialog().nameField().getText());
         assertEquals("24", app.editDialog().widthField().getText());
         capture("m3-edit-dialog");
+    }
+
+    @Test
+    @DisplayName("the ↻ button uses the symbol face, and the text beside it does not")
+    void theSwapButtonIsDrawnInTheSymbolFace() {
+        Item bin = addItem("Blue Bin", 24, 18, 12);
+        clickOn(pointOn(bin));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // ↻ is one of two characters the interface's own typeface cannot draw. Put it back on the
+        // text face and it renders as an empty box, or gets borrowed from whatever the computer
+        // happens to have — which is the platform-dependence the bundled fonts removed. Nothing
+        // else in the suite would notice.
+        //
+        // The glyph is the button's *graphic*, not its text, so that it can be centred on its ink
+        // — see Fonts.symbolGlyph. That is why this reads the font off the graphic; asking the
+        // button would answer with the text face it will never draw a character in.
+        Node glyph = app.editDialog().swapButton().getGraphic();
+        assertNotNull(glyph, "the swap button's ↻ must be a graphic, so it centres on its ink");
+        assertEquals(Tokens.FONT_FAMILY_SYMBOL, ((Text) glyph).getFont().getFamily(),
+                "the swap button must use the symbol face");
+        assertEquals(TextBoundsType.VISUAL, ((Text) glyph).getBoundsType(),
+                "without VISUAL bounds the glyph is centred as a line box and sits low");
+        assertEquals(Tokens.FONT_FAMILY, app.editDialog().okButton().getFont().getFamily(),
+                "ordinary dialog buttons must stay on the text face");
+    }
+
+    @Test
+    @DisplayName("the ↻ button is a square, with the glyph painted in the middle of it")
+    void theSwapButtonIsASquareWithACentredGlyph() {
+        Item bin = addItem("Blue Bin", 24, 18, 12);
+        clickOn(pointOn(bin));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // Left to size itself the button came out 46 x 30: a maths face sets its advance widths
+        // from its widest operators, so a small arrow is given a very wide berth.
+        Button swap = app.editDialog().swapButton();
+        assertEquals(Tokens.DIALOG_SWAP_BUTTON_SIZE, swap.getWidth(), "the swap button is square");
+        assertEquals(Tokens.DIALOG_SWAP_BUTTON_SIZE, swap.getHeight(), "the swap button is square");
+
+        // And the glyph inside it sat 12 px below the top edge and 5 above the bottom.
+        moveTo(app.editDialog().nameField());
+        WaitForAsyncUtils.waitForFxEvents();
+        GlyphInk.assertCentred("swap ↻", capture("m3-swap-centring"), swap, 1);
     }
 
     @Test
