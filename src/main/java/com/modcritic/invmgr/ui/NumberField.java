@@ -17,12 +17,13 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Polyline;
 import javafx.scene.shape.StrokeLineCap;
 import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 
 /**
  * A number entry box with the little up/down stepper on its right.
  *
  * <p><b>Why this exists rather than a plain text field.</b> The original app uses an HTML
- * {@code <input type="number">}, and the browser draws a stepper inside it — a pale block with
+ * {@code <input type="number">}, and the browser draws a stepper inside it: a pale block with
  * two small chevrons. The app's stylesheet never mentions it, so it is invisible in the CSS and
  * easy to miss, but it is in every desktop reference screenshot and it is what the user sees.
  * This is the same class of detail as the layer slider's rounded ends.
@@ -30,14 +31,14 @@ import javafx.scene.text.Font;
  * <p>It comes in two sizes, both measured from the references rather than guessed:
  *
  * <ul>
- *   <li><b>The room fields</b> in the top bar — 62 px wide on a {@code #333} background.
- *   <li><b>The dimension fields</b> in the dialogs — 90 px wide on {@code #1a1a1a}, and they
+ *   <li><b>The room fields</b> in the top bar: 62 px wide on a {@code #333} background.
+ *   <li><b>The dimension fields</b> in the dialogs: 90 px wide on {@code #1a1a1a}, and they
  *       truncate typing to three decimal places as it happens.
  * </ul>
  *
- * <p>The stepper block itself is identical in both: 18 × 18, {@code #e9e9ed} — the same
+ * <p>The stepper block itself is identical in both: 18 × 18, {@code #e9e9ed} (the same
  * near-white as the layer slider's empty track, because both are the browser's own controls
- * showing through — with grey chevrons, vertically centred and sitting <b>inside the field's
+ * showing through), with gray chevrons, vertically centered and sitting <b>inside the field's
  * right-hand padding</b> rather than flush against the border. That last detail is what makes
  * the two match the reference to the pixel.
  *
@@ -75,6 +76,15 @@ public final class NumberField extends HBox {
     private double max;
     private double step = DEFAULT_STEP;
 
+    /**
+     * Whether a tap should select this box's contents, which only the dialog boxes do.
+     *
+     * <p>The room boxes in the top bar are deliberately left out, the same way the original
+     * leaves them out: its focus listener names only the Add dialog's three.
+     */
+    private boolean selectsOnTouchFocus;
+
+
     /** A room-size box for the top bar. */
     public NumberField(double min, double max) {
         this(min, max, Tokens.ROOM_FIELD_WIDTH, Tokens.TOP_BAR_INPUT_BG,
@@ -82,7 +92,7 @@ public final class NumberField extends HBox {
         // Pinned rather than computed, for the same reason as dialogField() below, and measured
         // off the reference at exactly 26. Left to JavaFX the height follows the font: once the
         // app carried its own typeface instead of borrowing the computer's, these came out at 31
-        // and dragged the vertically-centred stepper block down out of place with them.
+        // and dragged the vertically-centered stepper block down out of place with them.
         setPrefHeight(Tokens.ROOM_FIELD_HEIGHT);
         setMinHeight(Tokens.ROOM_FIELD_HEIGHT);
         setMaxHeight(Tokens.ROOM_FIELD_HEIGHT);
@@ -93,16 +103,20 @@ public final class NumberField extends HBox {
         NumberField dialogField = new NumberField(
                 com.modcritic.invmgr.model.Item.MIN_DIMENSION_IN,
                 com.modcritic.invmgr.model.Item.MAX_DIMENSION_IN,
-                Tokens.DIALOG_NUMBER_WIDTH, Tokens.DIALOG_INPUT_BG,
-                Tokens.DIALOG_INPUT_PADDING_V, Tokens.DIALOG_INPUT_PADDING_H);
+                TouchType.dialogNumberWidth(), Tokens.DIALOG_INPUT_BG,
+                TouchType.dialogInputPaddingV(), TouchType.dialogInputPaddingH());
         // Pinned rather than computed. A browser gives a number input a minimum height of its
         // own that has nothing to do with the font or the padding, and the reference measures
         // these at exactly 28; left to JavaFX they come out at 26, and the whole dialog is
         // then six pixels short.
-        dialogField.setPrefHeight(Tokens.DIALOG_NUMBER_HEIGHT);
-        dialogField.setMinHeight(Tokens.DIALOG_NUMBER_HEIGHT);
-        dialogField.setMaxHeight(Tokens.DIALOG_NUMBER_HEIGHT);
+        dialogField.setPrefHeight(TouchType.dialogNumberHeight());
+        dialogField.setMinHeight(TouchType.dialogNumberHeight());
+        dialogField.setMaxHeight(TouchType.dialogNumberHeight());
         dialogField.limitToThreeDecimals();
+        // §5.5 D-28: a tap selects the box's contents so typing replaces the number. The
+        // original does this for the Add dialog's three boxes only; the user chose all nine
+        // on 2026-09-19, because Edit is where a size is most often retyped.
+        dialogField.selectsOnTouchFocus = true;
         return dialogField;
     }
 
@@ -121,7 +135,7 @@ public final class NumberField extends HBox {
                 + "-fx-border-width: 1;"
                 + "-fx-background-radius: 0; -fx-border-radius: 0;");
 
-        // The text field carries no styling of its own — the box around it supplies the
+        // The text field carries no styling of its own; the box around it supplies the
         // background and border, so the two cannot end up drawing competing edges.
         field.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_CONTROL));
         field.setStyle("-fx-background-color: transparent;"
@@ -131,25 +145,104 @@ public final class NumberField extends HBox {
         HBox.setHgrow(field, Priority.ALWAYS);
         field.setMinWidth(0);
 
-        // JavaFX selects a text field's whole contents when focus arrives by traversal, and the
-        // first field in the window gets focus the moment it opens. That left the app starting
-        // with "12" highlighted, which the original does not — and worse, it means one stray
-        // keystroke replaces the room's width, so the next Set Room resizes the room to whatever
-        // was typed. Clicking or double-clicking still selects normally; this only undoes the
-        // automatic select-all.
-        // Deferred deliberately: the text field's own skin also selects everything on focus, and
-        // it does so after this listener runs, so clearing the selection here directly gets
-        // immediately undone. Queueing the clear puts it after the skin's turn.
+        // A tap on a phone selects the box's contents, so typing replaces the number instead
+        // of appending to it. The original's own code, not a browser default: original
+        // 1760-1764 puts a focus listener on new-w, new-l and new-h guarded by isTouch(), and
+        // its comment says the one listener covers tapping straight into a box and arriving on
+        // one from the keypad's Next alike, because both fire an ordinary focus event.
+        //
+        // ⚠ THE OTHER TWO CASES NEED NO CODE, WHICH IS NOT WHAT THIS FILE USED TO BELIEVE.
+        // A probe against a bare JavaFX TextField, run on 2026-09-19, says it already behaves
+        // exactly as a browser does: requestFocus selects the whole contents, a click selects
+        // nothing, and a click on an already-focused box selects nothing. So desktop Tab and
+        // desktop click are both right with no help from here.
+        //
+        // Until M6.7c this cleared the selection on EVERY focus. The comment justifying that
+        // said the skin "selects everything on focus", which is half true: it selects on
+        // TRAVERSAL focus. So the clearing was not protecting the click case, which never
+        // needed it; it was removing desktop's tab-to-select and the phone's tap-to-replace.
+        // The user found the second half from the phone: the keypad appends, so typing 24 into
+        // a box holding 12 gives 1224, which clamps to MAX_DIMENSION_IN and silently makes a
+        // 1000 inch box. Going wider than the original's three Add-dialog boxes to all nine is
+        // §5.5 D-28.
+        //
+        // ⚠ The app must still not OPEN with a box selected, or one stray keystroke replaces
+        // the room's width. Nothing here does that any more: App gives the canvas focus at
+        // startup so no box takes the window's automatic first focus, and
+        // AppUiTest.nothingIsSelectedAtStartup is the only thing asserting it.
+        //
+        // Queued deliberately: the skin selects after this listener runs, so selecting here
+        // directly would be undone by it.
         field.focusedProperty().addListener((observable, lostFocus, hasFocus) -> {
-            if (hasFocus) {
-                javafx.application.Platform.runLater(() -> {
-                    field.deselect();
-                    field.positionCaret(field.getText().length());
-                });
+            if (hasFocus && selectsOnTouchFocus && Device.isTouch()) {
+                javafx.application.Platform.runLater(field::selectAll);
             }
         });
 
-        getChildren().addAll(field, buildStepper());
+        // B6: marks this box as holding a number, so a phone raises the keypad when it takes
+        // focus (what the original gets for free from <input type="number">). The watching is
+        // done once for the whole window; see AndroidBridge.followTheFocusedField.
+        AndroidBridge.marksANumberField(field);
+
+        stepper = buildStepper();
+        getChildren().addAll(field, stepper);
+    }
+
+    /** The browser's spinner block, kept so the touch layout can take it away again. */
+    private final VBox stepper;
+
+    /**
+     * Re-sizes a room field for a finger, and <b>takes the stepper off it</b>.
+     *
+     * <p>The original's touch rule is {@code width: 4.5ch; font-size: clamp(9px, 3.6cqi, 15px);
+     * padding: 0.3em}, and its own comment says the numbers were computed rather than guessed, so
+     * that all three of W, L and H fit on one row at real phone widths instead of wrapping halfway
+     * through a group.
+     *
+     * <p><b>They only fit if there is no stepper</b>, and that is not a liberty: it is what the
+     * original actually renders. Four and a half characters is barely wider than the spinner block
+     * itself; a mobile browser draws no spinner on a number input at all, which is why 4.5ch is
+     * enough there. Doing the arithmetic at 360 px settles it: with the stepper the three groups
+     * need about 380 px and wrap, and without it about 327 and do not.
+     *
+     * <p>This app draws the spinner by hand precisely <em>because</em> a desktop browser draws one.
+     * The same reasoning, applied to a phone, removes it.
+     *
+     * @param fontSize   the fluid type this field is to be set in
+     * @param characters how many characters wide the box should be (the {@code ch} of the CSS)
+     */
+    public void useTouchType(double fontSize, double characters) {
+        Font font = Font.font(Tokens.FONT_FAMILY, fontSize);
+        field.setFont(font);
+
+        double padding = TOUCH_PADDING_EM * fontSize;
+        field.setStyle("-fx-background-color: transparent;"
+                + "-fx-text-fill: " + Tokens.hex(Tokens.TEXT_INPUT) + ";"
+                + "-fx-border-width: 0;"
+                + "-fx-padding: " + padding + " " + padding + " " + padding + " " + padding + ";");
+
+        getChildren().remove(stepper);
+
+        // Measured, not assumed. A `ch` is the advance width of a zero in the font actually in
+        // use, and the app carries its own typeface, so reading it off the font is the only way
+        // this number stays right if that typeface is ever changed.
+        double width = characters * characterWidth(font) + 2 * padding + 2 * BORDER;
+        setPrefWidth(width);
+        setMinWidth(width);
+        setMaxWidth(width);
+    }
+
+    /** The original's touch padding on a room field, {@code 0.3em} of its own type. */
+    private static final double TOUCH_PADDING_EM = 0.3;
+
+    /** The 1 px border the box draws around itself, counted because CSS counts it. */
+    private static final double BORDER = 1;
+
+    /** The width of one character of a monospaced font: CSS's {@code ch}. */
+    private static double characterWidth(Font font) {
+        Text probe = new Text("0");
+        probe.setFont(font);
+        return probe.getLayoutBounds().getWidth();
     }
 
     /** Trims a fourth decimal place away as it is typed. */
@@ -178,7 +271,7 @@ public final class NumberField extends HBox {
         VBox.setVgrow(up, Priority.ALWAYS);
         VBox.setVgrow(down, Priority.ALWAYS);
 
-        // Vertically centred, and held clear of the right border by the field's own padding —
+        // Vertically centered, and held clear of the right border by the field's own padding,
         // exactly where the browser puts it. Measured at 5 px in the top bar and 6 px in the
         // dialogs, which is each field's padding, not two different design decisions.
         setAlignment(Pos.CENTER_LEFT);
@@ -222,14 +315,14 @@ public final class NumberField extends HBox {
      * Changes what the stepper will step to.
      *
      * <p>The room fields need this because their range is in whatever unit is showing: 1 to 200
-     * feet, or 1 to 61 metres, which is the same room measured two ways.
+     * feet, or 1 to 61 meters, which is the same room measured two ways.
      */
     public void setRange(double min, double max) {
         this.min = min;
         this.max = max;
     }
 
-    /** Changes the stepper's increment — half a foot imperial, a tenth of a metre in metric. */
+    /** Changes the stepper's increment: half a foot imperial, a tenth of a meter in metric. */
     public void setStep(double step) {
         this.step = step;
     }

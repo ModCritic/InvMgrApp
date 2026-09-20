@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
  * When the autosave decides a write is due.
  *
  * <p>Time is a parameter here, so an hour of use runs in microseconds and every boundary can be
- * checked on both sides — one millisecond early must not write, one millisecond late must.
+ * checked on both sides: one millisecond early must not write, one millisecond late must.
  */
 class AutosavePolicyTest {
 
@@ -28,7 +28,7 @@ class AutosavePolicyTest {
         policy.noteChange(1_000);
 
         assertTrue(policy.isDirty());
-        assertFalse(policy.isDue(1_000), "due the instant it changed — there was no quiet period");
+        assertFalse(policy.isDue(1_000), "due the instant it changed: there was no quiet period");
         assertFalse(policy.isDue(1_000 + AutosavePolicy.QUIET_MILLIS - 1),
                 "due one millisecond early");
         assertTrue(policy.isDue(1_000 + AutosavePolicy.QUIET_MILLIS),
@@ -75,7 +75,7 @@ class AutosavePolicyTest {
         policy.noteChange(muchLater);
 
         assertFalse(policy.isDue(muchLater),
-                "wrote immediately after a long idle — the ceiling is being measured from the "
+                "wrote immediately after a long idle: the ceiling is being measured from the "
                         + "last write instead of the first unsaved change");
         assertTrue(policy.isDue(muchLater + AutosavePolicy.QUIET_MILLIS));
     }
@@ -107,7 +107,7 @@ class AutosavePolicyTest {
             policy.noteChange(now);
             assertFalse(policy.isDue(now),
                     "the second burst was due " + (start + AutosavePolicy.MAX_WAIT_MILLIS - now)
-                            + " ms early — the ceiling carried over from before the write");
+                            + " ms early: the ceiling carried over from before the write");
         }
         policy.noteChange(now);
         assertTrue(policy.isDue(now));

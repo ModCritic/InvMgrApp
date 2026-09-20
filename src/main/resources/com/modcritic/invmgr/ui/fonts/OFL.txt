@@ -4,10 +4,10 @@ Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-gree
 NotoSansMath-Regular.ttf
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/math)
 
-Neither font declares a Reserved Font Name. Both are covered by the single licence
-below; upstream ships the two files under identical licence text, differing only in
+Neither font declares a Reserved Font Name. Both are covered by the single license
+below; upstream ships the two files under identical license text, differing only in
 the copyright line and in which address they give for the FAQ, so the two notices are
-collected here rather than duplicating the whole licence twice.
+collected here rather than duplicating the whole license twice.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

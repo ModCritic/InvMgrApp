@@ -12,25 +12,25 @@ import javafx.scene.shape.Circle;
  * The vertical slider control itself, drawn to match the original.
  *
  * <p><b>Why this is hand-built rather than a JavaFX {@code Slider}.</b> The original is an HTML
- * range input, which fills its track with the accent colour from the low end up to the handle
+ * range input, which fills its track with the accent color from the low end up to the handle
  * and leaves the rest plain. JavaFX's slider has a single uniform track with no notion of a
- * filled portion, so a standard slider cannot show it however it is styled — and the filled
+ * filled portion, so a standard slider cannot show it however it is styled, and the filled
  * track is the most visually prominent part of the whole drawer.
  *
  * <p>Every measurement below was read off {@code reference/desktop-04-item-on-canvas.png} by
  * sampling pixels, not estimated:
  *
  * <ul>
- *   <li>track 6 px wide, {@code #7ab} — sampled solid from x=42 to x=45 with antialiasing either side
- *   <li>thumb ~19 px across, fill {@code #676774}, ringed in white — sampled at the handle's centre
+ *   <li>track 6 px wide, {@code #7ab}: sampled solid from x=42 to x=45 with antialiasing either side
+ *   <li>thumb ~19 px across, fill {@code #676774}, ringed in white: sampled at the handle's center
  * </ul>
  *
- * <p>The colour of the track <em>above</em> the handle initially had no reference to measure —
+ * <p>The color of the track <em>above</em> the handle initially had no reference to measure:
  * every screenshot in {@code reference/} has the handle parked at the very top, so that part of
  * the track is not visible in any pixel of any of them. The user pointed to a further screenshot
  * taken with the slider pulled down, which settled it at {@code #e9e9ed}. The provisional guess
- * before that was the app's own {@code #555} border colour, and it was badly wrong — the real
- * value is nearly white, not a dark grey.
+ * before that was the app's own {@code #555} border color, and it was badly wrong: the real
+ * value is nearly white, not a dark gray.
  */
 public final class LayerTrack extends Region {
 
@@ -39,22 +39,22 @@ public final class LayerTrack extends Region {
 
     /**
      * The part of the track above the handle. Sampled as {@code rgb(233,233,237)} from a
-     * screenshot taken with the slider pulled down — the same 6 px width as the filled part.
+     * screenshot taken with the slider pulled down, the same 6 px width as the filled part.
      *
-     * <p>Deliberately not one of the app's own palette colours: this is the browser's default
+     * <p>Deliberately not one of the app's own palette colors: this is the browser's default
      * range-input track showing through, which is why it is far lighter than anything else in
      * the interface.
      */
     static final Color UNFILLED_TRACK = Color.rgb(233, 233, 237);
 
-    /** Sampled from the reference at the handle's centre. */
+    /** Sampled from the reference at the handle's center. */
     private static final Color THUMB_FILL = Color.web("#676774");
     private static final Color THUMB_RING = Color.WHITE;
 
     private static final double TRACK_WIDTH = 6;
 
     /**
-     * The track's ends are fully rounded — a pill shape, not a rectangle.
+     * The track's ends are fully rounded: a pill shape, not a rectangle.
      *
      * <p>Derived from the width rather than written as 3, so the two cannot drift apart: a
      * radius of half the width is exactly what makes the end a semicircle. Confirmed by sampling
@@ -96,7 +96,7 @@ public final class LayerTrack extends Region {
         setOnMouseDragged(event -> setValueFromY(event.getY()));
 
         // Arrow keys, because a slider that can only be driven by pointer is unusable for
-        // anyone working by keyboard — and it costs four lines.
+        // anyone working by keyboard, and it costs four lines.
         setFocusTraversable(true);
         setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.UP || event.getCode() == KeyCode.RIGHT) {
@@ -161,26 +161,26 @@ public final class LayerTrack extends Region {
         double height = getHeight();
         double trackX = (width - TRACK_WIDTH) / 2;
 
-        // The handle's centre never leaves the track, so it is inset by its own radius at each
-        // end — otherwise half the circle would hang outside the drawer at the extremes.
+        // The handle's center never leaves the track, so it is inset by its own radius at each
+        // end: otherwise half the circle would hang outside the drawer at the extremes.
         double usable = Math.max(1, height - THUMB_RADIUS * 2);
         double fraction = (value.get() - min) / (max - min);
-        double thumbCentreY = THUMB_RADIUS + (1 - fraction) * usable;
+        double thumbCenterY = THUMB_RADIUS + (1 - fraction) * usable;
 
         unfilled.resizeRelocate(trackX, THUMB_RADIUS, TRACK_WIDTH, usable);
         // Filled portion runs from the handle down to the bottom, which is the low end.
-        double filledHeight = Math.max(0, THUMB_RADIUS + usable - thumbCentreY);
-        filled.resizeRelocate(trackX, thumbCentreY, TRACK_WIDTH, filledHeight);
+        double filledHeight = Math.max(0, THUMB_RADIUS + usable - thumbCenterY);
+        filled.resizeRelocate(trackX, thumbCenterY, TRACK_WIDTH, filledHeight);
 
         thumb.setCenterX(width / 2);
-        thumb.setCenterY(thumbCentreY);
+        thumb.setCenterY(thumbCenterY);
     }
 
     /**
-     * A track segment: a solid colour with both ends rounded.
+     * A track segment: a solid color with both ends rounded.
      *
      * <p>Both segments are rounded, including where they meet under the handle. That join is
-     * never visible — the handle is 19 px across and the track only 6 — so rounding both is
+     * never visible (the handle is 19 px across and the track only 6), so rounding both is
      * simpler than special-casing the two inner ends, and looks identical.
      */
     private static javafx.scene.layout.Background solid(Color color) {

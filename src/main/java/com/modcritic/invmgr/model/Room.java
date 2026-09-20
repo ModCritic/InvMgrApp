@@ -3,7 +3,7 @@ package com.modcritic.invmgr.model;
 /**
  * The room's real-world size, in <b>feet</b>.
  *
- * <p>Feet, not inches — the room and the items deliberately use different units, because
+ * <p>The room and the items deliberately use different units, feet not inches, because
  * that is what the save format has always done and changing it would break every existing
  * file. Items are in inches; see {@link Item}.
  *

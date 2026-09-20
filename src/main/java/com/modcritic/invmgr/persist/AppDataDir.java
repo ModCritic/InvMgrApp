@@ -42,7 +42,7 @@ public final class AppDataDir {
         String os = osName.toLowerCase(Locale.ROOT);
 
         if (os.contains("win")) {
-            // %APPDATA% is the roaming profile — it follows the user between machines on a
+            // %APPDATA% is the roaming profile; it follows the user between machines on a
             // domain, which is right for a document-shaped file like this one. It is set on
             // every supported Windows, but a service or a stripped environment can lack it,
             // and the default location is worth spelling out rather than crashing.
@@ -60,7 +60,7 @@ public final class AppDataDir {
         // for data the user would miss if it vanished, which is exactly the autosave; the cache
         // directory would be wrong, as it is defined as safe to delete.
         //
-        // The spec says a relative XDG_DATA_HOME must be ignored, and this honours that rather
+        // The spec says a relative XDG_DATA_HOME must be ignored, and this honors that rather
         // than resolving it against the working directory.
         String xdgData = env.apply("XDG_DATA_HOME");
         if (notBlank(xdgData)) {
@@ -70,7 +70,7 @@ public final class AppDataDir {
             }
         }
         // Android lands here, and it is correct there too: on device user.home is the app's own
-        // private directory, so this becomes <private>/.local/share/InvMgr — writable, private,
+        // private directory, so this becomes <private>/.local/share/InvMgr, writable, private,
         // and removed when the app is uninstalled. M6 may want to shorten it, but nothing about
         // it is wrong.
         return userHome.resolve(".local").resolve("share").resolve(APP_FOLDER);

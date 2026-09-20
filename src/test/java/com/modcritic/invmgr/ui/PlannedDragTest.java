@@ -10,7 +10,9 @@ import com.modcritic.invmgr.model.Item;
 import com.modcritic.invmgr.model.Units;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
+import javafx.scene.CacheHint;
 import javafx.scene.Scene;
+import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +24,7 @@ import org.testfx.util.WaitForAsyncUtils;
  *
  * <p>This is the one gesture in the app that crosses from one panel to another, and the only
  * way a planned item ever becomes a real one. Driven with a real pointer rather than by calling
- * the commit code, because most of what can go wrong here is in the gesture — the movement
+ * the commit code, because most of what can go wrong here is in the gesture: the movement
  * threshold, the sideways-versus-downward decision, and whether the drop point lands where the
  * box actually appears.
  */
@@ -77,7 +79,7 @@ class PlannedDragTest extends ApplicationTest {
                 origin.getY() + roomY * scale + scene.getWindow().getY());
     }
 
-    private Point2D centreOfRow(Item item) {
+    private Point2D centerOfRow(Item item) {
         Bounds bounds = app.listPanel().rowFor(item.id)
                 .localToScene(app.listPanel().rowFor(item.id).getBoundsInLocal());
         return new Point2D(bounds.getMinX() + bounds.getWidth() / 2 + scene.getWindow().getX(),
@@ -138,7 +140,7 @@ class PlannedDragTest extends ApplicationTest {
         Item ghost = addGhost("Ghost", 24, 24, 12);
         assertTrue(ghost.planned);
 
-        Point2D from = centreOfRow(ghost);
+        Point2D from = centerOfRow(ghost);
         Point2D to = inRoom(400, 300);
 
         moveTo(from);
@@ -162,7 +164,7 @@ class PlannedDragTest extends ApplicationTest {
         assertEquals("Committed Ghost to room.", app.statusBar().text());
         assertEquals(ghost.id, app.canvas().selectedId(), "and it becomes the selected box");
 
-        // Dropped centred on the pointer, not hanging off its corner. findOpenSpot rounds to
+        // Dropped centered on the pointer, not hanging off its corner. findOpenSpot rounds to
         // whole pixels and may nudge it to avoid an overlap, so this allows a little slack.
         double expectedX = 400 - Units.inchesToPx(ghost.w_in) / 2;
         double expectedY = 300 - Units.inchesToPx(ghost.l_in) / 2;
@@ -204,19 +206,19 @@ class PlannedDragTest extends ApplicationTest {
     @DisplayName("a mostly-downward drag scrolls rather than lifting the row out")
     void aVerticalDragIsNotADrag() {
         Item ghost = addGhost("Ghost", 24, 24, 12);
-        Point2D from = centreOfRow(ghost);
+        Point2D from = centerOfRow(ghost);
 
         moveTo(from);
         press(javafx.scene.input.MouseButton.PRIMARY);
         // Straight down, past the threshold. Whichever of the two distances is larger when the
-        // threshold is crossed decides, and this one is vertical — which is what leaves the
+        // threshold is crossed decides, and this one is vertical, which is what leaves the
         // list scrollable instead of every attempt to scroll it lifting a row out.
         moveTo(new Point2D(from.getX(), from.getY() + 80));
         WaitForAsyncUtils.waitForFxEvents();
 
         // Checked mid-gesture, not after. Checking only the end state passes either way: a
         // drag that wrongly started here would be released over the list panel, miss the room,
-        // and cancel — leaving the ghost a ghost and the test none the wiser. Found by
+        // and cancel, leaving the ghost a ghost and the test none the wiser. Found by
         // deliberately making the direction lock always say "drag" and watching this pass.
         assertFalse(app.dragGhost().isShowing(), "no card should have been lifted");
 
@@ -225,9 +227,46 @@ class PlannedDragTest extends ApplicationTest {
         assertTrue(ghost.planned, "and nothing should have been committed");
     }
 
+    @Test
+    @DisplayName("the carried card draws its shadow from a bitmap rather than re-blurring it")
+    void theCardIsCachedWhileItIsCarried() {
+        Item ghost = addGhost("Ghost", 24, 24, 12);
+        Point2D from = centerOfRow(ghost);
+
+        moveTo(from);
+        press(javafx.scene.input.MouseButton.PRIMARY);
+        moveTo(new Point2D(from.getX() - 60, from.getY()));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(app.dragGhost().isShowing(), "the drag should have lifted a card");
+
+        // Mid-gesture on purpose. The card the app ships is the one that has to be cheap to
+        // carry, and a check made after the drop would be reading a node that is no longer
+        // doing the work.
+        HBox card = app.dragGhost().node();
+
+        assertTrue(card.getStyle().contains("dropshadow"),
+                "the ghost is the one element the design system gives a shadow, so the cheap way "
+                        + "out of the cost below is not available: keep the shadow AND the cache");
+        assertTrue(card.isCache(),
+                "without the cache the card's 16 px Gaussian shadow is recomputed on every frame "
+                        + "of the drag. DragGhostCostProbe measures this exact object at 11.2 ms "
+                        + "per frame without it and 8.2 ms with it");
+        assertEquals(CacheHint.ROTATE, card.getCacheHint(),
+                "ROTATE is the only hint that works here, and both neighbors were measured. "
+                        + "DEFAULT and QUALITY discard the bitmap whenever the transform changes, "
+                        + "and this card turns every frame, so they came out at 12.4 ms against "
+                        + "12.8 ms for no cache at all. SPEED is as fast as ROTATE but also "
+                        + "reuses the bitmap across a SCALE change, and this layer sits inside "
+                        + "the interface-zoom transform, so at 125% the card would be magnified "
+                        + "rather than redrawn");
+
+        release(javafx.scene.input.MouseButton.PRIMARY);
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
     /** Presses on a ghost's row, drags to a point, and releases. */
     private void dragTo(Item ghost, Point2D target) {
-        Point2D from = centreOfRow(ghost);
+        Point2D from = centerOfRow(ghost);
         moveTo(from);
         press(javafx.scene.input.MouseButton.PRIMARY);
         moveTo(new Point2D(from.getX() - 60, from.getY()));

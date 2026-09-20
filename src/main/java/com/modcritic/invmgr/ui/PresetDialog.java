@@ -11,13 +11,13 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 
 /**
- * The small dialog for defining a preset — a two-letter shorthand for a box size.
+ * The small dialog for defining a preset: a two-letter shorthand for a box size.
  *
  * <p>Opened by clicking an empty slot in the Add Item dialog. It sits <em>on top</em> of that
  * dialog rather than replacing it, so the half-filled Add form underneath survives.
  *
  * <p>The name is capped at two characters because the slot it goes into is 28 pixels wide. An
- * empty name becomes {@code ??} rather than being rejected — a nameless preset is still a
+ * empty name becomes {@code ??} rather than being rejected; a nameless preset is still a
  * usable size shortcut, and refusing to save one would be a dead end.
  */
 public final class PresetDialog extends ModalDialog {
@@ -37,7 +37,7 @@ public final class PresetDialog extends ModalDialog {
     private int slot = -1;
 
     private final TextField nameField =
-            Dialogs.textInput(Tokens.DIALOG_TEXT_WIDTH, Tokens.FONT_CONTROL,
+            Dialogs.textInput(TouchType.dialogTextWidth(), TouchType.dialogFont(),
                     Preset.MAX_NAME_LENGTH);
     private final NumberField widthField = NumberField.dialogField();
     private final NumberField lengthField = NumberField.dialogField();

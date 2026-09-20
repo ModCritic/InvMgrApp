@@ -26,7 +26,7 @@ class FontsTest {
      * Every non-ASCII character the interface puts on screen, and where.
      *
      * <p>If a character is added to a label or a button, it belongs in this list. A character the
-     * bundled font cannot draw does not fail loudly — it renders as an empty box, or gets
+     * bundled font cannot draw does not fail loudly; it renders as an empty box, or gets
      * silently borrowed from some other font on that computer, which is exactly the
      * platform-dependence the bundled fonts exist to remove.
      */
@@ -34,7 +34,7 @@ class FontsTest {
         '■',    // TopBar, the Add button
         '×',    // ItemListPanel, the clear-search button
         '·',    // LayerSliderDrawer, a half-foot tick
-        '—',    // TopBar and PresetSlots, in status and placeholder text
+        '\u2014',  // no longer app text (§5.5 D-22), but a name can be pasted with one in it
         '°',    // used in text
         'é',    // not ours, but names are user text and Latin-1 must survive
     };
@@ -48,7 +48,7 @@ class FontsTest {
     private static java.awt.Font read(String file) throws Exception {
         try (InputStream stream = Fonts.class.getResourceAsStream(DIRECTORY + file)) {
             assertTrue(stream != null, DIRECTORY + file
-                    + " is not on the classpath — the build is not packaging it");
+                    + " is not on the classpath: the build is not packaging it");
             return java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, stream);
         }
     }
@@ -60,7 +60,7 @@ class FontsTest {
         for (char character : TEXT_FACE_CHARACTERS) {
             assertTrue(face.canDisplay(character),
                     String.format("the interface draws '%c' (U+%04X) but the bundled text face"
-                            + " has no glyph for it — it would render as an empty box",
+                            + " has no glyph for it: it would render as an empty box",
                             character, (int) character));
         }
         for (char character = 0x20; character < 0x7F; character++) {
@@ -81,7 +81,7 @@ class FontsTest {
     }
 
     @Test
-    @DisplayName("the second font is still necessary — the text face still lacks ⤓ and ↻")
+    @DisplayName("the second font is still necessary: the text face still lacks ⤓ and ↻")
     void theSecondFontIsStillEarningItsPlace() throws Exception {
         java.awt.Font face = read("NotoSansMono-Regular.ttf");
         for (char character : SYMBOL_FACE_CHARACTERS) {
@@ -125,7 +125,7 @@ class FontsTest {
         // distinction is the entire point.
         //
         // Tokens.FONT_FAMILY has to be a value fetched while the app runs, because fetching it
-        // is what loads the font files — see Fonts. Written as a plain literal instead, Java
+        // is what loads the font files (see Fonts). Written as a plain literal instead, Java
         // would copy the text into every place that uses it, nothing would ever ask Fonts for
         // anything, and no font would load. The interface would fall back to a proportional
         // system typeface, in silence, on every platform.
@@ -136,10 +136,10 @@ class FontsTest {
         // very same object as the one written below; a name read from a font file cannot be.
         assertTrue(Tokens.FONT_FAMILY != "Noto Sans Mono",
                 "Tokens.FONT_FAMILY has been turned into a plain literal. It compiles, it looks"
-                        + " tidier, and it stops the fonts ever loading — read the note on"
+                        + " tidier, and it stops the fonts ever loading; read the note on"
                         + " Tokens.FONT_FAMILY before changing this back.");
         assertTrue(Tokens.FONT_FAMILY_SYMBOL != "Noto Sans Math",
-                "Tokens.FONT_FAMILY_SYMBOL has been turned into a plain literal — see above.");
+                "Tokens.FONT_FAMILY_SYMBOL has been turned into a plain literal; see above.");
 
         // And the names really are the ones expected, which == deliberately does not tell us.
         assertEquals("Noto Sans Mono", Tokens.FONT_FAMILY);

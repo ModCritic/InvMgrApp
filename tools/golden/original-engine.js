@@ -14,8 +14,8 @@
 // marked VERBATIM below is copied unchanged out of docs/original/InvMgr_V1.3.0.html
 // (itemRect/rectsOverlap 981-988, recomputeAllBaseHeights 992-1015, settleAllBaseHeights
 // 1027-1041, zIndexFor/isVisible 1043-1052, the dim rule 1067-1070, slideAxis 1179-1197,
-// clampItem 1198-1234, findOpenSpot 1417-1450). The browser-only parts — DOM updates,
-// status messages — are dropped; the arithmetic is untouched. The module-level `room`,
+// clampItem 1198-1234, findOpenSpot 1417-1450). The browser-only parts (DOM updates,
+// status messages) are dropped; the arithmetic is untouched. The module-level `room`,
 // `items` and `layerCollision` variables stand in for the original's globals and are set
 // per scenario.
 //
@@ -197,8 +197,8 @@ function generate(count) {
 
   const scenarios = [];
 
-  // Hand-written edge cases first — the situations most likely to be got wrong, which
-  // random generation would only hit by luck.
+  // Hand-written edge cases come first, since random generation would only hit these
+  // likely-wrong situations by luck.
   scenarios.push({
     note: 'exactly touching footprints must not count as overlapping',
     room: { w: 12, l: 10, h: 8 }, layerCollision: true, layerFeet: 8, selected: -1,
@@ -329,7 +329,7 @@ function generate(count) {
     op: { op: 'clampItem', itemIndex: 0, nx: 0, ny: 0 }
   });
   scenarios.push({
-    note: 'findOpenSpot must step around a box sitting on the room centre',
+    note: 'findOpenSpot must step around a box sitting on the room center',
     room: { w: 12, l: 10, h: 8 }, layerCollision: false, layerFeet: 8, selected: -1,
     items: [
       { id: 'a', dragOrder: 1, w_in: 24, l_in: 24, h_in: 12, x_px: 528, y_px: 384, baseHeight_in: 0, planned: false }
@@ -364,7 +364,7 @@ function generate(count) {
     // Half the random scenarios are made "collision-prone": positions snapped to half-foot
     // multiples, and every item sharing a row or a column with the first. Purely uniform
     // random placement almost never lines items up, so blocking rarely happens and whole
-    // branches of slideAxis go untested — the same coverage gap the stale-X cases exposed.
+    // branches of slideAxis go untested, the same coverage gap the stale-X cases exposed.
     const alignment = rand();
     if (alignment < 0.5 && its.length > 1) {
       const shareRow = alignment < 0.25;

@@ -27,7 +27,7 @@ import org.testfx.util.WaitForAsyncUtils;
  *
  * <p><b>Why this file exists.</b> Everything else in the interface is positioned by JavaFX's
  * layout, so the zoom transform simply carries it along and there is nothing to get wrong. These
- * two are the exceptions — they are told a pointer position and place themselves — and a pointer
+ * two are the exceptions (they are told a pointer position and place themselves) and a pointer
  * position arrives in <b>scene</b> coordinates while they place themselves in their layer's
  * coordinates. Those are the same number only at 100%. Getting it wrong applies the zoom twice,
  * which does not look like an off-by-a-constant: the error is proportional to how far across the
@@ -38,7 +38,7 @@ import org.testfx.util.WaitForAsyncUtils;
  *
  * <p>The hints are here for a related but separate reason: a JavaFX tooltip is a <b>window</b>,
  * not a control in this one, so the zoom's transform cannot reach it. It stayed its 100% size at
- * every zoom while the button under it grew — reported by the user 2026-08-01.
+ * every zoom while the button under it grew, reported by the user 2026-08-01.
  */
 class ZoomedOverlayTest extends ApplicationTest {
 
@@ -96,7 +96,7 @@ class ZoomedOverlayTest extends ApplicationTest {
                 String where = "at " + UiScale.STEPS_PERCENT[step] + "% and scene point " + point;
 
                 // The gap itself is a piece of interface, so it grows with the zoom like every
-                // other measurement — but it is a GAP, not a multiplier on the position.
+                // other measurement, but it is a GAP, not a multiplier on the position.
                 assertEquals(point.getX() + TOOLTIP_OFFSET_X * factor, onScreen.getMinX(),
                         TOLERANCE, "the tooltip's left edge should be beside the cursor " + where);
                 assertEquals(point.getY() + TOOLTIP_OFFSET_Y * factor, onScreen.getMinY(),
@@ -154,7 +154,7 @@ class ZoomedOverlayTest extends ApplicationTest {
             assertEquals(row.getY(), lifted.getMinY(), TOLERANCE,
                     "the card should appear exactly over the row it came off " + at);
 
-            // Now carry it a long way across the window — the distance is the point, because the
+            // Now carry it a long way across the window; the distance is the point, because the
             // old bug's error grew with it.
             Point2D moved = new Point2D(600, 1100);
             interact(() -> app.dragGhost().moveTo(moved.getX(), moved.getY(), true));
@@ -186,13 +186,13 @@ class ZoomedOverlayTest extends ApplicationTest {
     /**
      * The same for the height, which needs a little more room.
      *
-     * <p>A line box is not simply the font size — it is ascent plus descent, each rounded — so it
+     * <p>A line box is not simply the font size (it is ascent plus descent, each rounded), so it
      * grows in whole-pixel jumps that a fractional zoom step cannot land on. Measured worst case
      * is 175%, where the hint comes up 53 px tall against the 50.75 that exact proportion asks
      * for; three pixels covers it with a little to spare.
      *
      * <p>Still far tighter than anything this is watching for. A hint that ignores the zoom
-     * entirely is out by the whole difference — 29 px against 58 at the top of the ladder — and
+     * entirely is out by the whole difference (29 px against 58 at the top of the ladder), and
      * one whose padding is pinned in pixels while only its text grows comes up 47 px there, out
      * by eleven.
      */
@@ -221,7 +221,7 @@ class ZoomedOverlayTest extends ApplicationTest {
             String at = " at " + percent + "%";
 
             // The font is the one property that reaches a shown popup, so it is the knob the
-            // whole thing turns on -- see Hints.STYLE for why the padding cannot be.
+            // whole thing turns on; see Hints.STYLE for why the padding cannot be.
             assertEquals(Tokens.FONT_TOOLTIP * factor, hint.getFont().getSize(), 0.001,
                     "the hint's text should be drawn at the interface size" + at);
 
@@ -235,8 +235,8 @@ class ZoomedOverlayTest extends ApplicationTest {
             // The hairline round the outside, which the two measurements above cannot see: it
             // contributes one pixel per side, and one pixel is inside their tolerance. Left
             // untested, a border pinned at 1 px survived every other assertion here.
-            // JavaFX rounds a border width to a tenth of a pixel on the way in — 0.75 comes back
-            // as 0.8 — so half a tenth is the most it can ever be out. A shade over that, because
+            // JavaFX rounds a border width to a tenth of a pixel on the way in (0.75 comes back
+            // as 0.8), so half a tenth is the most it can ever be out. A shade over that, because
             // 0.8 - 0.75 in binary floating point is 0.05000000000000004 and an exact 0.05 fails.
             // Still nowhere near enough slack to hide the failure this is here for: a border left
             // at a flat 1 px is out by half at the bottom of the ladder.
@@ -269,7 +269,7 @@ class ZoomedOverlayTest extends ApplicationTest {
     void aHoveredHintScales() {
         // This is the test that was missing, and its absence shipped the bug twice.
         //
-        // The two above put the hint up by calling show(owner, x, y) -- deliberately, because
+        // The two above put the hint up by calling show(owner, x, y) deliberately, because
         // hovering costs a 500 ms rest on each of seven rungs. But that call is also the ONLY one
         // that records which node a popup belongs to, and JavaFX's own hover timer does not use
         // it: all four of its show calls take a Window instead. So the first fix read the owner
@@ -283,7 +283,7 @@ class ZoomedOverlayTest extends ApplicationTest {
         Tooltip hint = units.getTooltip();
 
         setZoomTo(200);
-        // Away first, so the pointer genuinely enters the button and starts the hover timer --
+        // Away first, so the pointer genuinely enters the button and starts the hover timer;
         // TestFX leaves it wherever the last test put it, which may already be here.
         moveTo(app.listPanel().searchField());
         moveTo(units);
@@ -377,12 +377,12 @@ class ZoomedOverlayTest extends ApplicationTest {
 
     private Bounds ghostBoundsInScene() {
         // The card is leaning while it is being carried, and a rotated node's scene bounds are its
-        // bounding BOX -- wider than the card, and starting left of its corner. So this asks for
+        // bounding BOX, wider than the card, and starting left of its corner. So this asks for
         // the rectangle the card was laid out at instead, and maps that up to the scene itself.
         //
         // It used to zero the rotation first and then measure. That no longer works and could not
         // be made to: the lean is now advanced by a running AnimationTimer (see DragGhost), which
-        // would set it straight back. Reading the layout is better anyway -- it measures without
+        // would set it straight back. Reading the layout is better anyway; it measures without
         // disturbing what it is measuring. The lean itself is TiltPendulumTest's business.
         Node card = app.dragGhost().node();
         Bounds laidOut = new javafx.geometry.BoundingBox(card.getLayoutX(), card.getLayoutY(),
@@ -395,7 +395,7 @@ class ZoomedOverlayTest extends ApplicationTest {
      *
      * <p>{@code getLayoutBounds}, not {@code getBoundsInLocal}: the latter includes the effect,
      * and the ghost card has a 16 px drop shadow that pushes its bounds 16 px out on every side.
-     * Using it made this file's first run fail by exactly 8 px at 50% zoom — the shadow, scaled —
+     * Using it made this file's first run fail by exactly 8 px at 50% zoom (the shadow, scaled),
      * which looks precisely like the bug being tested and is not.
      */
     private Bounds inScene(javafx.scene.Node node) {

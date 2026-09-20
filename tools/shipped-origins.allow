@@ -1,0 +1,59 @@
+# Origins allowed to appear inside a shipped artifact.
+#
+# Format:  <package or file prefix> | <license> | <why it is acceptable>
+#
+# The rule from CLAUDE.md §8: permissive (0BSD/MIT/BSD/Apache-2.0/EPL/MPL) or copyleft
+# WITH a classpath/linking exception. Copyleft without one does not belong in a shipped
+# artifact and must not be added here to make the check pass.
+#
+# This file is deliberately short. If checking an APK produces a wall of NOT ALLOWED
+# lines, that is the current, real state of the Android build. See docs/LICENSE-AUDIT.md.
+# Do not silence it by pasting the offenders in; that decision is the user's.
+
+com.modcritic          | 0BSD                        | Our own code. See LICENSE.
+javafx                 | GPLv2 + Classpath Exception | OpenJFX. The CE is what permits shipping our own code under 0BSD.
+com.sun.javafx         | GPLv2 + Classpath Exception | OpenJFX internals, same artifact.
+com.sun.glass          | GPLv2 + Classpath Exception | OpenJFX internals, same artifact.
+com.sun.prism          | GPLv2 + Classpath Exception | OpenJFX internals, same artifact.
+com.sun.scenario       | GPLv2 + Classpath Exception | OpenJFX internals, same artifact.
+com.sun.marlin         | GPLv2 + Classpath Exception | OpenJFX's antialiasing rasterizer, in javafx-graphics.
+com.sun.pisces         | GPLv2 + Classpath Exception | OpenJFX's older rasterizer, in javafx-graphics.
+com.sun.openpisces     | GPLv2 + Classpath Exception | OpenJFX's older rasterizer, in javafx-graphics.
+com.sun.util           | GPLv2 + Classpath Exception | Verified to come from javafx-graphics-21-<platform>.jar, not the JDK.
+
+# Fonts ship inside the jar and the APK. OFL-1.1 requires the license text to travel
+# with them, which is why OFL.txt is packaged beside them. See MANUAL.md's asset table.
+NotoSansMono           | OFL-1.1                     | The interface typeface (D-6).
+NotoSansMath           | OFL-1.1                     | Two glyphs Noto Sans Mono lacks.
+
+# ---------------------------------------------------------------------------
+# Android only. None of these was chosen by anyone here; the Android build adds them.
+# They were unrecorded until the M6.5a audit found them. All Apache-2.0, each confirmed
+# from a <licenses> block on disk rather than assumed. See docs/LICENSE-AUDIT.md.
+
+androidx                | Apache-2.0 | Pulled in by the generated Android project.
+android.support         | Apache-2.0 | Legacy-named AIDL stubs living inside androidx core, not a separate library.
+kotlin                  | Apache-2.0 | Kotlin standard library 2.0.21, required by androidx. No Kotlin is written here.
+kotlinx                 | Apache-2.0 | Coroutines 1.8.1, same reason.
+_COROUTINE              | Apache-2.0 | Marker classes the Kotlin coroutines library generates for stack traces.
+org.jetbrains           | Apache-2.0 | JetBrains annotations, pulled in by Kotlin.
+org.intellij            | Apache-2.0 | Same package family, same reason.
+org.jspecify            | Apache-2.0 | Nullness annotations, pulled in by androidx.
+com.google.common       | Apache-2.0 | Guava's listenablefuture stub only, pulled in transitively.
+
+# The one native library we produce. Since M6.5b it contains our own host layer (0BSD),
+# OpenJFX (GPLv2 + Classpath Exception), the GraalVM CE runtime (GPLv2 + Classpath
+# Exception) and libc++ (Apache-2.0 with the LLVM exception), and nothing from Gluon.
+libsubstrate.so         | mixed, all cleared | Verified per-component in docs/LICENSE-AUDIT.md section 4.
+
+# ---------------------------------------------------------------------------
+# STILL NOT LISTED, ON PURPOSE:
+#
+#   libfreetype.so   FreeType is dual licensed, FTL or GPLv2, and the choice is the
+#                    distributor's. The copy shipped here is stripped, no license file
+#                    exists anywhere on this machine, and the JavaFX SDK's own
+#                    ADDITIONAL_LICENSE_INFO says only that FreeType "may" be included
+#                    and is licensed "under their original licenses". Under FTL it is
+#                    permissive with an attribution requirement and would be fine.
+#                    Nobody has confirmed that from a file, so it stays off the list and
+#                    the check stays red until someone does.

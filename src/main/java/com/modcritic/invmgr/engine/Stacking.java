@@ -13,10 +13,10 @@ import java.util.List;
  * look almost right, which is the worst kind of wrong.
  *
  * <ul>
- *   <li>{@link #recomputeAllBaseHeights} — the everyday pass. Sorted by {@code dragOrder}:
+ *   <li>{@link #recomputeAllBaseHeights}, the everyday pass. Sorted by {@code dragOrder}:
  *       "whatever you just moved goes on top", which is what dropping a box on a pile
  *       should feel like.
- *   <li>{@link #settleAllBaseHeights} — the gravity pass, used in exactly one situation:
+ *   <li>{@link #settleAllBaseHeights}, the gravity pass, used in exactly one situation:
  *       when Layer Collision is switched off. Sorted by current height, lowest first.
  * </ul>
  */
@@ -33,7 +33,7 @@ public final class Stacking {
      * item lands on top of what was already there.
      *
      * <p><b>Does nothing at all while Layer Collision is on.</b> That is not an
-     * optimisation — it is the whole meaning of the mode: heights freeze for every cause,
+     * optimization; it is the whole meaning of the mode: heights freeze for every cause,
      * including drags, adds, deletes, edits and swaps. Everything falls into place in one
      * pass when the mode is switched off, never continuously while it is on.
      *
@@ -50,13 +50,13 @@ public final class Stacking {
         // This pass is provably redundant, and is kept deliberately. stackInOrder assigns a
         // height to every item in `sorted`: the first gets 0 because it has nothing before
         // it, and each later one reads only items already assigned in the same pass, so no
-        // stale value can ever be observed. A mutation test confirms it — deleting these
+        // stale value can ever be observed. A mutation test confirms it; deleting these
         // three lines changes no result in 250 scenarios.
         //
         // It stays because it matches the original line for line, it costs one pass over a
         // list capped at 500, and it states the intent ("everything starts on the floor")
         // that the loop below then relies on. Note the gravity pass does NOT do this, and
-        // for it that is not optional — see its own comment.
+        // for it that is not optional; see its own comment.
         for (Item item : sorted) {
             item.baseHeight_in = 0;
         }
@@ -68,7 +68,7 @@ public final class Stacking {
      *
      * <p>Used only on the Layer Collision off switch. While that mode was on, an item's
      * position had nothing to do with when it was last dragged, so {@code dragOrder} no
-     * longer says anything about who is resting on whom — sorting by it would produce
+     * longer says anything about who is resting on whom; sorting by it would produce
      * nonsense. Sorting by current height instead means that by the time a higher item
      * settles, whatever it lands on has already found its own true resting height, so a
      * cascade of several stacked items resolves correctly in a single pass.
@@ -103,7 +103,7 @@ public final class Stacking {
     }
 
     /**
-     * The real items, sorted, as a new list — the app's own item order is never disturbed,
+     * The real items, sorted, as a new list; the app's own item order is never disturbed,
      * because that order drives the item list panel.
      *
      * <p>The sort is stable, so items with equal keys keep their existing relative order,

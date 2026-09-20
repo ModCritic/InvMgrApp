@@ -9,7 +9,7 @@ import com.modcritic.invmgr.model.Item;
  * selected item.
  *
  * <p><b>Nothing here reads the Layer Collision toggle any more.</b> Paint order and dimming both
- * used to switch rule with it, and that was the cause of divergence D-5 — see
+ * used to switch rule with it, and that was the cause of divergence D-5: see
  * {@link #comparePaint}. They now share one rule, so they cannot contradict each other, and the
  * only state either of them needs is the layer slider's height, for {@link #isVisible}.
  */
@@ -23,9 +23,9 @@ public final class Layers {
      *
      * <p><b>Physical height decides it, and drag order only breaks ties.</b> An item that is
      * lower in the room can never be drawn over one above it, whatever was touched most
-     * recently — that is the whole point of a top-down view of a stack. Where two items sit at
+     * recently; that is the whole point of a top-down view of a stack. Where two items sit at
      * the same height, the one moved most recently wins, which is the familiar "I just put this
-     * down, it is on top" behaviour.
+     * down, it is on top" behavior.
      *
      * <p><b>This is divergence D-5, and it is a real fix, not a preference.</b> The original
      * switches rule on the Layer Collision toggle: height while it is on, drag order while it is
@@ -34,7 +34,7 @@ public final class Layers {
      * <em>over</em> the box it just went under. Reported by the user from the M3 jar.
      *
      * <p>Note how narrow the divergence actually is. In a flat room every item is at base 0, the
-     * heights tie, and this reduces to drag order — bit-for-bit the original's behaviour. It only
+     * heights tie, and this reduces to drag order, bit-for-bit the original's behavior. It only
      * differs when heights differ, which is exactly the broken case. And with Layer Collision on
      * it only adds a tiebreak where the original left the order undefined.
      *
@@ -81,8 +81,8 @@ public final class Layers {
      * <em>and</em> overlapping its footprint. An item elsewhere in the room is not obscuring
      * anything and stays at full strength.
      *
-     * <p>"Above" means exactly {@link #isAbove} — the same rule that decides what is painted on
-     * top, because an item that fades to reveal the selection but is drawn behind it anyway is
+     * <p>"Above" means exactly {@link #isAbove} (the same rule that decides what is painted on
+     * top), because an item that fades to reveal the selection but is drawn behind it anyway is
      * just a box that went dim for no visible reason. The original kept two rules here and
      * switched both on the Layer Collision toggle; part of divergence D-5 is that there is now
      * one rule, used by both.

@@ -6,6 +6,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Control;
+import javafx.scene.control.DialogPane;
 import javafx.scene.control.Tooltip;
 import javafx.scene.text.Font;
 import javafx.stage.WindowEvent;
@@ -17,7 +18,7 @@ import javafx.util.Duration;
  *
  * <p>The original writes {@code title="Fit to Screen"} on a button and the browser handles the
  * rest, and calls {@code confirm(...)} and the browser puts up a dialog. Neither exists in
- * JavaFX, so both are built here — in one place, so every button's hint looks the same.
+ * JavaFX, so both are built here, in one place, so every button's hint looks the same.
  */
 public final class Hints {
 
@@ -30,25 +31,25 @@ public final class Hints {
     private static final Duration DELAY = Duration.millis(500);
 
     /**
-     * How a hint is painted — <b>every measurement in it relative to the font size</b>.
+     * How a hint is painted: <b>every measurement in it relative to the font size</b>.
      *
-     * <p>The colours are the item tooltip's: near-black on a grey hairline, rather than JavaFX's
-     * pale default, which would be the only light-coloured thing in the window.
+     * <p>The colors are the item tooltip's: near-black on a gray hairline, rather than JavaFX's
+     * pale default, which would be the only light-colored thing in the window.
      *
      * <p><b>Why the sizes are in {@code em} and not in pixels.</b> A hint has to grow with the
      * Ctrl+scroll interface zoom, and unlike everything else in the app it cannot simply be
-     * carried along by the zoom's transform — see {@link #tooltip}. So the zoom has to be applied
+     * carried along by the zoom's transform (see {@link #tooltip}). So the zoom has to be applied
      * to the hint by hand, and there is exactly one property that can carry it: the font.
      * Measured, on a real popup: <b>a tooltip's stylesheet is processed once, on its first
      * showing, and never again.</b> Later {@code setStyle} calls are stored and ignored, and an
      * explicit {@code applyCss()} does not dislodge them either. Its <em>font</em>, by contrast,
      * is a plain JavaFX property that the skin binds to its label, so it takes effect whenever it
-     * is set — even while the hint is on screen.
+     * is set, even while the hint is on screen.
      *
      * <p>An {@code em} is a multiple of the font size, and JavaFX re-resolves em-valued CSS when
      * the font moves. So writing the padding and the border in em makes the one property that
      * still works drive all three: set the font, and the box around it follows. Verified across
-     * the whole zoom ladder — at 50% the padding measures 2.5/5 with a 0.5 px border, at 200%
+     * the whole zoom ladder: at 50% the padding measures 2.5/5 with a 0.5 px border, at 200%
      * 10/20 with a 2 px border, and at 100% exactly the {@link Tokens#TOOLTIP_PADDING_V} and
      * {@link Tokens#TOOLTIP_PADDING_H} the item tooltip uses.
      *
@@ -78,7 +79,7 @@ public final class Hints {
      * <p><b>It resizes with the interface zoom, and it has to do that the hard way.</b> Every
      * other control in the app is inside one {@code Scale} transform (see {@code App} and
      * {@link UiScale}), so Ctrl+scroll carries it along and no measurement anywhere has to know
-     * the zoom exists. A JavaFX {@link Tooltip} is not a control in the window at all — it is a
+     * the zoom exists. A JavaFX {@link Tooltip} is not a control in the window at all; it is a
      * <em>separate popup window</em> with its own scene, which is precisely why it can hang over
      * the edge of the app. Being its own window, it sits outside the transform, so it stayed at
      * its 100% size at every zoom level while the button it belonged to grew. Reported by the
@@ -86,20 +87,20 @@ public final class Hints {
      *
      * <p>The zoom is therefore read off the button the hint belongs to:
      * {@code getLocalToSceneTransform()} is the accumulated effect of every transform between that
-     * button and the scene, which is the zoom and nothing else. That keeps the whole thing local —
-     * no wiring through {@code App}, no shared mutable "current scale" for something to forget to
-     * update — and it stays correct if a transform is ever added somewhere above. It is read at
+     * button and the scene, which is the zoom and nothing else. That keeps the whole thing local
+     * (no wiring through {@code App}, no shared mutable "current scale" for something to forget to
+     * update) and it stays correct if a transform is ever added somewhere above. It is read at
      * <b>showing</b> time rather than at construction, because a hint is built while the window is
      * being assembled and the zoom can change any number of times afterwards.
      *
      * <p><b>Why the button is passed in rather than asked for.</b> This method used to be
      * {@code tooltip(String)} and got the button from {@code Tooltip.getOwnerNode()} at showing
      * time. <b>That is null in the running app and always will be</b>, so the zoom read as 1 and
-     * the hint never grew — the same bug, reported again on 2026-08-01 against the M3.2.5 jar that
+     * the hint never grew: the same bug, reported again on 2026-08-01 against the M3.2.5 jar that
      * was supposed to have fixed it. A popup records an owner <em>node</em> only when it is shown
      * with {@code show(Node, x, y)}; shown with {@code show(Window, x, y)} it records an owner
-     * window and leaves the node null. Disassembling JavaFX 21's own {@code TooltipBehavior} — the
-     * thing that counts your half-second rest and puts the hint up — shows all four of its show
+     * window and leaves the node null. Disassembling JavaFX 21's own {@code TooltipBehavior} (the
+     * thing that counts your half-second rest and puts the hint up) shows all four of its show
      * calls take the {@code Window} form. There is no public way to ask a tooltip which control it
      * was installed on, so the only reliable answer is to keep hold of it here.
      *
@@ -155,6 +156,73 @@ public final class Hints {
      * @return true if the user said yes
      */
     public static boolean confirm(Scene scene, String question) {
+        Alert alert = confirmDialog(scene, question,
+                javafx.stage.Screen.getPrimary().getVisualBounds().getWidth());
+        Optional<ButtonType> answer = alert.showAndWait();
+        return answer.isPresent() && answer.get() == ButtonType.OK;
+    }
+
+    /**
+     * How much glass is left showing either side of a confirmation, in pixels.
+     *
+     * <p>The same eight pixels {@code ItemTooltip} keeps between itself and the edge of the window,
+     * so the two pieces of interface that have to fit on a phone agree about what "not touching the
+     * edge" means.
+     */
+    static final double SCREEN_MARGIN = 8;
+
+    /**
+     * Builds the question box, sized so it fits on a screen this wide.
+     *
+     * <p><b>A JavaFX {@code Alert} is 419 pixels wide whatever you ask it</b>, measured on this
+     * JavaFX, with three messages of very different lengths, all of which came out at exactly 419.
+     * The width is computed inside {@code DialogPane} and is not in {@code modena.css}, and it does
+     * not come from the text: the content label already wraps. So on the user's phone, whose whole
+     * scene is <b>360</b> logical pixels across, every confirmation hangs about thirty pixels off
+     * each edge. Reported by them 2026-08-07 against {@code InvMgr-M6.2a.apk}, where the delete
+     * itself worked and only the box around the question was wrong.
+     *
+     * <p><b>Capped against the screen, not against the window.</b> A dialog wider than its owner
+     * window is ordinary on a desktop and nobody has ever complained about it; a dialog wider than
+     * the glass is unreadable and has nowhere to go. Measuring the screen is therefore the narrower
+     * claim and it leaves every desktop untouched; 2560 px of screen caps at 2544, which is far
+     * above the 419 the dialog wanted anyway.
+     *
+     * <p><b>The cap is set as a preferred width, and only when the dialog is actually wider than
+     * it.</b> That order is the whole of it, and a maximum width, which is what this used to
+     * be, is the wrong tool however obviously right it looks.
+     *
+     * <p>The reason is that a JavaFX dialog is <em>sized</em> by one number and <em>placed</em> by
+     * a different one. {@code HeavyweightDialog.positionStage} centers the window on its owner
+     * using {@code dialogPane.prefWidth(-1)}, and {@code Region.prefWidth} does not clamp itself
+     * to the maximum; the window's actual size comes from {@code Stage.sizeToScene}, which does.
+     * So a maximum alone makes the dialog the right size and then places it as though it were
+     * still the size it wanted, leaving it half the difference off to one side. Measured on this
+     * JavaFX with the owner window 360 px wide: pane preferred 419, real width 344, dialog placed
+     * <b>37.5 px left of center</b>, which is exactly (419 − 344) / 2. On the phone that is
+     * x = −29.5, hanging off the left edge with a gap on the right. <b>Reported by the user
+     * 2026-08-08 against {@code InvMgr-M6.3.apk}</b>, where the M6.3 cap had made the box fit and
+     * pushed it sideways in the same move.
+     *
+     * <p>A preferred width is read by both, so both agree. It is harmless on a desktop because of
+     * the {@code if}, not because of the property: a screen wide enough that the dialog already
+     * fits has nothing set on it at all. And the pane must be laid out before its preference can
+     * be read (cold it reports the scene's width rather than its own), which is the same trap as
+     * {@code ItemTooltip.showForTouch}, where a tooltip measured before layout centers itself
+     * using the previous tooltip's width.
+     *
+     * <p>Note the pane refuses to go below its own minimum of 281 px, so a screen narrower than
+     * about 297 px would still overflow. Nothing that runs this app has one (the narrowest phones
+     * in service are 360) and forcing it smaller would mean overlapping buttons rather than a
+     * dialog that fits.
+     *
+     * <p>Split out from {@link #confirm} with the width as an argument so it can be checked at a
+     * phone's size from a desktop. {@code confirm} itself cannot be driven from a test at all:
+     * {@code showAndWait} blocks in a nested event loop until somebody answers.
+     *
+     * @param screenWidthPx how wide the screen is, in the pixels JavaFX works in
+     */
+    static Alert confirmDialog(Scene scene, String question, double screenWidthPx) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION, question,
                 ButtonType.CANCEL, ButtonType.OK);
         alert.setHeaderText(null);
@@ -162,7 +230,15 @@ public final class Hints {
         if (scene != null && scene.getWindow() != null) {
             alert.initOwner(scene.getWindow());
         }
-        Optional<ButtonType> answer = alert.showAndWait();
-        return answer.isPresent() && answer.get() == ButtonType.OK;
+        if (screenWidthPx > 0) {
+            DialogPane pane = alert.getDialogPane();
+            pane.applyCss();
+            pane.layout();
+            double cap = screenWidthPx - 2 * SCREEN_MARGIN;
+            if (pane.prefWidth(-1) > cap) {
+                pane.setPrefWidth(cap);
+            }
+        }
+        return alert;
     }
 }

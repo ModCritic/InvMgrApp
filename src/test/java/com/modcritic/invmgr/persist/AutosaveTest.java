@@ -158,7 +158,7 @@ class AutosaveTest {
         for (Path temp : seenDuringWrite) {
             assertEquals(dir, temp.getParent(),
                     "the temporary file was written to " + temp.getParent() + ", not beside the "
-                            + "autosave in " + dir + " — the rename would cross a filesystem");
+                            + "autosave in " + dir + ": the rename would cross a filesystem");
         }
     }
 
@@ -317,7 +317,7 @@ class AutosaveTest {
     @Test
     void theFileIsWrittenAsUtf8() throws IOException {
         Autosave autosave = new Autosave(dir);
-        AppState state = roomWithOneBox("Bin \"A\" — café ☃");
+        AppState state = roomWithOneBox("Bin \"A\": café ☃");
 
         autosave.write(SaveFormat.save(state));
 
@@ -325,6 +325,6 @@ class AutosaveTest {
         // up here rather than as mangled names on a Windows machine.
         String text = new String(Files.readAllBytes(autosave.file()), StandardCharsets.UTF_8);
         assertTrue(text.contains("café ☃"), "non-ASCII names did not survive the write");
-        assertEquals("Bin \"A\" — café ☃", autosave.restore().state().items.get(0).name);
+        assertEquals("Bin \"A\": café ☃", autosave.restore().state().items.get(0).name);
     }
 }

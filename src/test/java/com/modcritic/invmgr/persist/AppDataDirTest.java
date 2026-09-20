@@ -35,7 +35,7 @@ class AppDataDirTest {
         // Asserted as the whole path, and against the home directory as well.
         //
         // This was first written as "the result contains AppData/Roaming", which the fallback
-        // below ALSO satisfies — so deleting the %APPDATA% lookup entirely left the test green.
+        // below ALSO satisfies, so deleting the %APPDATA% lookup entirely left the test green.
         // The mutation sweep found it. A test that both the working and the broken code pass is
         // not a weak test, it is not a test.
         Path appData = Path.of("D:\\Profiles\\Someone\\AppData\\Roaming");
@@ -56,7 +56,7 @@ class AppDataDirTest {
 
     @Test
     void windowsIgnoresABlankAppdata() {
-        // An empty variable is set-but-useless, and resolving "" gives the working directory --
+        // An empty variable is set-but-useless, and resolving "" gives the working directory,
         // the one place the autosave must never land.
         Path resolved = AppDataDir.resolve("Windows 10", env(Map.of("APPDATA", "   ")), HOME);
 
@@ -82,7 +82,7 @@ class AppDataDirTest {
     }
 
     @Test
-    void linuxHonoursXdgDataHome() {
+    void linuxHonorsXdgDataHome() {
         Path resolved = AppDataDir.resolve("Linux",
                 env(Map.of("XDG_DATA_HOME", "/var/data/someone")), HOME);
 
@@ -98,7 +98,7 @@ class AppDataDirTest {
 
     @Test
     void linuxRejectsARelativeXdgDataHome() {
-        // The XDG specification says a relative value must be ignored. Honouring it would put
+        // The XDG specification says a relative value must be ignored. Honoring it would put
         // the autosave under whatever directory the app happened to be launched from.
         Path resolved = AppDataDir.resolve("Linux",
                 env(Map.of("XDG_DATA_HOME", "relative/path")), HOME);

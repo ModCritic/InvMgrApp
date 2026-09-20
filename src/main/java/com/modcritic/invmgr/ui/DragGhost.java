@@ -3,6 +3,7 @@ package com.modcritic.invmgr.ui;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.CacheHint;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
@@ -15,8 +16,8 @@ import javafx.scene.transform.Rotate;
  * The little card that follows the pointer while a planned item is being dragged out of the
  * list and into the room.
  *
- * <p>It shows exactly what the row showed — the colour dot and the name with {@code [plan]} on
- * the end — so it reads as the row itself having been picked up rather than as a new thing
+ * <p>It shows exactly what the row showed (the color dot and the name with {@code [plan]} on
+ * the end), so it reads as the row itself having been picked up rather than as a new thing
  * appearing.
  *
  * <p>Two details are doing real work:
@@ -28,12 +29,46 @@ import javafx.scene.transform.Rotate;
  *       and it is what makes a drag feel like carrying something rather than sliding a rectangle.
  *       The arithmetic is {@link TiltPendulum}'s; this class only feeds it and applies the result.
  *   <li><b>It fades slightly over the room.</b> Dropping to 0.8 opacity is the signal that
- *       letting go here will actually place the item — releasing anywhere else cancels.
+ *       letting go here will actually place the item; releasing anywhere else cancels.
  * </ul>
  *
  * <p>This is also the one place in the app with a rounded corner and a drop shadow, both
  * deliberate: the design system allows shadows only on things that are moving, and the ghost is
  * the definition of moving.
+ *
+ * <h2>Why the card is in a bitmap cache</h2>
+ *
+ * <p>That shadow is a 16 px Gaussian blur, and a blur is re-computed whenever the node it sits on
+ * is dirty. The card is dirty on every single frame of a drag, because it is both moving and
+ * turning, so the blur was being recomputed sixty times a second for the whole gesture. The user
+ * reported the drag as stuttering on machines with integrated graphics, and that is what it was.
+ *
+ * <p>{@code setCache(true)} draws the card and its shadow into an offscreen bitmap once and then
+ * moves the bitmap, which is a copy rather than a blur. {@code DragGhostCostProbe} carries this
+ * exact object both ways on software OpenGL, which has no GPU at all and is the closest thing
+ * here to the machines in question: <b>mean frame 11.2 ms down to 8.2 ms, median 14 ms down to
+ * 8 ms, and 399 frames in a fixed stretch of wall clock became 533</b>.
+ *
+ * <p>Note what that is and is not. This machine free-runs well above 60 fps either way, so the
+ * stutter itself does not reproduce here and the probe never claims it does. What is measured is
+ * the work per frame, and it is about 3 ms lower. On a machine already spending 20 ms in a 16.7 ms
+ * budget, 3 ms is the whole difference between dropping frames and not.
+ *
+ * <p><b>{@link CacheHint#ROTATE} rather than either neighbor, and both halves of that were
+ * measured.</b> {@code DEFAULT} throws the bitmap away whenever the transform changes, so with a
+ * card that is turning every frame it came out at 12.4 ms against 12.8 ms for no cache at all:
+ * <i>the cache bought nothing</i>. {@code SPEED} is as fast as {@code ROTATE} and wrong here for a
+ * different reason: it also reuses the bitmap when the <i>scale</i> changes, and this layer sits
+ * inside the interface-zoom transform (see {@link #toLayer}), so at 125% the card would be a
+ * magnified bitmap instead of a redrawn one. {@code ROTATE} reuses across the swing and redraws on
+ * a zoom, which is exactly the split this card needs.
+ *
+ * <p><b>What it costs.</b> A tilted card is a bitmap resampled at an angle rather than text
+ * rasterized at that angle, so its edges are marginally softer while it is leaning. Screenshotted
+ * both ways at 9°, which is inside the swing's ±{@code MAX_TILT_DEGREES} range: 5.3% of the pixels
+ * around the card differ at all, and the average difference among those is 8 of 255. At rest the
+ * two are the same picture, 24 pixels out of 56,000 differing by 1 of 255. So the softening exists
+ * only while the card is in motion, which is the one moment nobody is reading it.
  */
 public final class DragGhost {
 
@@ -49,9 +84,9 @@ public final class DragGhost {
      * The swing, as a rotation about the point the card was grabbed by.
      *
      * <p>A {@code Rotate} transform rather than {@code setRotate}, because that turns a node about
-     * the centre of its own box and there is no way to move it. A card held by its middle and a
+     * the center of its own box and there is no way to move it. A card held by its middle and a
      * card held near one end swing quite differently, and which one this is depends on where the
-     * pointer came down on the row — so the pivot has to move with the grab. Set in {@link #lift}.
+     * pointer came down on the row, so the pivot has to move with the grab. Set in {@link #lift}.
      */
     private final Rotate swing = new Rotate();
 
@@ -65,7 +100,7 @@ public final class DragGhost {
      * field. <b>The card's position follows the mouse event and its lean follows the clock</b>, and
      * those have to be separate: the card must be under the cursor the instant the cursor moves, or
      * dragging feels laggy, while the lean must advance on every frame whether the hand moved or
-     * not, or it freezes at whatever the last event said — which is exactly what the old
+     * not, or it freezes at whatever the last event said, which is exactly what the old
      * event-driven version did when you stopped moving.
      */
     private double pointerSceneX;
@@ -102,7 +137,7 @@ public final class DragGhost {
     /**
      * Where in the card the pointer grabbed it, so it does not jump on the first frame.
      *
-     * <p>In the <b>layer's</b> coordinates, like everything else this class positions — see
+     * <p>In the <b>layer's</b> coordinates, like everything else this class positions: see
      * {@link #toLayer}.
      */
     private double grabOffsetX;
@@ -126,6 +161,12 @@ public final class DragGhost {
                 + "-fx-background-radius: " + Tokens.GHOST_RADIUS + ";"
                 + "-fx-border-radius: " + Tokens.GHOST_RADIUS + ";"
                 + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 16, 0, 0, 6);");
+
+        // The shadow above is the expensive part of carrying this card, and these two lines are
+        // what stop it being recomputed every frame. See the class documentation for the
+        // measurement and for why the hint is ROTATE and not either of its neighbors.
+        card.setCache(true);
+        card.setCacheHint(CacheHint.ROTATE);
     }
 
     /**
@@ -135,7 +176,7 @@ public final class DragGhost {
      * through the interface-zoom Scale transform (see {@code App} and {@link UiScale}), so a
      * layout position of 500 in here lands at 750 on the glass at 125%. Passing a raw scene
      * coordinate to {@code setLayoutX} therefore applied the zoom to the pointer's position a
-     * second time, and the ghost ran away from the cursor — worse the further across the window
+     * second time, and the ghost ran away from the cursor, worse the further across the window
      * it went. Reported by the user 2026-07-30, alongside the same bug in {@link ItemTooltip}.
      */
     private javafx.geometry.Point2D toLayer(double sceneX, double sceneY) {
@@ -146,15 +187,15 @@ public final class DragGhost {
      * Lifts the ghost off a row.
      *
      * @param width the row's width in the list's own coordinates, so the card is the same size
-     *     as what was picked up — the list is inside the same zoom transform as this layer, so
+     *     as what was picked up: the list is inside the same zoom transform as this layer, so
      *     the number carries across unchanged
      * @param rowSceneX where the row's top-left corner is in the window, in scene coordinates
      * @param pointerX where the pointer is, in scene coordinates
      */
-    public void lift(String text, Color colour, double width, double rowSceneX,
+    public void lift(String text, Color color, double width, double rowSceneX,
             double rowSceneY, double pointerX, double pointerY) {
         name.setText(text);
-        dot.setFill(colour);
+        dot.setFill(color);
         card.setPrefWidth(width);
         card.setMinWidth(width);
 
@@ -184,7 +225,7 @@ public final class DragGhost {
     /**
      * Moves the ghost to follow the pointer.
      *
-     * <p>Position only — the lean is the ticker's business, and all this does towards it is record
+     * <p>Position only: the lean is the ticker's business, and all this does towards it is record
      * where the pointer got to. See {@link #pointerSceneX} for why the two are split.
      *
      * @param pointerX where the pointer is, in scene coordinates
@@ -222,7 +263,7 @@ public final class DragGhost {
     /**
      * How far the card is currently leaning, in degrees, positive clockwise.
      *
-     * <p>Not {@code node().getRotate()}, which is zero and always will be — the lean is a
+     * <p>Not {@code node().getRotate()}, which is zero and always will be: the lean is a
      * {@link Rotate} in the card's transform list so that it can turn about the grab point rather
      * than about its own middle.
      */

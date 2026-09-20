@@ -24,10 +24,10 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * Checks that the room actually renders in the documented colours, by sampling pixels.
+ * Checks that the room actually renders in the documented colors, by sampling pixels.
  *
  * <p>The design workflow in {@code .claude/skills/invmgr-design/SKILL.md} is explicit that
- * "looks close" is not a result and that dark greys must be sampled rather than eyeballed —
+ * "looks close" is not a result and that dark grays must be sampled rather than eyeballed;
  * {@code #1a1a1a} and {@code #181818} are both in use and are indistinguishable by eye. So this
  * renders the real window at the reference resolution and reads the pixels back.
  *
@@ -35,7 +35,7 @@ import org.testfx.util.WaitForAsyncUtils;
  * {@code reference/desktop-04-item-on-canvas.png} with an image tool, and the derived ones (a
  * grid line over the floor, an item's border over its fill) are checked against that same
  * screenshot's arithmetic. Notably the reference's item border sampled as {@code (28,99,31)}
- * against a fill of {@code (48,166,52)} — exactly 0.6 of it — which is what confirms the border
+ * against a fill of {@code (48,166,52)} (exactly 0.6 of it), which is what confirms the border
  * is {@code rgba(0,0,0,0.4)} drawn <em>inside</em> the footprint rather than around it.
  *
  * <p>It also writes the screenshots to {@code target/screenshots/} for side-by-side comparison,
@@ -57,7 +57,6 @@ class CanvasAppearanceTest extends ApplicationTest {
     private static final String ITEM_COLOR = "hsl(122,55%,42%)";
 
     /** Mirrors {@code LayerTrack}'s own geometry, which is private to it. */
-    private static final double TRACK_WIDTH_PX = 6;
     private static final double THUMB_RADIUS_PX = 9.5;
 
     private Stage stage;
@@ -66,7 +65,7 @@ class CanvasAppearanceTest extends ApplicationTest {
     private LayerSliderDrawer drawer;
     private AppState state;
     private Item box;
-    private Item neighbour;
+    private Item neighbor;
 
     @Override
     public void start(Stage stage) {
@@ -79,12 +78,12 @@ class CanvasAppearanceTest extends ApplicationTest {
         box = item("item-id-11111111-2222-4333-8444-555555555555", 1, 24, 24, 288, 288, ITEM_COLOR);
         // A second box overlapping the first's south-east corner, with a higher drag order so it
         // is the one that dims. Its position is chosen so it covers neither the first box's
-        // centre nor any point this test samples on it — an earlier version put its corner
-        // exactly on that centre, and the fill assertion then sampled this box's border instead.
-        neighbour = item("item-id-22222222-3333-4444-8555-666666666666", 2, 24, 24, 432, 432,
+        // center nor any point this test samples on it; an earlier version put its corner
+        // exactly on that center, and the fill assertion then sampled this box's border instead.
+        neighbor = item("item-id-22222222-3333-4444-8555-666666666666", 2, 24, 24, 432, 432,
                 ITEM_COLOR);
         state.items.add(box);
-        state.items.add(neighbour);
+        state.items.add(neighbor);
 
         canvas = new RoomCanvasView(state);
         drawer = new LayerSliderDrawer(state);
@@ -101,18 +100,18 @@ class CanvasAppearanceTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("the floor, its grid and the area around it use the documented colours")
-    void roomColoursMatchTheTokens() {
+    @DisplayName("the floor, its grid and the area around it use the documented colors")
+    void roomColorsMatchTheTokens() {
         WritableImage shot = capture("m2-room");
 
         Point2D origin = canvas.roomOriginInScene();
         double roomWidth = Units.feetToPx(state.room.w);
         double roomLength = Units.feetToPx(state.room.l);
 
-        // Near the middle of the floor, but deliberately NOT at the exact centre: in a 12 x 10 ft
-        // room the centre is 576, 480 px in, which is a whole number of feet on both axes and
+        // Near the middle of the floor, but deliberately NOT at the exact center; in a 12 x 10 ft
+        // room the center is 576, 480 px in, which is a whole number of feet on both axes and
         // therefore sits precisely on a grid-line crossing. Sampling there reads the grid, not
-        // the floor — that mistake produced this test's first failure.
+        // the floor; that mistake produced this test's first failure.
         double floorX = origin.getX() + roomWidth / 2 + 48;
         double floorY = origin.getY() + roomLength / 2 + 48;
         assertColor("room floor (#3a3a3a, lightly vignetted)", shot, floorX, floorY,
@@ -121,13 +120,13 @@ class CanvasAppearanceTest extends ApplicationTest {
         // And the vignette really is there: the floor darkens towards the edges. Checked as a
         // relationship rather than an absolute value, because the exact falloff at a given pixel
         // depends on gradient interpolation that is not worth pinning.
-        Color nearCentre = read(shot, floorX, floorY);
+        Color nearCenter = read(shot, floorX, floorY);
         Color nearCorner = read(shot, origin.getX() + 30, origin.getY() + 30);
-        assertTrue(nearCorner.getRed() < nearCentre.getRed() - 0.01,
-                "the vignette should darken the floor towards its corners: centre "
-                        + describe(nearCentre) + " vs corner " + describe(nearCorner));
+        assertTrue(nearCorner.getRed() < nearCenter.getRed() - 0.01,
+                "the vignette should darken the floor towards its corners: center "
+                        + describe(nearCenter) + " vs corner " + describe(nearCorner));
 
-        // Outside the room, in the surrounding area — a different, darker grey than the body.
+        // Outside the room, in the surrounding area: a different, darker gray than the body.
         assertColor("canvas surround (#181818)", shot,
                 origin.getX() + roomWidth + 60, origin.getY() + 60,
                 Tokens.CANVAS_WRAP_BG, 2);
@@ -146,7 +145,7 @@ class CanvasAppearanceTest extends ApplicationTest {
 
     @Test
     @DisplayName("an item's fill and its inside border match the reference exactly")
-    void itemColoursMatchTheReference() {
+    void itemColorsMatchTheReference() {
         WritableImage shot = capture("m2-item");
         Point2D origin = canvas.roomOriginInScene();
 
@@ -168,19 +167,19 @@ class CanvasAppearanceTest extends ApplicationTest {
 
     @Test
     @DisplayName("the slider's filled track is the #7ab accent")
-    void sliderTrackUsesTheAccentColour() {
+    void sliderTrackUsesTheAccentColor() {
         WritableImage shot = capture("m2-slider");
-        // The handle starts at the ceiling, so the whole track below it is filled — which is the
+        // The handle starts at the ceiling, so the whole track below it is filled, which is the
         // state every reference screenshot shows.
-        Point2D trackCentre = drawer.slider().localToScene(Tokens.SLIDER_WIDTH / 2,
+        Point2D trackCenter = drawer.slider().localToScene(Tokens.SLIDER_WIDTH / 2,
                 drawer.slider().getHeight() / 2);
-        assertColor("slider filled track (#7ab)", shot, trackCentre.getX(), trackCentre.getY(),
+        assertColor("slider filled track (#7ab)", shot, trackCenter.getX(), trackCenter.getY(),
                 Tokens.SLIDER_ACCENT, 3);
     }
 
     @Test
     @DisplayName("with the handle pulled down, the track is accent below it and near-white above")
-    void sliderShowsBothTrackColours() {
+    void sliderShowsBothTrackColors() {
         interact(() -> drawer.slider().setValue(4));      // 2 ft, well down the range
         WaitForAsyncUtils.waitForFxEvents();
         WritableImage shot = capture("m2-slider-partway");
@@ -205,7 +204,7 @@ class CanvasAppearanceTest extends ApplicationTest {
         LayerTrack track = drawer.slider();
 
         // Near a pill-shaped end the outer columns taper away while the middle is still solid;
-        // a square end would be track colour edge to edge on every row.
+        // a square end would be track color edge to edge on every row.
         //
         // Scanned over the last few rows rather than pinned to one: the very last row is partly
         // transparent even in the middle, and exactly how many rows taper depends on the
@@ -218,7 +217,7 @@ class CanvasAppearanceTest extends ApplicationTest {
         int nearEnd = solidColumnsAcross(shot, track, track.getHeight() - THUMB_RADIUS_PX - 2);
 
         assertTrue(wideRow >= 5,
-                "the track should be about 6px of solid colour away from its ends, measured "
+                "the track should be about 6px of solid color away from its ends, measured "
                         + wideRow);
         assertTrue(nearEnd < wideRow,
                 "the track's end should be rounded, so it must be narrower two rows from the "
@@ -233,14 +232,14 @@ class CanvasAppearanceTest extends ApplicationTest {
         WritableImage shot = capture("m2-selected");
         Point2D origin = canvas.roomOriginInScene();
 
-        double centreX = origin.getX() + box.x_px + Units.inchesToPx(box.w_in) / 2;
+        double centerX = origin.getX() + box.x_px + Units.inchesToPx(box.w_in) / 2;
         double topY = origin.getY() + box.y_px;
 
         // 1 px clear of the edge is the gap; 2-4 px out is the 3 px outline itself.
-        assertColor("selection outline (#fff, 3px at 1px offset)", shot, centreX, topY - 3,
+        assertColor("selection outline (#fff, 3px at 1px offset)", shot, centerX, topY - 3,
                 Color.WHITE, 6);
-        // And the gap really is a gap — the floor shows through it.
-        Color inGap = read(shot, centreX, topY - 1);
+        // And the gap really is a gap: the floor shows through it.
+        Color inGap = read(shot, centerX, topY - 1);
         assertTrue(inGap.getRed() < 0.5 && inGap.getGreen() < 0.5,
                 "the 1px offset should show the floor, not white; got " + describe(inGap));
     }
@@ -256,13 +255,13 @@ class CanvasAppearanceTest extends ApplicationTest {
         WritableImage shot = capture("m2-dimmed");
         Point2D origin = canvas.roomOriginInScene();
 
-        // A point inside the neighbour but clear of the selected box, so what shows through the
+        // A point inside the neighbor but clear of the selected box, so what shows through the
         // half-transparent item is bare floor rather than the other item.
-        double x = origin.getX() + neighbour.x_px + Units.inchesToPx(neighbour.w_in) - 30;
-        double y = origin.getY() + neighbour.y_px + Units.inchesToPx(neighbour.l_in) - 30;
+        double x = origin.getX() + neighbor.x_px + Units.inchesToPx(neighbor.w_in) - 30;
+        double y = origin.getY() + neighbor.y_px + Units.inchesToPx(neighbor.l_in) - 30;
 
         // The floor immediately outside the item, rather than the raw token: the vignette has
-        // already darkened it slightly by this far from the centre, and blending against the
+        // already darkened it slightly by this far from the center, and blending against the
         // undarkened value would put the expectation several units out.
         Color floorHere = read(shot, x + 40, y + 40);
         assertColor("dimmed item (opacity 0.5 over the floor)", shot, x, y,
@@ -272,11 +271,11 @@ class CanvasAppearanceTest extends ApplicationTest {
     @Test
     @DisplayName("the layer slider hides items at or above its height")
     void layerSliderHidesItems() {
-        // Put the neighbour up on a shelf, then slide the layer down below it.
+        // Put the neighbor up on a shelf, then slide the layer down below it.
         interact(() -> {
-            neighbour.baseHeight_in = 48;              // 4 ft up
+            neighbor.baseHeight_in = 48;              // 4 ft up
             drawer.rebuild();
-            drawer.slider().setValue(4);               // 2 ft — below the shelf
+            drawer.slider().setValue(4);               // 2 ft, below the shelf
             canvas.refreshVisibility();
         });
         WaitForAsyncUtils.waitForFxEvents();
@@ -286,15 +285,15 @@ class CanvasAppearanceTest extends ApplicationTest {
 
         assertEquals(2, state.layerFeet, "two steps per foot: value 4 means 2 ft");
 
-        // Where the raised box was, the floor should now show. Asserted as "this pixel is grey"
+        // Where the raised box was, the floor should now show. Asserted as "this pixel is gray"
         // rather than as an exact value, because the vignette makes the floor's exact shade
         // position-dependent while the item is unmistakably green.
-        double x = origin.getX() + neighbour.x_px + Units.inchesToPx(neighbour.w_in) - 30;
-        double y = origin.getY() + neighbour.y_px + Units.inchesToPx(neighbour.l_in) - 30;
+        double x = origin.getX() + neighbor.x_px + Units.inchesToPx(neighbor.w_in) - 30;
+        double y = origin.getY() + neighbor.y_px + Units.inchesToPx(neighbor.l_in) - 30;
         Color uncovered = read(shot, x, y);
         assertTrue(Math.abs(to255(uncovered.getRed()) - to255(uncovered.getGreen())) < 6
                         && Math.abs(to255(uncovered.getGreen()) - to255(uncovered.getBlue())) < 6,
-                "the raised item should be hidden, leaving grey floor; got "
+                "the raised item should be hidden, leaving gray floor; got "
                         + describe(uncovered));
 
         // The box on the floor is below the slider and must still be showing.
@@ -355,7 +354,7 @@ class CanvasAppearanceTest extends ApplicationTest {
                         new File(directory, name + ".png"));
             }
         } catch (IOException e) {
-            // Writing the file is a convenience for eyeballing, not the assertion — a failure
+            // Writing the file is a convenience for eyeballing, not the assertion; a failure
             // here must not disguise itself as a rendering problem.
             System.err.println("could not write screenshot " + name + ": " + e.getMessage());
         }
@@ -367,7 +366,7 @@ class CanvasAppearanceTest extends ApplicationTest {
     }
 
     /**
-     * Asserts a pixel matches a colour.
+     * Asserts a pixel matches a color.
      *
      * @param tolerance allowed difference per channel, in 0-255 units. Small tolerances absorb
      *     antialiasing and the one-unit rounding difference between how JavaFX and a browser
@@ -385,7 +384,7 @@ class CanvasAppearanceTest extends ApplicationTest {
     }
 
     /**
-     * How many pixels across the track's width are solid accent colour at the given height.
+     * How many pixels across the track's width are solid accent color at the given height.
      *
      * <p>Sampling a width rather than individual points means the check does not depend on
      * landing on an exact pixel, which is what made an earlier version of this test fragile.
@@ -401,7 +400,7 @@ class CanvasAppearanceTest extends ApplicationTest {
         return solid;
     }
 
-    /** How far apart two colours are, summed across the channels in 0-255 units. */
+    /** How far apart two colors are, summed across the channels in 0-255 units. */
     private static double distance(Color a, Color b) {
         return Math.abs(to255(a.getRed()) - to255(b.getRed()))
                 + Math.abs(to255(a.getGreen()) - to255(b.getGreen()))

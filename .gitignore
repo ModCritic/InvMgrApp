@@ -23,7 +23,7 @@ gradle-app.setting
 .DS_Store
 Thumbs.db
 
-# Android signing — NEVER commit these
+# Android signing: NEVER commit these
 *.keystore
 *.jks
 keystore.properties
@@ -35,3 +35,16 @@ tmp/
 
 # Screenshots written by the design-verification tests.
 target/screenshots/
+
+# Python bytecode from the device suite
+__pycache__/
+
+# Per-machine Claude Code permissions. Personal, and not the project's to carry.
+.claude/settings.local.json
+
+# m6.6-scan.py writes its JSON report here by default. Output, not source.
+scan.json
+
+# M6.7b performance runs. Kept out of target/ so `mvn clean` cannot delete a baseline,
+# and out of git because they are measurements of one machine on one day.
+perf-runs/

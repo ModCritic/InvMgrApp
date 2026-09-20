@@ -12,7 +12,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
-/** Adding, editing, rotating and committing boxes — the operations behind the dialogs. */
+/** Adding, editing, rotating and committing boxes: the operations behind the dialogs. */
 class ItemsTest {
 
     private static final Pattern HSL = Pattern.compile("^hsl\\((\\d+),(\\d+)%,(\\d+)%\\)$");
@@ -56,7 +56,7 @@ class ItemsTest {
 
     @Test
     void twoBoxesAddedInARowDoNotLandOnTopOfEachOther() {
-        // Without the open-spot search they would both be centred, and the room would look
+        // Without the open-spot search they would both be centered, and the room would look
         // like it held one box while holding two.
         AppState state = new AppState();
         UndoHistory undo = new UndoHistory();
@@ -67,7 +67,7 @@ class ItemsTest {
     }
 
     @Test
-    void aPlannedBoxIsCentredAndNeverStacks() {
+    void aPlannedBoxIsCenteredAndNeverStacks() {
         AppState state = new AppState();
         state.planMode = true;
         UndoHistory undo = new UndoHistory();
@@ -98,9 +98,9 @@ class ItemsTest {
     }
 
     @Test
-    void aPlannedBoxIsCentredEvenWhenTheCentreIsOccupied() {
-        // The distinguishing case for "ghosts skip the open-spot search". With the centre free,
-        // searching and not searching give the same answer, so only an occupied centre shows
+    void aPlannedBoxIsCenteredEvenWhenTheCenterIsOccupied() {
+        // The distinguishing case for "ghosts skip the open-spot search". With the center free,
+        // searching and not searching give the same answer, so only an occupied center shows
         // the difference -- and a ghost must land on top of the box that is there, because it
         // is not in the room at all.
         AppState state = new AppState();
@@ -110,7 +110,7 @@ class ItemsTest {
         state.planMode = true;
         Item ghost = Items.add(state, undo, 12, 12, 12, "Ghost", "");
 
-        assertEquals(real.x_px, ghost.x_px, "the ghost is centred, not moved out of the way");
+        assertEquals(real.x_px, ghost.x_px, "the ghost is centered, not moved out of the way");
         assertEquals(real.y_px, ghost.y_px);
         assertTrue(Rect.of(real).overlaps(Rect.of(ghost)));
     }
@@ -124,7 +124,7 @@ class ItemsTest {
         state.planMode = false;
         Item real = Items.add(state, undo, 12, 12, 12, "", "");
 
-        assertEquals(ghost.x_px, real.x_px, "the real box takes the centre the ghost occupies");
+        assertEquals(ghost.x_px, real.x_px, "the real box takes the center the ghost occupies");
         assertEquals(ghost.y_px, real.y_px);
     }
 
@@ -154,13 +154,13 @@ class ItemsTest {
         assertEquals(12, second.baseHeight_in, "the second box rests on the first");
     }
 
-    // ------------------------------------------------------------------ colour
+    // ------------------------------------------------------------------ color
 
     @Test
-    void everyColourIsAMutedHslWithFixedSaturationAndLightness() {
+    void everyColorIsAMutedHslWithFixedSaturationAndLightness() {
         for (int i = 0; i < 200; i++) {
             Matcher matcher = HSL.matcher(Items.randomColor());
-            assertTrue(matcher.matches(), "colour must be hsl(H,S%,L%) with no spaces");
+            assertTrue(matcher.matches(), "color must be hsl(H,S%,L%) with no spaces");
             int hue = Integer.parseInt(matcher.group(1));
             assertTrue(hue >= 0 && hue <= 359, "hue out of range: " + hue);
             assertEquals("55", matcher.group(2), "saturation is fixed, not random");
@@ -235,11 +235,11 @@ class ItemsTest {
         Item bin = Items.add(state, undo, 12, 12, 12, "Bin", "");
         bin.x_px = 300;
         bin.y_px = 300;
-        double centreX = bin.x_px + Units.inchesToPx(bin.w_in) / 2;
+        double centerX = bin.x_px + Units.inchesToPx(bin.w_in) / 2;
 
         Items.edit(state, undo, bin, "Bin", "", 24, 12, 12);
 
-        assertEquals(centreX, bin.x_px + Units.inchesToPx(bin.w_in) / 2,
+        assertEquals(centerX, bin.x_px + Units.inchesToPx(bin.w_in) / 2,
                 "growing from the corner would shove the box across the room");
     }
 
@@ -283,16 +283,16 @@ class ItemsTest {
         Item bin = Items.add(state, undo, 12, 36, 18, "Bin", "");
         bin.x_px = 200;
         bin.y_px = 200;
-        double centreX = bin.x_px + Units.inchesToPx(bin.w_in) / 2;
-        double centreY = bin.y_px + Units.inchesToPx(bin.l_in) / 2;
+        double centerX = bin.x_px + Units.inchesToPx(bin.w_in) / 2;
+        double centerY = bin.y_px + Units.inchesToPx(bin.l_in) / 2;
 
         Items.swap(state, undo, bin);
 
         assertEquals(36, bin.w_in);
         assertEquals(12, bin.l_in);
         assertEquals(18, bin.h_in, "height is untouched -- this turns the box, it does not tip it");
-        assertEquals(centreX, bin.x_px + Units.inchesToPx(bin.w_in) / 2);
-        assertEquals(centreY, bin.y_px + Units.inchesToPx(bin.l_in) / 2);
+        assertEquals(centerX, bin.x_px + Units.inchesToPx(bin.w_in) / 2);
+        assertEquals(centerY, bin.y_px + Units.inchesToPx(bin.l_in) / 2);
     }
 
     @Test

@@ -17,19 +17,19 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * Tests the save format against the original app's real behaviour.
+ * Tests the save format against the original app's real behavior.
  *
  * <p>The important tests here are the differential ones. The files in
  * {@code src/test/resources/golden/} were produced by running the HTML app's own
- * {@code loadState} validation code under node — see {@code tools/golden/original-loadstate.js}
- * — so these assertions compare the Java port against the shipped JavaScript, not against
+ * {@code loadState} validation code under node (see {@code tools/golden/original-loadstate.js}),
+ * so these assertions compare the Java port against the shipped JavaScript, not against
  * anybody's reading of it. If the Java disagrees, the Java is wrong.
  */
 class SaveFormatTest {
 
     /**
-     * The same fixed colour the golden generator uses in place of a random hue, so items
-     * with a missing or malformed colour are comparable.
+     * The same fixed color the golden generator uses in place of a random hue, so items
+     * with a missing or malformed color are comparable.
      */
     private static final Supplier<String> FIXED_COLOR = () -> "hsl(0,55%,42%)";
 
@@ -51,9 +51,9 @@ class SaveFormatTest {
     @Test
     @DisplayName("a real save file survives load-then-save byte for byte")
     void typicalFileRoundTripsByteForByte() throws IOException {
-        // This is the compatibility guarantee in its strongest form: not just "the HTML app
-        // can read what we write", but "what we write is indistinguishable from what it
-        // wrote". Byte equality also pins the two-space indentation, the key order, the
+        // This is the compatibility guarantee in its strongest form: our output is
+        // indistinguishable from what the HTML app itself writes, not merely something
+        // it can read. Byte equality also pins the two-space indentation, the key order, the
         // absence of a trailing newline, and 12 being written as 12 rather than 12.0.
         String original = Fixtures.read("fixtures/typical.json");
 
@@ -142,15 +142,15 @@ class SaveFormatTest {
     }
 
     @Test
-    @DisplayName("a malformed colour is replaced, text is truncated, planned is strict")
-    void sanitisesTextColourAndFlags() throws IOException {
+    @DisplayName("a malformed color is replaced, text is truncated, planned is strict")
+    void sanitizesTextColorAndFlags() throws IOException {
         AppState state = SaveFormat.load(Fixtures.read("fixtures/hostile.json"), FIXED_COLOR).state();
         Item first = state.items.get(0);
 
-        assertEquals("hsl(0,55%,42%)", first.color, "a non-hsl colour must be replaced");
+        assertEquals("hsl(0,55%,42%)", first.color, "a non-hsl color must be replaced");
         assertEquals("", first.name, "a non-string name becomes empty, never null");
         assertEquals(Item.MAX_CUSTOM_ID_LENGTH, first.customId.length(), "customId is capped at 60");
-        assertFalse(first.planned, "planned is strictly true/false — the string \"yes\" is not true");
+        assertFalse(first.planned, "planned is strictly true/false: the string \"yes\" is not true");
 
         // "true" as a string is likewise not true.
         assertFalse(state.layerCollision);

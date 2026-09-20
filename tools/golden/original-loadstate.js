@@ -5,7 +5,7 @@
 // WHY THIS EXISTS
 //
 // M1's job is to read every room_inventory.json the HTML app has ever written, and the
-// HTML app's loader is 80 lines of very specific defensive behaviour: out-of-range values
+// HTML app's loader is 80 lines of very specific defensive behavior: out-of-range values
 // are *replaced* with defaults rather than pinned to the bound, a bad item ID silently
 // drops the whole item, dragOrder falls back to serial, and so on. Testing the Java port
 // against my own reading of that code would only prove the Java agrees with my reading.
@@ -19,14 +19,14 @@
 //
 // The one intentional deviation is randColor: the original picks a random hue, which
 // can't be asserted against. It is replaced with a fixed sentinel here, and the Java
-// loader takes a colour supplier so its tests can inject the same sentinel.
+// loader takes a color supplier so its tests can inject the same sentinel.
 //
 // USAGE
 //   node tools/golden/original-loadstate.js <fixture.json>       # prints validated state
 //   node tools/golden/original-loadstate.js --all                # regenerates all goldens
 //
 // Regenerate the goldens only when a fixture changes. If output changes without a
-// fixture change, something is wrong — this file is a frozen copy of shipped behaviour.
+// fixture change, something is wrong: this file is a frozen copy of shipped behavior.
 
 const fs = require('fs');
 const path = require('path');
@@ -34,7 +34,29 @@ const path = require('path');
 const FIXTURE_DIR = path.join(__dirname, '..', '..', 'src', 'test', 'resources', 'fixtures');
 const GOLDEN_DIR = path.join(__dirname, '..', '..', 'src', 'test', 'resources', 'golden');
 
-// Stand-in for the original's randColor() — see header. The original is:
+// The save-state fixtures, named one by one. --all reads these and nothing else.
+//
+// This is an allow-list rather than "every .json in the directory except the ones I know
+// about", and the difference is not stylistic. A deny-list sweeps in whatever lands in
+// the fixture directory next, and something did: engine-scenarios.json, which is 250
+// scenarios of geometry input for original-engine.js and not a save file at all. Run
+// through the validator below it comes out as an empty room, and --all then wrote that
+// 18-line result over the 2,032-line engine golden. Nothing failed, no test noticed, and
+// the only repair was `git checkout` or re-running `original-engine.js --run`.
+//
+// A save fixture added to the directory and not added here gets no golden, which --all
+// says out loud at the end of a run. That is a visible omission instead of a silent
+// overwrite, which is the whole trade.
+const SAVE_FIXTURES = ['empty-object.json', 'hostile.json', 'legacy.json', 'typical.json'];
+
+// Fixtures that exist for a different generator, so the report at the end of --all can
+// tell "somebody else owns this" from "nobody has claimed it yet".
+const OTHER_GENERATORS = {
+  'js-number-cases.json': 'this file, --numbers',
+  'engine-scenarios.json': 'original-engine.js --run',
+};
+
+// Stand-in for the original's randColor() (see header). The original is:
 //   `hsl(${Math.floor(Math.random() * 360)},55%,42%)`
 const SENTINEL_COLOR = 'hsl(0,55%,42%)';
 function randColor() { return SENTINEL_COLOR; }
@@ -90,7 +112,7 @@ function validate(state) {
     // That difference is real, and it is a genuine inconsistency in the original app:
     // a freshly added item and a loaded item serialize their keys in different orders,
     // so the HTML app's own output is not self-consistent. See MANUAL.md's M1 notes.
-    // We normalise to the creation order here because it is the order the spec
+    // We normalize to the creation order here because it is the order the spec
     // documents as canonical and the order the Java writer produces, which lets the
     // Java tests compare this file as text. Reordering is safe: `validatedItems.length`
     // is fixed while the literal is evaluated, and randColor() depends on nothing.
@@ -175,10 +197,7 @@ if (args[0] === '--numbers') {
   console.log(`js-number-cases.json -> ${path.basename(out)}  (${results.length} values)`);
 } else if (args[0] === '--all') {
   fs.mkdirSync(GOLDEN_DIR, { recursive: true });
-  // js-number-cases.json is not a save file — it is handled by --numbers.
-  const fixtures = fs.readdirSync(FIXTURE_DIR)
-    .filter(f => f.endsWith('.json') && f !== 'js-number-cases.json')
-    .sort();
+  const fixtures = [...SAVE_FIXTURES].sort();
   for (const f of fixtures) {
     const result = runOne(path.join(FIXTURE_DIR, f));
     const out = path.join(GOLDEN_DIR, f.replace(/\.json$/, '.expected.json'));
@@ -189,6 +208,14 @@ if (args[0] === '--numbers') {
       ? `rejected: ${result.error}`
       : `${result.items.length} item(s) kept`;
     console.log(`${f} -> ${path.basename(out)}  (${summary})`);
+  }
+  // Anything in the fixture directory that no generator claims. See SAVE_FIXTURES.
+  const unclaimed = fs.readdirSync(FIXTURE_DIR)
+    .filter(f => f.endsWith('.json') && !SAVE_FIXTURES.includes(f) && !(f in OTHER_GENERATORS))
+    .sort();
+  for (const f of unclaimed) {
+    console.log(`note: ${f} produced no golden. Add it to SAVE_FIXTURES if it is a save `
+      + `file, or to OTHER_GENERATORS if another generator owns it.`);
   }
 } else if (args.length === 1) {
   console.log(JSON.stringify(runOne(args[0]), null, 2));

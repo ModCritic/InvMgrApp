@@ -1,0 +1,47 @@
+<?xml version='1.0'?>
+<!--
+  The Android app's manifest, which is the file Android reads before it runs a line of
+  our code, to learn what the app is called and what it is allowed to do.
+
+  We supply our own instead of letting the build generate one, for one reason:
+  Substrate's generated default requests android.permission.INTERNET
+  unconditionally (AndroidTargetConfiguration, around line 527), whether or not the
+  app has any use for it. InvMgr's standing rule is "Network access at runtime:
+  None. Ever." (CLAUDE.md §6), and a permission the app never uses is still a
+  permission the phone shows the user and the Play Store lists.
+
+  Substrate copies this file verbatim when it exists, so what is written here is
+  exactly what ships. THIS APP REQUESTS NO PERMISSIONS AT ALL. That empty space
+  below <manifest> is the point of the file rather than an omission.
+
+  ⚠ Substrate rewrites this file IN PLACE to sync versionCode, versionName and the
+  label from its release configuration, so do not be surprised to see it modified in
+  `git status` after a build.
+
+  Two things that look like they could be dropped and cannot:
+
+  - android:name points at our own activity, com.modcritic.invmgr.android.InvMgrActivity.
+    Until M6.5b this had to read com.gluonhq.helloandroid.MainActivity, because that was
+    the only activity able to start a JavaFX application and it was welded in by a
+    FindClass in Gluon's launcher.c. Our host layer replaced both, which is the whole
+    point of M6.5b. See docs/PLAN-M6.5B-HOST-LAYER.md.
+  - configChanges tells Android that we handle rotation, folding and a keyboard
+    appearing ourselves. Without it Android destroys and recreates the activity on
+    every rotation, which restarts the app and loses the room on screen.
+
+  Check after every build with `aapt dump permissions`. See MANUAL.md.
+-->
+<manifest xmlns:android='http://schemas.android.com/apk/res/android'
+          android:versionCode='1' android:versionName='1.0'>
+    <supports-screens android:xlargeScreens="true"/>
+    <application android:label='InvMgr' android:icon="@mipmap/ic_launcher">
+        <activity android:name='com.modcritic.invmgr.android.InvMgrActivity'
+                  android:exported="true"
+                  android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            <intent-filter>
+                <category android:name='android.intent.category.LAUNCHER'/>
+                <action android:name='android.intent.action.MAIN'/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

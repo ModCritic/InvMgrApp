@@ -13,14 +13,11 @@ import com.modcritic.invmgr.model.Units;
 import java.io.File;
 import java.io.IOException;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.image.WritableImage;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.MouseButton;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextBoundsType;
 import javafx.stage.Stage;
@@ -178,30 +175,30 @@ class DialogsTest extends ApplicationTest {
 
         // ↻ is one of two characters the interface's own typeface cannot draw. Put it back on the
         // text face and it renders as an empty box, or gets borrowed from whatever the computer
-        // happens to have — which is the platform-dependence the bundled fonts removed. Nothing
+        // happens to have, which is the platform-dependence the bundled fonts removed. Nothing
         // else in the suite would notice.
         //
-        // The glyph is the button's *graphic*, not its text, so that it can be centred on its ink
-        // — see Fonts.symbolGlyph. That is why this reads the font off the graphic; asking the
+        // The glyph is the button's *graphic*, not its text, so that it can be centered on its ink;
+        // see Fonts.symbolGlyph. That is why this reads the font off the graphic; asking the
         // button would answer with the text face it will never draw a character in.
         Node glyph = app.editDialog().swapButton().getGraphic();
-        assertNotNull(glyph, "the swap button's ↻ must be a graphic, so it centres on its ink");
+        assertNotNull(glyph, "the swap button's ↻ must be a graphic, so it centers on its ink");
         assertEquals(Tokens.FONT_FAMILY_SYMBOL, ((Text) glyph).getFont().getFamily(),
                 "the swap button must use the symbol face");
         assertEquals(TextBoundsType.VISUAL, ((Text) glyph).getBoundsType(),
-                "without VISUAL bounds the glyph is centred as a line box and sits low");
+                "without VISUAL bounds the glyph is centered as a line box and sits low");
         assertEquals(Tokens.FONT_FAMILY, app.editDialog().okButton().getFont().getFamily(),
                 "ordinary dialog buttons must stay on the text face");
     }
 
     @Test
     @DisplayName("the ↻ button is a square, with the glyph painted in the middle of it")
-    void theSwapButtonIsASquareWithACentredGlyph() {
+    void theSwapButtonIsASquareWithACenteredGlyph() {
         Item bin = addItem("Blue Bin", 24, 18, 12);
         clickOn(pointOn(bin));
         WaitForAsyncUtils.waitForFxEvents();
 
-        // Left to size itself the button came out 46 x 30: a maths face sets its advance widths
+        // Left to size itself the button came out 46 x 30: a math face sets its advance widths
         // from its widest operators, so a small arrow is given a very wide berth.
         Button swap = app.editDialog().swapButton();
         assertEquals(Tokens.DIALOG_SWAP_BUTTON_SIZE, swap.getWidth(), "the swap button is square");
@@ -210,7 +207,7 @@ class DialogsTest extends ApplicationTest {
         // And the glyph inside it sat 12 px below the top edge and 5 above the bottom.
         moveTo(app.editDialog().nameField());
         WaitForAsyncUtils.waitForFxEvents();
-        GlyphInk.assertCentred("swap ↻", capture("m3-swap-centring"), swap, 1);
+        GlyphInk.assertCentered("swap ↻", capture("m3-swap-centering"), swap, 1);
     }
 
     @Test
@@ -247,7 +244,7 @@ class DialogsTest extends ApplicationTest {
 
         assertEquals(36, bin.w_in);
         assertEquals(12, bin.l_in);
-        assertEquals(18, bin.h_in, "height is untouched — the box turns, it does not tip");
+        assertEquals(18, bin.h_in, "height is untouched: the box turns, it does not tip");
         assertEquals("36", app.editDialog().widthField().getText(), "the dialog keeps up");
         assertEquals("12", app.editDialog().lengthField().getText());
 
@@ -400,24 +397,24 @@ class DialogsTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("the Add dialog's title is #ddd and its Presets caption is grey #777")
-    void titleRowKeepsItsColours() {
+    @DisplayName("the Add dialog's title is #ddd and its Presets caption is gray #777")
+    void titleRowKeepsItsColors() {
         clickOn(app.topBar().addButtonNode());
         WaitForAsyncUtils.waitForFxEvents();
 
         // Asserted on the resolved textFill rather than by sampling pixels because the bug being
         // guarded is one of CSS PRECEDENCE, not layout. The title row's ScrollPane sets an inline
-        // background, JavaFX derives a label's default colour from its background via ladder(),
-        // and the derived value therefore carries INLINE origin — which outranks a colour set
+        // background, JavaFX derives a label's default color from its background via ladder(),
+        // and the derived value therefore carries INLINE origin, which outranks a color set
         // from code with setTextFill(). Both labels silently rendered pure white.
         assertEquals(Tokens.TEXT_PRESET_LABEL, titleLabel("Presets").getTextFill(),
-                "the Presets caption must stay grey, not fall back to the derived white");
+                "the Presets caption must stay gray, not fall back to the derived white");
         assertEquals(Tokens.TEXT_INPUT, titleLabel("Add Item").getTextFill(),
-                "and the heading must keep its own colour for the same reason");
+                "and the heading must keep its own color for the same reason");
     }
 
     @Test
-    @DisplayName("a long name stays visible — the box grows to fit it instead of hiding it")
+    @DisplayName("a long name stays visible: the box grows to fit it instead of hiding it")
     void aLongNameIsNeverHidden() {
         clickOn(app.topBar().addButtonNode());
         WaitForAsyncUtils.waitForFxEvents();
@@ -450,7 +447,7 @@ class DialogsTest extends ApplicationTest {
                 Math.round((field.getHeight() - Tokens.DIALOG_INPUT_PADDING_V * 2) / 18.0);
 
         assertTrue(linesTheBoxAllows >= linesOfText,
-                "the box must be tall enough to show every line of the name — it allows "
+                "the box must be tall enough to show every line of the name: it allows "
                         + linesTheBoxAllows + " line(s) but the name wrapped onto " + linesOfText);
     }
 
@@ -465,7 +462,7 @@ class DialogsTest extends ApplicationTest {
         WaitForAsyncUtils.waitForFxEvents();
 
         // A JavaFX TextArea would have put a tab character in the name. A browser textarea, which
-        // is what the original uses, moves to the next control — so this is the faithful result.
+        // is what the original uses, moves to the next control, so this is the faithful result.
         assertEquals("Blue Bin", app.addDialog().nameField().getText(),
                 "Tab must not become part of the name");
         assertTrue(app.addDialog().widthField().textField().isFocused(),
@@ -477,7 +474,7 @@ class DialogsTest extends ApplicationTest {
     /**
      * Replaces a field's whole contents.
      *
-     * <p>Double-clicking selects a <em>word</em>, not everything — so typing into a name that
+     * <p>Double-clicking selects a <em>word</em>, not everything, so typing into a name that
      * already reads "Blue Bin" would only replace one of the two. Selecting outright is the
      * only reliable way to overwrite a field.
      */

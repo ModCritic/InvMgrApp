@@ -12,21 +12,21 @@ import org.junit.jupiter.api.Test;
  * <p>Autosave detects a change by serializing the state and comparing the text to what it last
  * wrote, rather than by having every mutation set a dirty flag. The flag would be faster and is
  * the obvious design, but it has to be set in a dozen places and a thirteenth is added every
- * time the app grows a feature — a forgotten one loses the user's work silently, which is the
+ * time the app grows a feature; a forgotten one loses the user's work silently, which is the
  * one failure this milestone exists to prevent. Comparing the text cannot be forgotten.
  *
  * <p>The price is running {@link SaveFormat#save} once a second forever, on the FX thread, where
  * anything over a millisecond or two would show as a stutter during a drag. This test measures
  * that price at the format's hard cap of {@value AppState#MAX_ITEMS} items and fails if it ever
- * stops being negligible — at which point the design has to change, not the bound.
+ * stops being negligible, at which point the design has to change, not the bound.
  */
 class SerializationCostTest {
 
     /**
      * Generous by design: this is a "the approach is still viable" guard, not a benchmark. A
      * shared container under load is allowed to be several times slower than the real measurement
-     * without failing the build, but a change that made serialization *structurally* expensive —
-     * a per-item regex, a sort, a stream that copies the list — would blow through it.
+     * without failing the build, but a change that made serialization *structurally* expensive
+     * (a per-item regex, a sort, a stream that copies the list) would blow through it.
      */
     private static final double BUDGET_MS = 5.0;
 
@@ -49,7 +49,7 @@ class SerializationCostTest {
         System.out.printf("SaveFormat.save(%d items) = %.3f ms%n", AppState.MAX_ITEMS, perCallMs);
         assertTrue(perCallMs < BUDGET_MS,
                 "serializing " + AppState.MAX_ITEMS + " items took " + perCallMs
-                        + " ms, over the " + BUDGET_MS + " ms budget — autosave cannot keep "
+                        + " ms, over the " + BUDGET_MS + " ms budget: autosave cannot keep "
                         + "polling on the FX thread at this cost");
     }
 

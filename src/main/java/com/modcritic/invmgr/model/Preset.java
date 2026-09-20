@@ -3,7 +3,7 @@ package com.modcritic.invmgr.model;
 /**
  * A saved box size, shown as a small slot the user can tap to fill in the Add Item dialog.
  *
- * <p>The name is capped at 2 characters because the slot is 28 pixels wide — it holds
+ * <p>The name is capped at 2 characters because the slot is 28 pixels wide; it holds
  * "SM", not "Small". Dimensions are inches, like {@link Item}'s.
  *
  * <p>An empty slot is represented by {@code null} in the preset list rather than by an

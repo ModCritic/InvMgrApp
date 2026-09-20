@@ -1,0 +1,77 @@
+# Commits this file's `git blame` should look straight through.
+#
+# M6.6a rewrote comment prose in 166 files, punctuation only, and left every code
+# file byte-identical once comments were blanked. M6.6b then renamed 86 British
+# identifiers, so its entry is the first here whose code bytes really did move.
+# Without this list, blame on any of those files points at the sweep instead of at
+# whoever wrote the line, and the reason a trap was documented gets one step harder
+# to find.
+#
+# Enable it locally with:
+#     git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub reads it from the repository root without being asked.
+#
+# Only add a commit here that changed no behavior. A commit that mixes a rewrite
+# with a real change does not belong, because ignoring it hides the real change.
+#
+# ⚠ M6.6b's entry stretches that rule and the stretch is deliberate, so here is the
+# reasoning rather than a silent exception. That commit also adds
+# tools/m6.6b-spelling.py and rewrites tools/m6.6-guard.py, which are real changes.
+# They are safe to ignore anyway: --ignore-rev works per line, and for a line whose
+# only commit is the ignored one, git falls back to attributing it there. So the
+# tooling keeps its blame while the 133 swept files hand theirs back. If a future
+# entry mixes a rewrite with a change to a file the rewrite also touched, that one
+# genuinely does not belong.
+#
+# M6.6a's own final commit, 1b60668, is deliberately NOT listed. It mixed the
+# heading and en dash sweep with a fix to the scanner's escaping and with restoring
+# four strings the sweep had broken, and those restorations are exactly the lines a
+# reader would want blame to point at.
+
+# M6.6 round 1: fifteen files, three lanes, no code moved
+b8a789619ea632efa30f7d87e94ffa797655e6df
+
+# M6.6 round 2: fifteen more, and the golden harness proved unmoved
+4ef6a8a50762ec5bdf49a2b7dba0cc332e667ee0
+
+# M6.6 round 3: the docs, the 3D view and the Activity
+aa90a53e8c1ada324d990edfee844ef5b07e8c60
+
+# M6.6 round 4, lane C only: the dialogs
+cdeca80121386e6ccfbbfcf0ad6377f79b264025
+
+# M6.6 mixed round: lanes A and B on set 4, lane C on set 5
+c2c62c259681ad1014e04e56676b441834d9a071
+
+# M6.6: lanes A and B on set 5, lane C on set 6
+2ae5081f8afd76253266cf2364b0d18f89bfa168
+
+# Set 6 died on the session limit, and one file's work survived
+97443ed26f4a05c8feb2e573d66a5b07f9c4589a
+
+# M6.6 set 6, lanes A and B: the lanes are level again
+b2ced53b9ec159b16f499470aa227e513da89b40
+
+# M6.6 set 7, all three lanes back in step
+2a2c6408b0b128bff431fc84b343ce31de287875
+
+# M6.6 set 8, in two halves, and per-file ticking paid for itself
+aa403f06e9f2c66cb8314b2ce60bd77f641e7541
+
+# M6.6 set 9: the engine invariants, read by hand
+a387e683d9729581657b4f6d2fbc77f79f3e79bf
+
+# M6.6 set 10, and a compass pair I left half-converted in round 1
+c0618c56d736d4827622b0cbeebc5377be827369
+
+# M6.6 set 11: the two singletons, and the surface metrics
+f83badb95cc04ef8fdcf626c24ecab9b0dbdd68b
+
+# M6.6 set 12, the nine ordinary files. MANUAL.md is held back on purpose
+fe2ac974b60fe20bcdb3ce1cf1132d98cba8f45b
+
+# MANUAL.md swept, eight slices, 879 em dashes down to 152
+f67bd98222f1538ef1dbf9ddcd0d16d737b0184c
+
+# M6.6b: British to American, 133 files, 86 identifiers renamed
+af97084209fdcb9a10a033411b62c7bc8106fdf7

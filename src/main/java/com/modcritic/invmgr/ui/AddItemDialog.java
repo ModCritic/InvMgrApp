@@ -22,15 +22,15 @@ import javafx.scene.text.Font;
  * <p>Name, three measurements, an optional ID of your own, and a row of preset shortcuts along
  * the top.
  *
- * <p>Two behaviours that look like oversights and are not:
+ * <p>Two behaviors that look like oversights and are not:
  *
  * <ul>
  *   <li><b>Only the name is cleared when it opens.</b> The measurements stay as you last left
- *       them, which is the whole point — someone unpacking a shelf of identical boxes types the
+ *       them, which is the whole point; someone unpacking a shelf of identical boxes types the
  *       size once and then just the names.
  *   <li><b>The measurements are not converted when you switch units.</b> A field showing 12 in
  *       imperial still shows 12 after switching to metric, and now means 12 cm. This is exactly
- *       what the original does, and it follows from the first behaviour: the number is a
+ *       what the original does, and it follows from the first behavior: the number is a
  *       remembered <em>entry</em>, not a stored measurement. Only the labels change.
  * </ul>
  */
@@ -44,12 +44,12 @@ public final class AddItemDialog extends ModalDialog {
 
     private AppState state;
 
-    private final NameField nameField = new NameField(Tokens.FONT_CONTROL);
+    private final NameField nameField = new NameField(TouchType.dialogFont());
     private final NumberField widthField = NumberField.dialogField();
     private final NumberField lengthField = NumberField.dialogField();
     private final NumberField heightField = NumberField.dialogField();
     private final TextField idField =
-            Dialogs.textInput(Tokens.DIALOG_ID_WIDTH, Tokens.FONT_ID_LABEL,
+            Dialogs.textInput(TouchType.idInputWidth(), TouchType.idInputFont(),
                     Item.MAX_CUSTOM_ID_LENGTH);
 
     private final Label widthLabel = Dialogs.fieldLabel("Width (in):");
@@ -89,7 +89,7 @@ public final class AddItemDialog extends ModalDialog {
         //
         // Tab moves on too. A JavaFX TextArea treats Tab as text and indents with it, but the
         // original's Name box is an HTML <textarea>, and in a browser Tab has always moved to the
-        // next control there — so leaving JavaFX's behaviour in place is the divergence, not
+        // next control there, so leaving JavaFX's behavior in place is the divergence, not
         // changing it. Shift+Tab is consumed as well: the Name box is the first field, so there
         // is nothing before it to move to, and inserting whitespace into a name is never what
         // was meant.
@@ -126,7 +126,7 @@ public final class AddItemDialog extends ModalDialog {
         refreshUnitLabels();
     }
 
-    /** Redraws the preset slots — call after one is saved or deleted elsewhere. */
+    /** Redraws the preset slots; call after one is saved or deleted elsewhere. */
     public void refreshPresets() {
         presets.rebuild();
     }
@@ -152,23 +152,23 @@ public final class AddItemDialog extends ModalDialog {
      * not grow wider than the window to accommodate forty of them.
      */
     private VBox titleRow() {
-        // Both colours are set as an INLINE STYLE, not with setTextFill, and it matters.
+        // Both colors are set as an INLINE STYLE, not with setTextFill, and it matters.
         //
         // These two labels sit inside the title ScrollPane, which needs an inline
         // "-fx-background: transparent" to stop JavaFX painting a pale box behind the preset
-        // row. JavaFX's default stylesheet then says a label's colour is
-        // "-fx-text-background-color", which is a ladder() computed FROM that background — so
+        // row. JavaFX's default stylesheet then says a label's color is
+        // "-fx-text-background-color", which is a ladder() computed FROM that background, so
         // the value it produces carries the INLINE origin of the style it was derived from.
         // Inline beats a value set from code, so setTextFill() here was silently discarded and
         // both labels rendered pure white: "| Presets:" measured #E6E6E6 against the #777 it
-        // should be. Setting the colour inline as well puts it at the same precedence, and it
+        // should be. Setting the color inline as well puts it at the same precedence, and it
         // wins because it names the property directly.
         Label heading = new Label("Add Item");
-        heading.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_DIALOG_TITLE));
+        heading.setFont(Font.font(Tokens.FONT_FAMILY, TouchType.dialogTitleFont()));
         heading.setStyle("-fx-text-fill: " + Tokens.hex(Tokens.TEXT_INPUT) + ";");
 
         Label presetsLabel = new Label("| Presets:");
-        presetsLabel.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_DIALOG_TITLE));
+        presetsLabel.setFont(Font.font(Tokens.FONT_FAMILY, TouchType.dialogTitleFont()));
         presetsLabel.setStyle("-fx-text-fill: " + Tokens.hex(Tokens.TEXT_PRESET_LABEL) + ";");
 
         HBox strip = new HBox(Tokens.DIALOG_TITLE_GAP, heading, presetsLabel, presets);
@@ -184,7 +184,7 @@ public final class AddItemDialog extends ModalDialog {
         strip.setStyle("-fx-background-color: transparent;");
 
         // The underline and the space beneath it belong to the row as a whole, so they go on a
-        // wrapper rather than on the scroller -- a border on the scroller would scroll with it.
+        // wrapper rather than on the scroller; a border on the scroller would scroll with it.
         VBox row = new VBox(scroller);
         row.setPadding(new Insets(0, 0, Tokens.DIALOG_TITLE_ROW_PADDING_BOTTOM, 0));
         Dialogs.headingUnderline(row);
@@ -192,7 +192,7 @@ public final class AddItemDialog extends ModalDialog {
         return row;
     }
 
-    // --------------------------------------------------------------- behaviour
+    // --------------------------------------------------------------- behavior
 
     /** Opens the dialog, clearing the name and nothing else. */
     @Override
@@ -223,7 +223,7 @@ public final class AddItemDialog extends ModalDialog {
     }
 
     private void confirm() {
-        // An unreadable box falls back to 12, the same default the original uses -- refusing
+        // An unreadable box falls back to 12, the same default the original uses; refusing
         // to add anything because one field was empty would be worse than adding a 12-inch cube.
         double w = widthField.value().orElse(Item.DEFAULT_DIMENSION_IN);
         double l = lengthField.value().orElse(Item.DEFAULT_DIMENSION_IN);

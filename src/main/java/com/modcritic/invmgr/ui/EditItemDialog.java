@@ -13,15 +13,15 @@ import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 
 /**
- * The dialog for changing a box that is already in the room — reached by clicking it, or by
+ * The dialog for changing a box that is already in the room, reached by clicking it, or by
  * double-clicking its row in the list.
  *
  * <p>Same four fields as Add Item, plus three things Add has no use for: a Delete button, and
  * the {@code ↻} button in the corner that turns the box a quarter turn.
  *
  * <p><b>The rotate button acts immediately.</b> It does not wait for OK, and pressing Cancel
- * afterwards does not put the box back. That is the original's behaviour and it is defensible:
- * rotating is its own action with its own undo entry, so Undo reverses it — Cancel is about the
+ * afterwards does not put the box back. That is the original's behavior and it is defensible:
+ * rotating is its own action with its own undo entry, so Undo reverses it; Cancel is about the
  * text and numbers in the dialog, which the rotation never touched.
  */
 public final class EditItemDialog extends ModalDialog {
@@ -78,7 +78,7 @@ public final class EditItemDialog extends ModalDialog {
         //
         // It used to set its own padding here, copying the original's `padding: 2px 7px`. That
         // never took effect: styleDialogButton writes -fx-padding into the inline style, an inline
-        // style outranks a value set from code in JavaFX, and it is rewritten on every hover — so
+        // style outranks a value set from code in JavaFX, and it is rewritten on every hover, so
         // the button always measured the 5/14 of an ordinary dialog button. Confirmed by reading
         // getPadding() back from the live button before removing the line. The square size below
         // decides the shape now, so there is nothing for padding to do.
@@ -95,7 +95,7 @@ public final class EditItemDialog extends ModalDialog {
         // only thing you came to change.
         //
         // Tab moves to the next field instead. See AddItemDialog for why that is the faithful
-        // behaviour rather than a change: the original's Name box is an HTML <textarea>, where a
+        // behavior rather than a change: the original's Name box is an HTML <textarea>, where a
         // browser has always moved focus on Tab, and only JavaFX indents with it.
         nameField.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.ENTER) {
@@ -129,7 +129,7 @@ public final class EditItemDialog extends ModalDialog {
         this.state = state;
     }
 
-    // --------------------------------------------------------------- behaviour
+    // --------------------------------------------------------------- behavior
 
     /** Opens the dialog on a particular box, filling every field from it. */
     public void open(Item item) {
@@ -195,7 +195,7 @@ public final class EditItemDialog extends ModalDialog {
     /**
      * Turns the box a quarter turn and updates the two fields it changed.
      *
-     * <p>Height is left alone, in the box and in the dialog — this turns the box on the floor,
+     * <p>Height is left alone, in the box and in the dialog; this turns the box on the floor,
      * it does not tip it over.
      */
     private void swap() {

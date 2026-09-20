@@ -26,7 +26,7 @@ import org.testfx.util.WaitForAsyncUtils;
  * search box, rows double-clicked.
  *
  * <p>Everything here goes through the app rather than calling the panel directly, because most
- * of what is being checked is the <em>wiring</em> — that adding a box puts a row in the list,
+ * of what is being checked is the <em>wiring</em>: that adding a box puts a row in the list,
  * that clicking a row selects the box in the room. A panel tested in isolation would pass all
  * of this while being connected to nothing.
  */
@@ -201,6 +201,71 @@ class ItemListPanelTest extends ApplicationTest {
     // ------------------------------------------------------------------ search
 
     @Test
+    @DisplayName("an unselected row's text is #ccc and the selected one's is white")
+    void listRowTextIsTheColorTheOriginalUses() {
+        Item first = addItem("aaa", 24, 24, 18);
+        Item second = addItem("bbb", 24, 24, 18);
+        interact(() -> app.listPanel().setSelectedId(first.id));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        int unselected = brightestTextIn(app.listPanel().rowFor(second.id));
+        int selected = brightestTextIn(app.listPanel().rowFor(first.id));
+
+        // ⚠ THIS WAS WRONG FROM THE DAY THE LIST WAS WRITTEN AND NOTHING CAUGHT IT. Every row
+        // rendered pure white. Three things say #ccc: SPEC-DESIGN-SYSTEM.md's color table, the
+        // original's own stylesheet, where only `.list-entry.selected` is given `color: #fff`,
+        // and the brightest pixel anywhere in the list panel of the original's reference
+        // screenshot, which is 204 and not 255. See ItemListPanel.restyle for the cause, which
+        // is the same one AddItemDialog.titleRow writes up: an inline background makes JavaFX
+        // derive the text color inline too, and inline beats setTextFill.
+        assertEquals(0xcc, unselected, 6,
+                "an unselected row should be #ccc like every other piece of primary text; the "
+                        + "brightest pixel in it was " + unselected);
+        assertEquals(0xff, selected, 6,
+                "and the selected row should be white; the brightest pixel in it was " + selected);
+        assertTrue(selected > unselected + 20,
+                "and the two must be visibly different, or selection does not read as selection");
+    }
+
+    /**
+     * The brightest gray in a row, which is the color its text is drawn in.
+     *
+     * <p>⚠ Read out of a snapshot of the whole PANEL, not of the row. An unselected row's
+     * background is {@code transparent}, and {@code Node.snapshot} with no parameters fills the
+     * background WHITE, so photographing the row on its own returns 255 for every pixel it does
+     * not paint and the measurement is of the camera rather than the app.
+     */
+    private int brightestTextIn(javafx.scene.layout.Region row) {
+        javafx.scene.image.WritableImage shot = WaitForAsyncUtils.waitForAsyncFx(10000,
+                () -> app.listPanel().snapshot(null, null));
+        Bounds band = WaitForAsyncUtils.waitForAsyncFx(10000, () -> {
+            Bounds inScene = row.localToScene(row.getBoundsInLocal());
+            Bounds panelInScene = app.listPanel().localToScene(
+                    app.listPanel().getBoundsInLocal());
+            return new javafx.geometry.BoundingBox(
+                    inScene.getMinX() - panelInScene.getMinX(),
+                    inScene.getMinY() - panelInScene.getMinY(),
+                    inScene.getWidth(), inScene.getHeight());
+        });
+        int brightest = 0;
+        int fromY = Math.max(0, (int) band.getMinY());
+        int toY = Math.min((int) shot.getHeight(), (int) band.getMaxY());
+        int fromX = Math.max(0, (int) band.getMinX());
+        int toX = Math.min((int) shot.getWidth(), (int) band.getMaxX());
+        for (int y = fromY; y < toY; y++) {
+            for (int x = fromX; x < toX; x++) {
+                javafx.scene.paint.Color pixel = shot.getPixelReader().getColor(x, y);
+                // Gray only: the colored dot at the left of every row is not what is measured.
+                if (Math.abs(pixel.getRed() - pixel.getGreen()) < 0.02
+                        && Math.abs(pixel.getGreen() - pixel.getBlue()) < 0.02) {
+                    brightest = Math.max(brightest, (int) Math.round(pixel.getRed() * 255));
+                }
+            }
+        }
+        return brightest;
+    }
+
+    @Test
     @DisplayName("the search box filters by name and by size, and the cross clears it")
     void searchFiltersAndClears() {
         addItem("Blue Storage", 20, 12, 12);
@@ -221,7 +286,7 @@ class ItemListPanelTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("switching to metric re-reads an active size search in centimetres")
+    @DisplayName("switching to metric re-reads an active size search in centimeters")
     void aSizeSearchFollowsTheUnits() {
         addItem("Bin", 20, 12, 12);          // 20 inches wide
 
@@ -250,31 +315,31 @@ class ItemListPanelTest extends ApplicationTest {
     void theExportButtonIsDrawnInTheSymbolFace() {
         // ⤓ is one of two characters the interface's typeface has no glyph for; × is ordinary
         // punctuation and stays on the text face. Getting either wrong is invisible to every
-        // other test — the button still works, it just draws an empty box on some machines.
+        // other test: the button still works, it just draws an empty box on some machines.
         //
-        // The glyph is the button's *graphic* rather than its text, so that it can be centred on
-        // its ink instead of on the maths face's very tall line box — see Fonts.symbolGlyph. So
+        // The glyph is the button's *graphic* rather than its text, so that it can be centered on
+        // its ink instead of on the math face's very tall line box; see Fonts.symbolGlyph. So
         // the font has to be read off the graphic: the button itself will never draw a character.
         Node glyph = app.listPanel().exportButton().getGraphic();
-        assertNotNull(glyph, "the export button's ⤓ must be a graphic, so it centres on its ink");
+        assertNotNull(glyph, "the export button's ⤓ must be a graphic, so it centers on its ink");
         assertEquals(Tokens.FONT_FAMILY_SYMBOL, ((Text) glyph).getFont().getFamily(),
                 "the export button must use the symbol face");
         assertEquals(TextBoundsType.VISUAL, ((Text) glyph).getBoundsType(),
-                "without VISUAL bounds the glyph is centred as a line box and sits low");
+                "without VISUAL bounds the glyph is centered as a line box and sits low");
         assertEquals(Tokens.FONT_FAMILY, app.listPanel().searchField().getFont().getFamily(),
                 "the search box must stay on the text face");
 
         // The fill is bound to the button rather than set once, which is what keeps the hover
-        // colour working: -fx-text-fill styles a button's text, and a graphic is not text.
+        // color working: -fx-text-fill styles a button's text, and a graphic is not text.
         assertEquals(Tokens.TEXT_QUIET, ((Text) glyph).getFill(),
-                "the glyph must follow the button's own text colour");
+                "the glyph must follow the button's own text color");
     }
 
     @Test
     @DisplayName("the ⤓ brightens on hover along with the button under it")
-    void theExportGlyphFollowsTheHoverColour() {
+    void theExportGlyphFollowsTheHoverColor() {
         Text glyph = (Text) app.listPanel().exportButton().getGraphic();
-        assertEquals(Tokens.TEXT_QUIET, glyph.getFill(), "resting colour");
+        assertEquals(Tokens.TEXT_QUIET, glyph.getFill(), "resting color");
 
         // Worth a test of its own because the failure is silent and one-sided. A Text node is a
         // shape: the -fx-text-fill in the button's style string does not reach it, and a fill set
@@ -297,7 +362,7 @@ class ItemListPanelTest extends ApplicationTest {
         assertEquals("Export Item List", hint.getText());
 
         // Built by Hints rather than as a plain `new Tooltip`, or it would come up in JavaFX's
-        // pale default styling — the only light-coloured thing in the window.
+        // pale default styling, the only light-colored thing in the window.
         assertEquals(Tokens.FONT_FAMILY, hint.getFont().getFamily(),
                 "the hint must be one of the app's own, not a stock JavaFX tooltip");
         assertEquals(Tokens.FONT_TOOLTIP, hint.getFont().getSize(), 0.001);

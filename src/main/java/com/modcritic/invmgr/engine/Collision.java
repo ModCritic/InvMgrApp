@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Decides where a dragged item is actually allowed to end up.
  *
- * <p>Two jobs: keep items inside the room, and — while Layer Collision is on — stop them
+ * <p>Two jobs: keep items inside the room, and (while Layer Collision is on) stop them
  * passing through each other.
  */
 public final class Collision {
@@ -38,8 +38,8 @@ public final class Collision {
      *
      * <p><b>This calculates the exact contact point rather than testing a series of
      * candidate positions</b>, and that distinction is the reason dragging feels right. A
-     * single mouse movement can jump a long way — far enough to pass straight over an
-     * obstacle — and a step-by-step search would stop up to one step short of the real
+     * single mouse movement can jump a long way (far enough to pass straight over an
+     * obstacle), and a step-by-step search would stop up to one step short of the real
      * contact edge. In the original app that produced inconsistent gaps between boxes, and
      * it was a genuine reported bug. Solving for the contact point directly means the
      * result is the same whether the pointer moved 2 pixels or 200.
@@ -89,7 +89,7 @@ public final class Collision {
     /**
      * Where an item ends up if the user tries to move it to {@code (nx, ny)}.
      *
-     * <p>Always keeps it inside the room. Additionally, while Layer Collision is on, slides
+     * <p>Always keeps it inside the room. While Layer Collision is on, also slides
      * it up against anything it would otherwise pass through.
      *
      * @return the allowed position, rounded to whole pixels
@@ -108,8 +108,8 @@ public final class Collision {
 
         List<Rect> obstacles = blockingObstacles(state, item);
 
-        // If the item is already overlapping something — which happens when Layer Collision
-        // is switched on while two boxes are sitting in the same place — don't try to
+        // If the item is already overlapping something (which happens when Layer Collision
+        // is switched on while two boxes are sitting in the same place), don't try to
         // resolve it. Fighting to separate them would teleport the item somewhere the user
         // did not ask for. Room bounds only, and leave it alone.
         Rect currentRect = Rect.of(item);
@@ -120,7 +120,7 @@ public final class Collision {
         }
 
         double rx = slideAxis(item.x_px, cx, widthPx, item.y_px, lengthPx, obstacles, Axis.X);
-        // The Y pass is given rx — the X the item actually reached this frame — and NOT its
+        // The Y pass is given rx (the X the item actually reached this frame), and NOT its
         // original x_px. With the stale X, the sideways-overlap test asks "would I hit this
         // obstacle from where I started", so an item can slide around the corner of
         // something that should have blocked it.
@@ -134,8 +134,8 @@ public final class Collision {
      * genuinely overlaps this item's own.
      *
      * <p><b>The zero-gap exception is the subtle part.</b> Two boxes flush against each
-     * other vertically — one resting exactly on the other's top, or sitting exactly
-     * underneath it — are a clean stack, not two things occupying the same space. Without
+     * other vertically (one resting exactly on the other's top, or sitting exactly
+     * underneath it) are a clean stack, not two things occupying the same space. Without
      * this exception, a box could never be dragged while something rested on it. The check
      * runs in <em>both</em> directions, so it holds no matter which of the two is the one
      * being dragged.

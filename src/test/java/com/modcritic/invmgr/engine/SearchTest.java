@@ -87,7 +87,7 @@ class SearchTest {
         Item metricBox = item("Bin", Units.cmDimensionInputToInches(20), 12, 12);
 
         state.metricMode = true;
-        assertTrue(find(state, metricBox, "w20"), "in metric, w20 means 20 centimetres");
+        assertTrue(find(state, metricBox, "w20"), "in metric, w20 means 20 centimeters");
 
         state.metricMode = false;
         assertFalse(find(state, metricBox, "w20"),

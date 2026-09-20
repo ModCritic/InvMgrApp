@@ -8,8 +8,8 @@ import java.util.List;
  * Everything about the current room that gets saved to a file.
  *
  * <p>This is the whole persisted state and nothing more. Things the app tracks but never
- * writes down — which item is selected, the search box's contents, the undo history, the
- * fit-mode zoom factor — are deliberately absent: they belong to the interface, not to the
+ * writes down (which item is selected, the search box's contents, the undo history, the
+ * fit-mode zoom factor) are deliberately absent: they belong to the interface, not to the
  * document. Search in particular is <b>ephemeral by design</b> in the original app, and the
  * undo stack is cleared on load rather than restored.
  *

@@ -88,7 +88,7 @@ class StackingTest {
         Stacking.recomputeAllBaseHeights(state);
 
         assertEquals(18, top.baseHeight_in,
-                "top rests on ground at 18, not on the ghost — a ghost is not in the room");
+                "top rests on ground at 18, not on the ghost: a ghost is not in the room");
         assertEquals(99, ghost.baseHeight_in, "and the ghost's own height is left untouched");
     }
 
@@ -121,7 +121,7 @@ class StackingTest {
     void settleUsesCurrentHeightsNotDragOrder() {
         AppState state = room();
         // The physically LOWER box has the HIGHER drag order. Sorting by drag order here
-        // would put the floor box on top of the one above it — the exact failure this pass
+        // would put the floor box on top of the one above it, the exact failure this pass
         // exists to avoid, because during Layer Collision drag order says nothing about who
         // is resting on whom.
         Item low = box("low", 99, 24, 24, 96, 96, 20);

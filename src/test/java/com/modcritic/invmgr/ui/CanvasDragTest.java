@@ -1,7 +1,6 @@
 package com.modcritic.invmgr.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.modcritic.invmgr.engine.Layers;
@@ -25,8 +24,8 @@ import org.testfx.util.WaitForAsyncUtils;
  * Drives the room with a real pointer, to prove the view is actually wired to the collision
  * engine.
  *
- * <p>{@code CollisionTest} proves the maths is right and {@code EngineDifferentialTest} proves it
- * matches the original — but neither would notice if the canvas simply never called any of it.
+ * <p>{@code CollisionTest} proves the math is right and {@code EngineDifferentialTest} proves it
+ * matches the original, but neither would notice if the canvas simply never called any of it.
  * These tests move the mouse.
  */
 class CanvasDragTest extends ApplicationTest {
@@ -51,6 +50,15 @@ class CanvasDragTest extends ApplicationTest {
         HBox main = new HBox(drawer, canvas);
         HBox.setHgrow(canvas, Priority.ALWAYS);
 
+        // ⚠ Pinned, because TestFX reuses ONE stage for the whole run. Without this the
+        // window keeps whatever size the previous test class left it at, the scene is squeezed
+        // into it, and every coordinate in this class addresses the wrong place. It fails as a
+        // wrong ANSWER rather than as an error, and only when another class happens to run
+        // first; this one passed alone and failed after PresetTouchTest, which pins itself to
+        // 800x400.
+        stage.setMaximized(false);
+        stage.setWidth(1400);
+        stage.setHeight(900);
         stage.setScene(new Scene(main, 1400, 900));
         stage.show();
     }
@@ -85,8 +93,8 @@ class CanvasDragTest extends ApplicationTest {
         double startX = box.x_px;
         double startY = box.y_px;
 
-        Point2D centre = centreOf(box);
-        moveTo(centre.getX(), centre.getY());
+        Point2D center = centerOf(box);
+        moveTo(center.getX(), center.getY());
         press(MouseButton.PRIMARY);
         release(MouseButton.PRIMARY);
         WaitForAsyncUtils.waitForFxEvents();
@@ -100,8 +108,8 @@ class CanvasDragTest extends ApplicationTest {
     @Test
     @DisplayName("a click selects the box, and clicking the floor deselects")
     void clickSelectsAndFloorDeselects() {
-        Point2D centre = centreOf(box);
-        clickOn(centre.getX(), centre.getY());
+        Point2D center = centerOf(box);
+        clickOn(center.getX(), center.getY());
         WaitForAsyncUtils.waitForFxEvents();
         assertEquals(box.id, canvas.selectedId(), "clicking a box should select it");
 
@@ -185,7 +193,7 @@ class CanvasDragTest extends ApplicationTest {
 
         dragBy(box, 100, 0);
 
-        // The hardening above must not change behaviour in the normal case.
+        // The hardening above must not change behavior in the normal case.
         assertEquals(13, state.dragOrderCounter);
         assertEquals(13, box.dragOrder);
     }
@@ -197,8 +205,8 @@ class CanvasDragTest extends ApplicationTest {
         double y = box.y_px;
         assertEquals(1, state.items.size());
 
-        Point2D centre = centreOf(box);
-        moveTo(centre.getX(), centre.getY());
+        Point2D center = centerOf(box);
+        moveTo(center.getX(), center.getY());
         clickOn(MouseButton.SECONDARY);
         WaitForAsyncUtils.waitForFxEvents();
 
@@ -233,8 +241,8 @@ class CanvasDragTest extends ApplicationTest {
     @Test
     @DisplayName("a click that never became a drag leaves nothing to undo")
     void clickAloneRecordsNothing() {
-        Point2D centre = centreOf(box);
-        moveTo(centre.getX(), centre.getY());
+        Point2D center = centerOf(box);
+        moveTo(center.getX(), center.getY());
         press(MouseButton.PRIMARY);
         release(MouseButton.PRIMARY);
         WaitForAsyncUtils.waitForFxEvents();
@@ -279,8 +287,8 @@ class CanvasDragTest extends ApplicationTest {
         // the box, so unless the drag handler moves it too it sits at the old position for the
         // whole gesture and only snaps across on release. Checking after the release would pass
         // either way, which is exactly why this test stops mid-gesture.
-        Point2D centre = centreOf(box);
-        moveTo(centre.getX(), centre.getY());
+        Point2D center = centerOf(box);
+        moveTo(center.getX(), center.getY());
         press(MouseButton.PRIMARY);
         moveBy(80, 40);
         WaitForAsyncUtils.waitForFxEvents();
@@ -335,7 +343,7 @@ class CanvasDragTest extends ApplicationTest {
                 "and the scene graph order must agree, since that is what actually draws");
     }
 
-    /** Where an item's rectangle sits in the draw order — later means painted on top. */
+    /** Where an item's rectangle sits in the draw order: later means painted on top. */
     private int paintIndexOf(Item item) {
         return canvas.itemLayerChildren().indexOf(canvas.itemRect(item.id));
     }
@@ -344,8 +352,8 @@ class CanvasDragTest extends ApplicationTest {
 
     /** Presses in the middle of an item, moves by a screen-pixel offset, and releases. */
     private void dragBy(Item item, double dx, double dy) {
-        Point2D centre = centreOf(item);
-        moveTo(centre.getX(), centre.getY());
+        Point2D center = centerOf(item);
+        moveTo(center.getX(), center.getY());
         press(MouseButton.PRIMARY);
         // Two steps rather than one: a single jump is a legitimate drag, but moving twice also
         // exercises the case where the position is recalculated from the original press point
@@ -356,16 +364,16 @@ class CanvasDragTest extends ApplicationTest {
         WaitForAsyncUtils.waitForFxEvents();
     }
 
-    private Point2D centreOf(Item item) {
+    private Point2D centerOf(Item item) {
         Point2D origin = canvas.roomOriginInScene();
-        Point2D sceneCentre = new Point2D(
+        Point2D sceneCenter = new Point2D(
                 origin.getX() + item.x_px + Units.inchesToPx(item.w_in) / 2,
                 origin.getY() + item.y_px + Units.inchesToPx(item.l_in) / 2);
         // The robot works in screen coordinates, so the window's own position has to be added.
         Scene scene = canvas.getScene();
         return new Point2D(
-                scene.getWindow().getX() + scene.getX() + sceneCentre.getX(),
-                scene.getWindow().getY() + scene.getY() + sceneCentre.getY());
+                scene.getWindow().getX() + scene.getX() + sceneCenter.getX(),
+                scene.getWindow().getY() + scene.getY() + sceneCenter.getY());
     }
 
     private static Item item(String id, double dragOrder, double w_in, double l_in,

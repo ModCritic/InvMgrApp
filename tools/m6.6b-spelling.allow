@@ -1,0 +1,63 @@
+# Text M6.6b must leave British, one entry per line.
+#
+# Format:  <repo-relative path>::<the exact text to leave alone>
+# m6.6b-spelling.py blanks each entry out of the file before converting it, so the
+# words inside are invisible to the pass rather than exempt from it.
+#
+# There is one reason to add a line: the text is an EXAMPLE of a spelling this pass
+# removed. A comment explaining that `centreX` became `centerX` has to be able to
+# say `centreX`, and documentation of the milestone has to be able to quote what it
+# changed. Everything else is a spelling to fix, not a spelling to protect.
+#
+# Third-party text does NOT belong here; that is FROZEN_FROM and SKIP_PREFIX in the
+# tool itself, so a license body cannot be exempted one line at a time by mistake.
+
+tools/m6.6-guard.py::`centreX` as well as "the box centre"
+tools/m6.6-scan.py::"the box centre"
+tools/m6.6-scan.py::`centreX` on the line below it
+
+# The two M6.6 documents describe the pass by quoting the identifiers it renamed.
+docs/M6.6-SWEEP-PLAN.md::(centreX, thumbCentreY, resizeAroundCentre, colour, grey)
+docs/M6.6-UNSLOP-TRACKER.md::`centreX`,
+docs/M6.6-UNSLOP-TRACKER.md::`centreScreenY`, `thumbCentreY`, `resizeAroundCentre`, `recentre`, plus `colour` and
+docs/M6.6-UNSLOP-TRACKER.md::`grey` throughout
+
+# The M6.6b milestone row and MANUAL.md's own account of this pass, which have to be able to
+# write the spellings it removed in order to explain what it did.
+docs/claude/MILESTONES.md::`centreX`, `centreScreenY`, `thumbCentreY`, `resizeAroundCentre`, `recentre`, `ITEM_COLOUR`, `RECENTRE_MARGIN_PX`, `gesture.cancelled()`
+docs/claude/MILESTONES.md::A blind substring replacement of `centre` also rewrites
+docs/claude/MILESTONES.md::contains `programme`
+docs/claude/MILESTONES.md::`centimetres` is one word, not `centi` plus `metres`
+docs/claude/MILESTONES.md::"the box centre" and structurally never see `centreX` on the line below
+docs/claude/MILESTONES.md::`"no such colour block: "`
+docs/claude/MILESTONES.md::back to `centreX` and watching it report MATCHED NOTHING
+MANUAL.md::`centre` with `center` also rewrites the test method
+MANUAL.md::contains `programme`
+MANUAL.md::`resizeAroundCentre` becomes `resize` + `Around` + `Centre`
+MANUAL.md::`centimetres` is a single
+MANUAL.md::lowercase word, not `centi` plus `metres`
+MANUAL.md::that `centreX` became `centerX` has to be able to write `centreX`
+
+# Future.isCancelled is a real Java API name and stays British whatever this pass does.
+# The sentence around it names the identifiers that were checked against it.
+docs/claude/MILESTONES.md::**All 42 `cancelled` are ours**, not `Future.isCancelled`; `gesture.cancelled()` and `FILE_CANCELLED` are this project's own names.
+
+# MANUAL.md's M6.6a-and-M6.6b section, written 2026-09-10. It lists the identifiers the
+# pass renamed and the one string literal it touched, so it has to spell them the old way.
+MANUAL.md::`centreX`, `centreScreenY`, `thumbCentreY`, `resizeAroundCentre`,
+MANUAL.md::`recentre`, `ITEM_COLOUR`, `RECENTRE_MARGIN_PX`, `gesture.cancelled()`.
+MANUAL.md::`"no such colour block: "`
+MANUAL.md::**All 42 uses of `cancelled` are ours**, not Java's own `isCancelled`.
+MANUAL.md::back to `centreX` and watching it report
+MANUAL.md::"the box centre" in a comment and
+MANUAL.md::never see `centreX` on the line below
+
+# The MANUAL paragraph recording the 2026-09-17 additions has to name the word it
+# removed, same as the rows above it.
+MANUAL.md::`maths` is the one map entry that is not a suffix rule.
+MANUAL.md::`misspelt` into `misspelled` and `anticlockwise` into `counterclockwise`,
+
+# M6.7c found a British spelling that had got into two perf probes after the M6.6b pass
+# and fixed it through this tool. MANUAL.md's account of that has to be able to name the
+# word it removed, the same way the M6.6b rows above do.
+MANUAL.md::`unlabelled` while two others used `unlabeled`

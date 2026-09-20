@@ -117,9 +117,9 @@ class JsonTest {
     @DisplayName("jsNumber matches real JavaScript Number() on every case in the fixture")
     void jsNumberMatchesJavaScript() throws IOException {
         // Differential test. The expectations in golden/js-number-cases.expected.json were
-        // produced by running Number() in node over fixtures/js-number-cases.json — see
+        // produced by running Number() in node over fixtures/js-number-cases.json; see
         // tools/golden/original-loadstate.js. This asserts against the language's real
-        // behaviour rather than against my understanding of it, which is the whole point:
+        // behavior rather than against my understanding of it, which is the whole point:
         // the original app's safeNum sits directly on top of these conversions.
         List<?> cases = (List<?>) Json.parse(Fixtures.read("fixtures/js-number-cases.json"));
         List<?> expected = (List<?>) Json.parse(Fixtures.read("golden/js-number-cases.expected.json"));

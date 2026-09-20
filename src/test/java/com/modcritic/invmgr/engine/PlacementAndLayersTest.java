@@ -21,9 +21,9 @@ class PlacementAndLayersTest {
 
         @Test
         @DisplayName("an empty room puts the box in the middle")
-        void centresInAnEmptyRoom() {
+        void centersInAnEmptyRoom() {
             AppState state = room(12, 10);
-            // Room is 1152 x 960 px; a 24 in box is 192 px, so centred means (480, 384).
+            // Room is 1152 x 960 px; a 24 in box is 192 px, so centered means (480, 384).
             Collision.Point spot = Placement.findOpenSpot(state, 24, 24);
             assertEquals(480, spot.x());
             assertEquals(384, spot.y());
@@ -31,7 +31,7 @@ class PlacementAndLayersTest {
 
         @Test
         @DisplayName("a box already in the middle makes the next one step aside")
-        void stepsAsideWhenTheCentreIsTaken() {
+        void stepsAsideWhenTheCenterIsTaken() {
             AppState state = room(12, 10);
             state.items.add(box("blocker", 1, 24, 24, 480, 384));
 
@@ -40,7 +40,7 @@ class PlacementAndLayersTest {
             // The point of the search: adding several boxes in a row must not pile them on
             // one spot where each hides the ones underneath.
             assertTrue(isFree(state, spot, 24, 24), "the chosen spot must actually be free");
-            assertFalse(spot.x() == 480 && spot.y() == 384, "and must not be the taken centre");
+            assertFalse(spot.x() == 480 && spot.y() == 384, "and must not be the taken center");
         }
 
         @Test
@@ -57,8 +57,8 @@ class PlacementAndLayersTest {
         }
 
         @Test
-        @DisplayName("a preferred point is honoured when it's free")
-        void honoursThePreferredPoint() {
+        @DisplayName("a preferred point is honored when it's free")
+        void honorsThePreferredPoint() {
             AppState state = room(20, 20);
             Collision.Point spot = Placement.findOpenSpot(state, 12, 12, 300, 400);
             assertEquals(300, spot.x());
@@ -83,7 +83,7 @@ class PlacementAndLayersTest {
             state.items.add(ghost);
 
             Collision.Point spot = Placement.findOpenSpot(state, 24, 24);
-            assertEquals(480, spot.x(), "the centre is still free — a ghost isn't really there");
+            assertEquals(480, spot.x(), "the center is still free: a ghost isn't really there");
             assertEquals(384, spot.y());
         }
 
@@ -98,9 +98,9 @@ class PlacementAndLayersTest {
 
             Collision.Point spot = Placement.findOpenSpot(state, 40, 40);
 
-            assertEquals(32, spot.x(), "falls back to the preferred (centred) point");
+            assertEquals(32, spot.x(), "falls back to the preferred (centered) point");
             assertEquals(32, spot.y());
-            assertFalse(isFree(state, spot, 40, 40), "and yes, it overlaps — deliberately");
+            assertFalse(isFree(state, spot, 40, 40), "and yes, it overlaps, deliberately");
         }
     }
 
@@ -111,8 +111,8 @@ class PlacementAndLayersTest {
         @Test
         @DisplayName("at equal height the most recently moved box paints on top")
         void paintOrderBreaksTiesByDragOrder() {
-            // Both at base 0, which is every box in a flat room — so this is also the case that
-            // proves D-5 leaves the original's ordinary behaviour untouched.
+            // Both at base 0, which is every box in a flat room, so this is also the case that
+            // proves D-5 leaves the original's ordinary behavior untouched.
             Item older = box("older", 3, 12, 12, 0, 0);
             Item newer = box("newer", 7, 12, 12, 0, 0);
 
@@ -124,7 +124,7 @@ class PlacementAndLayersTest {
         void paintOrderPutsHeightFirst() {
             // Divergence D-5, and the bug the user reported: the lower box was dragged more
             // recently, so the original would paint it OVER the box it had just been pushed
-            // underneath. Height decides instead, and it decides in BOTH toggle states -- which
+            // underneath. Height decides instead, and it decides in BOTH toggle states, which
             // is why neither this test nor the rule mentions layerCollision at all.
             Item low = box("low", 9, 12, 12, 0, 0);
             low.baseHeight_in = 0;
@@ -202,7 +202,7 @@ class PlacementAndLayersTest {
             higherButOlder.baseHeight_in = 48;
 
             // By drag order this box is "below" the selection; by height it is above. Height
-            // decides, because dimming has to agree with what is actually painted on top — a box
+            // decides, because dimming has to agree with what is actually painted on top; a box
             // that fades to reveal the selection while being drawn behind it anyway just looks
             // like it went dim at random. Note there is no layerCollision setup here any more:
             // under D-5 one rule covers both toggle states.

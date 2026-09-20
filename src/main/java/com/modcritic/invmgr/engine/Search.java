@@ -12,23 +12,23 @@ import java.util.regex.Pattern;
 /**
  * The item list's search box: which boxes it shows, and in what order.
  *
- * <p>Typing splits on spaces and <b>every</b> word has to match — so {@code blue bin} finds
+ * <p>Typing splits on spaces and <b>every</b> word has to match, so {@code blue bin} finds
  * things called "blue storage bin" but not things called just "blue". Two kinds of word:
  *
  * <ul>
- *   <li><b>A measurement</b> — a {@code w}, {@code l} or {@code h} stuck to a number, like
+ *   <li><b>A measurement</b>: a {@code w}, {@code l} or {@code h} stuck to a number, like
  *       {@code w20}. Matches boxes 20 wide, give or take a hundredth.
- *   <li><b>Anything else</b> — matched against the name, ignoring capitals.
+ *   <li><b>Anything else</b>: matched against the name, ignoring capitals.
  * </ul>
  *
  * <p>So {@code w20 storage} finds 20-wide boxes with "storage" in the name.
  *
  * <p><b>The number is read in whatever unit is on screen.</b> In metric, {@code w20} means 20
- * centimetres and is converted before comparing; in imperial it means 20 inches. Searching in
- * the units you can see is the only behaviour that makes sense, but it does mean the same query
+ * centimeters and is converted before comparing; in imperial it means 20 inches. Searching in
+ * the units you can see is the only behavior that makes sense, but it does mean the same query
  * finds different boxes depending on the Units button.
  *
- * <p>What you type here is <b>never saved</b> — not to the file, not to the undo history. It is
+ * <p>What you type here is <b>never saved</b>: not to the file, not to the undo history. It is
  * a view of the list, not part of the room.
  */
 public final class Search {
@@ -100,8 +100,8 @@ public final class Search {
     /**
      * The items the list should show: sorted by name, then filtered.
      *
-     * <p>Sorting before filtering rather than after is deliberate — it means a row keeps the
-     * same neighbours whether or not a search is active, so clearing the box does not reshuffle
+     * <p>Sorting before filtering rather than after is deliberate; it means a row keeps the
+     * same neighbors whether or not a search is active, so clearing the box does not reshuffle
      * what is left.
      */
     public static List<Item> visibleItems(AppState state, String query) {

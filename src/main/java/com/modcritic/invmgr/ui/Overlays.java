@@ -19,7 +19,7 @@ import javafx.scene.layout.StackPane;
  *   drag ghost      &gt;  tooltip  &gt;  dialogs  &gt;  the app
  * </pre>
  *
- * <p>The ghost sitting above the tooltip is deliberate — you can be dragging a planned item
+ * <p>The ghost sitting above the tooltip is deliberate: you can be dragging a planned item
  * while a tooltip is still on screen, and the thing under your finger should be on top.
  */
 public final class Overlays extends StackPane {
@@ -29,9 +29,6 @@ public final class Overlays extends StackPane {
 
     /** Where the planned-item drag ghost puts itself. The very top. */
     private final Pane ghostLayer = new Pane();
-
-    /** How many dialogs are currently open. Kept so Escape and the app can ask. */
-    private int openDialogs;
 
     public Overlays(Node content) {
         // Both float layers position their contents by hand, so they must not eat clicks
@@ -56,22 +53,10 @@ public final class Overlays extends StackPane {
             return;
         }
         getChildren().add(getChildren().indexOf(tooltipLayer), overlay);
-        openDialogs++;
     }
 
     public void hideDialog(Node overlay) {
-        if (getChildren().remove(overlay)) {
-            openDialogs--;
-        }
-    }
-
-    /**
-     * Whether anything modal is open.
-     *
-     * <p>Used to keep the room from reacting to the keyboard while a dialog has it.
-     */
-    public boolean isDialogOpen() {
-        return openDialogs > 0;
+        getChildren().remove(overlay);
     }
 
     public Pane tooltipLayer() {

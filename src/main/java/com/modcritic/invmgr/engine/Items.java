@@ -8,7 +8,7 @@ import java.util.Random;
 import java.util.UUID;
 
 /**
- * Adding, editing, rotating and committing boxes — everything the dialogs do to the room,
+ * Adding, editing, rotating and committing boxes: everything the dialogs do to the room,
  * with none of the drawing.
  *
  * <p>Kept apart from the dialogs on purpose. Each of these is a handful of steps that have to
@@ -23,10 +23,10 @@ import java.util.UUID;
 public final class Items {
 
     /**
-     * Saturation and lightness for every box colour, fixed.
+     * Saturation and lightness for every box color, fixed.
      *
      * <p>Only the hue is random. That is what keeps the palette muted and consistent instead of
-     * throwing the occasional neon box into an otherwise calm room — randomising all three
+     * throwing the occasional neon box into an otherwise calm room; randomizing all three
      * would look like a bug.
      */
     private static final int COLOR_SATURATION_PERCENT = 55;
@@ -38,9 +38,9 @@ public final class Items {
     }
 
     /**
-     * A new box colour: a random hue at the fixed saturation and lightness.
+     * A new box color: a random hue at the fixed saturation and lightness.
      *
-     * <p>The text shape — {@code hsl(207,55%,42%)}, no spaces — is what the save format allows,
+     * <p>The text shape ({@code hsl(207,55%,42%)}, no spaces) is what the save format allows,
      * so this is also what makes a file written here loadable by the original app.
      */
     public static String randomColor() {
@@ -53,7 +53,7 @@ public final class Items {
      *
      * <p>A real box gets dropped into the nearest free space rather than the middle, so that
      * adding several in a row does not pile them all on one spot where only the last is
-     * visible. A <b>planned</b> box skips that search and is simply centred — it is never drawn
+     * visible. A <b>planned</b> box skips that search and is simply centered; it is never drawn
      * in the room, so where it "is" does not matter, and searching for a free spot for
      * something invisible would only slow the add down.
      *
@@ -81,8 +81,8 @@ public final class Items {
         item.planned = state.planMode;
 
         if (item.planned) {
-            item.x_px = centred(Units.feetToPx(state.room.w), Units.inchesToPx(item.w_in));
-            item.y_px = centred(Units.feetToPx(state.room.l), Units.inchesToPx(item.l_in));
+            item.x_px = centered(Units.feetToPx(state.room.w), Units.inchesToPx(item.w_in));
+            item.y_px = centered(Units.feetToPx(state.room.l), Units.inchesToPx(item.l_in));
         } else {
             Collision.Point spot = Placement.findOpenSpot(state, item.w_in, item.l_in);
             item.x_px = spot.x();
@@ -97,8 +97,8 @@ public final class Items {
         return item;
     }
 
-    /** Where a box sits if it is simply centred, never off the near wall. */
-    private static double centred(double roomPx, double itemPx) {
+    /** Where a box sits if it is simply centered, never off the near wall. */
+    private static double centered(double roomPx, double itemPx) {
         return Math.round(Math.max(0, (roomPx - itemPx) / 2));
     }
 
@@ -106,7 +106,7 @@ public final class Items {
      * Turns a planned ghost into a real box, dropped as near as possible to where it was let go.
      *
      * <p>"As near as possible" rather than exactly there, because the drop point may already be
-     * occupied — landing a box inside another one and leaving the user to notice would be
+     * occupied; landing a box inside another one and leaving the user to notice would be
      * worse than putting it a few inches over.
      *
      * @return false if the box has already been committed, in which case nothing happened
@@ -131,14 +131,14 @@ public final class Items {
      * Applies the Edit dialog's fields to a box.
      *
      * <p>Nothing is recorded and nothing changes if the user opened the dialog and pressed OK
-     * without touching anything — otherwise the undo stack would fill with entries that undo
+     * without touching anything; otherwise the undo stack would fill with entries that undo
      * nothing, and pressing Undo would appear broken.
      *
-     * <p>When the size changes, the box stays <b>centred where it was</b> rather than keeping
+     * <p>When the size changes, the box stays <b>centered where it was</b> rather than keeping
      * its top-left corner. Growing a box from its corner shoves it south-east across the room,
      * which is not what resizing something in place should look like. The new corner then goes
      * through the ordinary drag clamp, so a box made bigger cannot end up sticking through a
-     * wall or, under Layer Collision, through its neighbour.
+     * wall or, under Layer Collision, through its neighbor.
      *
      * @return true if anything actually changed
      */
@@ -165,7 +165,7 @@ public final class Items {
         item.name = newName;
         item.customId = newCustomId;
         if (dimensionsChanged) {
-            resizeAroundCentre(state, item, newW, newL, newH);
+            resizeAroundCenter(state, item, newW, newL, newH);
             Stacking.recomputeAllBaseHeights(state);
         }
         return true;
@@ -174,13 +174,13 @@ public final class Items {
     /**
      * Rotates a box a quarter turn by exchanging its width and length.
      *
-     * <p>Height is untouched — this turns a box on the floor, it does not tip it over.
+     * <p>Height is untouched; this turns a box on the floor, it does not tip it over.
      */
     public static void swap(AppState state, UndoHistory undo, Item item) {
         undo.push(new UndoEntry.Swapped(item.id, item.w_in, item.l_in, item.x_px, item.y_px,
                 UndoHistory.snapshotHeights(state)));
 
-        resizeAroundCentre(state, item, item.l_in, item.w_in, item.h_in);
+        resizeAroundCenter(state, item, item.l_in, item.w_in, item.h_in);
         Stacking.recomputeAllBaseHeights(state);
     }
 
@@ -191,10 +191,10 @@ public final class Items {
      * <p>Shared by editing and rotating because both have exactly the same problem: the box's
      * footprint changes underneath a position that was chosen for the old one.
      */
-    private static void resizeAroundCentre(AppState state, Item item, double w_in, double l_in,
+    private static void resizeAroundCenter(AppState state, Item item, double w_in, double l_in,
             double h_in) {
-        double centreX = item.x_px + Units.inchesToPx(item.w_in) / 2;
-        double centreY = item.y_px + Units.inchesToPx(item.l_in) / 2;
+        double centerX = item.x_px + Units.inchesToPx(item.w_in) / 2;
+        double centerY = item.y_px + Units.inchesToPx(item.l_in) / 2;
 
         item.w_in = w_in;
         item.l_in = l_in;
@@ -203,8 +203,8 @@ public final class Items {
         // The clamp has to run after the new size is in place: it measures the item to work out
         // how far it may go, and measuring the old size would let a grown box overhang a wall.
         Collision.Point placed = Collision.clampItem(state, item,
-                centreX - Units.inchesToPx(item.w_in) / 2,
-                centreY - Units.inchesToPx(item.l_in) / 2);
+                centerX - Units.inchesToPx(item.w_in) / 2,
+                centerY - Units.inchesToPx(item.l_in) / 2);
         item.x_px = placed.x();
         item.y_px = placed.y();
     }

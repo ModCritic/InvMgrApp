@@ -1,0 +1,18 @@
+# Punctuation this sweep must not touch, because we are quoting somebody else.
+#
+# One entry per line: <repo-relative path>::<the exact text to leave alone>.
+# The scanner blanks each entry out of a file before counting, so a dash inside a
+# quotation is invisible to the rule rather than exempt from it.
+#
+# The bar for adding a line is high, and it got higher on 2026-09-11. The user's rule is
+# that the ONLY em dash allowed to survive anywhere in this repo is one inside words
+# written by somebody outside this project, in a file belonging to something we use.
+# Our own prose, our own comments, our own string literals, our own sample data and our
+# own account of the sweep are all out. Where the historical record has to NAME the
+# character, it spells it \u2014 rather than typing it, which needs no entry here.
+#
+# Two places hold one legitimately and neither is listed:
+#   docs/original/InvMgr_V1.3.0.html  the preserved original app, 83 of them, never edited
+#   tools/m6.6-quotes.allow           this file, which cannot match text without holding it
+
+docs/SPIKE-OD-1.md::"Broken — looking for help"

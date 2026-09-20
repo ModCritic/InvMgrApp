@@ -6,10 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.modcritic.invmgr.model.AppState;
 import com.modcritic.invmgr.model.Item;
 import com.modcritic.invmgr.model.Room;
+import com.modcritic.invmgr.persist.Fixtures;
 import com.modcritic.invmgr.persist.Json;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +25,8 @@ import org.junit.jupiter.api.Test;
  * written from my reading of the original would bake my misreadings in as expectations.
  *
  * <p>So the expectations come from elsewhere: {@code tools/golden/original-engine.js} holds a
- * verbatim copy of the shipped algorithms, and its output over 200 scenarios — 8 hand-picked
- * edge cases plus 192 randomly generated ones, half with Layer Collision on — is committed as
+ * verbatim copy of the shipped algorithms, and its output over 200 scenarios (8 hand-picked
+ * edge cases plus 192 randomly generated ones, half with Layer Collision on) is committed as
  * the golden file. <b>If Java and the golden disagree, Java is wrong.</b>
  *
  * <p>Regenerate with {@code node tools/golden/original-engine.js --gen 200 && … --run}.
@@ -37,15 +36,15 @@ class EngineDifferentialTest {
     /**
      * Positions and heights are the result of identical arithmetic on both sides, so they
      * should match exactly. The tolerance is here to report a real disagreement rather than
-     * to paper over one — anything above this is a genuine difference in behaviour.
+     * to paper over one; anything above this is a genuine difference in behavior.
      */
     private static final double TOLERANCE = 1e-9;
 
     @Test
     @DisplayName("all 200 scenarios agree with the original app's own algorithms")
     void matchesTheOriginalEngine() throws IOException {
-        List<?> scenarios = (List<?>) Json.parse(resource("fixtures/engine-scenarios.json"));
-        List<?> expected = (List<?>) Json.parse(resource("golden/engine-scenarios.expected.json"));
+        List<?> scenarios = (List<?>) Json.parse(Fixtures.read("fixtures/engine-scenarios.json"));
+        List<?> expected = (List<?>) Json.parse(Fixtures.read("golden/engine-scenarios.expected.json"));
         assertEquals(scenarios.size(), expected.size(), "fixture and golden are out of sync");
         assertTrue(scenarios.size() >= 200, "expected at least 200 scenarios");
 
@@ -113,8 +112,8 @@ class EngineDifferentialTest {
                 List<?> wantDim = (List<?>) want.get("dim");
 
                 // Paint order and dimming are DIVERGENCE D-5, so the golden values cannot simply
-                // be asserted: the golden is the original's behaviour by construction, and D-5
-                // exists because that behaviour is wrong. Deleting the check would be the easy
+                // be asserted: the golden is the original's behavior by construction, and D-5
+                // exists because that behavior is wrong. Deleting the check would be the easy
                 // way out and would drop 200 scenarios of coverage, so it is split instead:
                 //
                 //  - where the two rules MUST agree, still compare against the golden. D-5 only
@@ -188,7 +187,7 @@ class EngineDifferentialTest {
      * is the bug the user hit: drag a box at base 0 in under a box at base 12 in and the box you
      * just moved paints over the one above it.
      *
-     * <p>Deliberately expressed as a property, not by recomputing the rule — a test that
+     * <p>Deliberately expressed as a property, not by recomputing the rule: a test that
      * reimplements the thing it is testing passes no matter how wrong both copies are.
      */
     private void assertNothingPaintsAboveWhatItIsUnder(String label, AppState state,
@@ -261,15 +260,5 @@ class EngineDifferentialTest {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> asMap(Object value) {
         return (Map<String, Object>) value;
-    }
-
-    private static String resource(String path) throws IOException {
-        try (InputStream in =
-                EngineDifferentialTest.class.getClassLoader().getResourceAsStream(path)) {
-            if (in == null) {
-                throw new IOException("test resource not found: " + path);
-            }
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
-        }
     }
 }

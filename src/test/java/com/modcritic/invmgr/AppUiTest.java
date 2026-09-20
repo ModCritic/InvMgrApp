@@ -93,15 +93,33 @@ class AppUiTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("the 3D capability check still answers")
-    void scene3dCheckAnswers() {
+    @DisplayName("the 2D view is there whatever the 3D check says")
+    void theCanvasDoesNotDependOn3d() {
         WaitForAsyncUtils.waitForFxEvents();
-        // Only that it answers without throwing: whether 3D is available depends on the
-        // machine, and asserting either way would make this test fail somewhere valid.
-        boolean supported = App.isScene3dSupported();
-        assertTrue(supported || !supported);
-        // Nothing on the canvas should depend on it — the 2D view must work regardless.
+        // The capability itself is asserted, hard, by Room3dAppearanceTest.theGraphicsPipelineCanDraw3d.
+        // What is checked here is the other half of D-10: whether 3D is available or not, the flat
+        // room is the primary interface and must be on screen.
+        App.isScene3dSupported();
         assertNotNull(app.canvas());
+    }
+
+    @Test
+    @DisplayName("the app does not open with the room's width highlighted")
+    void nothingIsSelectedAtStartup() {
+        WaitForAsyncUtils.waitForFxEvents();
+        // ⚠ THE PROTECTION IS IN App, NOT IN NumberField, and this is the only test that says
+        // so. App gives the canvas focus at startup precisely so that no number box takes the
+        // window's automatic first focus; JavaFX would otherwise focus the first traversable
+        // node, which is the room's width, and its skin selects everything it focuses. One
+        // stray keystroke would then replace the width and the next Set Room would resize the
+        // room to whatever was typed.
+        //
+        // Until M6.7c NumberField also cleared the selection on every focus, which hid this,
+        // and cost the phone its tap-to-replace behavior in the process (§5.5 D-28). With that
+        // blanket clear gone, canvas.requestFocus() is the whole of the guard.
+        assertEquals("", app.topBar().widthField().textField().getSelectedText(),
+                "the app opened with the room width selected; App must give the canvas focus "
+                        + "so no number box takes the window's first focus");
     }
 
     @Test
@@ -140,7 +158,7 @@ class AppUiTest extends ApplicationTest {
         // compared. A box's own width in room pixels never changes, so asserting that would prove
         // nothing at all.
         // The top bar is measured by HEIGHT, not width. It stretches across the window at every
-        // zoom level -- correctly, that is what a top bar does -- so its width is 1280 either way
+        // zoom level (correctly, that is what a top bar does), so its width is 1280 either way
         // and comparing it would prove nothing. Its height is content-driven, so that is the
         // dimension the zoom actually moves.
         double roomBoxBefore = boxWidthOnScreen(box.id);
@@ -208,28 +226,28 @@ class AppUiTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("metric mode labels the slider in metres and drops the foot labels")
-    void metricSliderIsLabelledInMetres() {
+    @DisplayName("metric mode labels the slider in meters and drops the foot labels")
+    void metricSliderIsLabeledInMeters() {
         WaitForAsyncUtils.waitForFxEvents();
 
         // Imperial first, so the switch is what is being tested rather than the starting state.
         java.util.List<String> imperial = sliderLabels();
         assertTrue(imperial.contains("0ft"), "imperial should label whole feet, got " + imperial);
         assertTrue(imperial.stream().noneMatch(text -> text.endsWith("m")),
-                "no metre labels before switching, got " + imperial);
+                "no meter labels before switching, got " + imperial);
 
         clickOn(app.topBar().unitsButton());
         WaitForAsyncUtils.waitForFxEvents();
 
-        // The original keeps the dot grid on half-FEET — that is what the slider snaps to, and it
-        // does not change with the unit — and overlays whole-metre labels at their true heights.
-        // So the right result is: no foot labels at all, and a metre label per whole metre that
+        // The original keeps the dot grid on half-FEET (that is what the slider snaps to, and it
+        // does not change with the unit) and overlays whole-meter labels at their true heights.
+        // So the right result is: no foot labels at all, and a meter label per whole meter that
         // fits in the room. The default room is 8 ft, which is 2.43 m, hence 0m 1m 2m and no 3m.
         java.util.List<String> metric = sliderLabels();
         assertTrue(metric.stream().noneMatch(text -> text.endsWith("ft")),
                 "metric should drop every foot label, got " + metric);
         assertTrue(metric.contains("0m") && metric.contains("1m") && metric.contains("2m"),
-                "metric should label each whole metre, got " + metric);
+                "metric should label each whole meter, got " + metric);
         assertFalse(metric.contains("3m"), "3 m does not fit in an 8 ft room, got " + metric);
         assertTrue(metric.contains("·"), "the half-foot dot grid must survive, got " + metric);
     }
@@ -278,7 +296,7 @@ class AppUiTest extends ApplicationTest {
 
         // The wording is not incidental. Four of these five reproduce the original's `title`
         // attributes exactly, and drifting from them is a loss of fidelity that nothing else in
-        // the suite would notice — a hint is not drawn until you rest on it, so no screenshot
+        // the suite would notice: a hint is not drawn until you rest on it, so no screenshot
         // test can see it. The fifth is deliberately *not* the original's: see CLAUDE.md §5.5 D-7.
         assertHint(app.topBar().layerCollisionButton(),
                 "Disable gravity, items collide based on height-range, not stack");
@@ -288,6 +306,14 @@ class AppUiTest extends ApplicationTest {
         assertHint(app.topBar().unitsButton(), "Toggle Metric Units");
         assertHint(app.listPanel().exportButton(), "Export Item List");
         assertHint(app.listPanel().clearSearchButton(), "Clear Search");
+
+        // The two 3D buttons, added at M5.1. Both carry the original's own wording: `title="3D
+        // View"` on the top-bar button (original line 494) and `title="Back to 2D view"` on the one
+        // that comes back (line 2880). Note the second is sentence case where the first is title
+        // case: that is the original's own inconsistency, kept rather than tidied, because the
+        // rule here is fidelity and not house style.
+        assertHint(app.topBar().threeDButtonNode(), "3D View");
+        assertHint(app.view3d().returnButton(), "Back to 2D view");
 
         // The other half of the rule, and the reason this test lists the negatives too: a button
         // whose face already says what it does gets no hint repeating it back. The original gives
@@ -313,31 +339,31 @@ class AppUiTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("the maximise repair fires only when the window really did shrink")
+    @DisplayName("the maximize repair fires only when the window really did shrink")
     void maximizeRepairRuleOnlyFiresOnARealShrink() {
-        // The situation this guards against needs a window manager to reproduce -- KWin
-        // un-maximising the window when a file dialog opens, while JavaFX's own `maximized`
+        // The situation this guards against needs a window manager to reproduce: KWin
+        // un-maximizing the window when a file dialog opens, while JavaFX's own `maximized`
         // property stays true (JDK-8325549). There is no window manager in this container at all,
         // so the SITUATION cannot be tested here; the RULE can, and it is the part with a
-        // judgement call in it. See App.showChooser.
+        // judgment call in it. See App.showChooser.
         double screen = 2560;
 
         assertTrue(App.needsMaximizeRepair(true, 1280, screen),
-                "half-width while still claiming to be maximised is the reported symptom");
+                "half-width while still claiming to be maximized is the reported symptom");
         assertTrue(App.needsMaximizeRepair(true, 1000, screen),
                 "\"sometimes a little smaller\" than half, also reported, must count too");
 
         // The three ways it must stay out of the way. Firing wrongly would make the window
         // flicker on every Save on platforms that never had the bug.
         assertFalse(App.needsMaximizeRepair(false, 1280, screen),
-                "a window that is legitimately not maximised must be left alone");
+                "a window that is legitimately not maximized must be left alone");
         assertFalse(App.needsMaximizeRepair(true, 2560, screen),
-                "a genuinely maximised window needs no repair");
+                "a genuinely maximized window needs no repair");
         assertFalse(App.needsMaximizeRepair(true, 2400, screen),
                 "a panel or a rounding error must not be mistaken for the bug");
 
         // A screen can measure zero while the stage sits between monitors. The comparison covers
-        // that on its own -- no positive width is below zero -- so this pins the behaviour rather
+        // that on its own (no positive width is below zero), so this pins the behavior rather
         // than a guard: an explicit `screenWidth > 0` check was written, then deleted once a
         // mutation showed removing it changed no answer.
         assertFalse(App.needsMaximizeRepair(true, 1280, 0),

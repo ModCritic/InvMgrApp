@@ -752,7 +752,7 @@
     }
   },
   {
-    "note": "findOpenSpot must step around a box sitting on the room centre",
+    "note": "findOpenSpot must step around a box sitting on the room center",
     "room": {
       "w": 12,
       "l": 10,

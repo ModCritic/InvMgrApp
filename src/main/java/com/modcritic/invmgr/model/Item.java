@@ -5,8 +5,8 @@ package com.modcritic.invmgr.model;
  *
  * <p><b>Units are not negotiable.</b> {@code w_in}, {@code l_in}, {@code h_in} and
  * {@code baseHeight_in} are inches; {@code x_px} and {@code y_px} are screen pixels at
- * 100% zoom, measured from the room's west and north walls. Nothing here is ever metric —
- * centimetres exist only as a label at the moment a number is shown to the user. The field
+ * 100% zoom, measured from the room's west and north walls. Nothing here is ever metric;
+ * centimeters exist only as a label at the moment a number is shown to the user. The field
  * names keep their {@code _in} and {@code _px} suffixes precisely so a unit mistake is
  * visible at the point of use rather than three functions away.
  *
@@ -51,7 +51,7 @@ public final class Item {
     /** Top edge in pixels from the room's north wall. */
     public double y_px;
 
-    /** {@code "hsl(H,S%,L%)"} with no spaces — the exact shape the format allows. */
+    /** {@code "hsl(H,S%,L%)"} with no spaces (the exact shape the format allows). */
     public String color;
 
     /** The user's name for it. Empty means "use the default", not "no name". */

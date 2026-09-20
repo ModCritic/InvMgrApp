@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Reads and writes JSON text, matching JavaScript's behaviour closely enough to be
+ * Reads and writes JSON text, matching JavaScript's behavior closely enough to be
  * byte-compatible with the original HTML app's save files.
  *
  * <p><b>Why this is hand-written instead of using a library.</b> Three reasons, in order
@@ -14,11 +14,11 @@ import java.util.Map;
  *
  * <ol>
  *   <li><b>The shipped app has exactly one outside library</b> (OpenJFX), which keeps the
- *       licence position simple and the Android build small. A JSON library would be the
+ *       license position simple and the Android build small. A JSON library would be the
  *       second, for a file format that is nine keys deep.
  *   <li><b>The Android build compiles to a native image</b>, which strips code it cannot
- *       see being called. The popular JSON libraries work by reflection — inspecting
- *       classes at runtime — which is exactly what a native image breaks, and two of the
+ *       see being called. The popular JSON libraries work by reflection, inspecting
+ *       classes at runtime, which is exactly what a native image breaks, and two of the
  *       six failures in the OD-1 spike were reflection problems that presented as a black
  *       screen with no error. Plain code has none of that risk.
  *   <li><b>We need <em>JavaScript's</em> conversion rules, not Java's</b>, to stay
@@ -31,7 +31,7 @@ import java.util.Map;
  * file is untrusted input and the loader's whole job is coping with values of the wrong
  * type. A JSON object arrives as a {@code Map<String, Object>}, an array as a
  * {@code List<Object>}, and leaves as {@code String}, {@link Double}, {@link Boolean}, or
- * {@code null}. Nothing is coerced during parsing — that happens later, in
+ * {@code null}. Nothing is coerced during parsing; that happens later, in
  * {@link SaveFormat}, where the original app's rules are applied.
  */
 public final class Json {
@@ -276,8 +276,8 @@ public final class Json {
      *
      * <p>This is not cosmetic. The compatibility contract asks for files the HTML app can
      * open and, ideally, files that are byte-identical to what it writes. Java's default
-     * formatting differs on every whole number in the file — every dimension, coordinate
-     * and counter — so a save would read fine but never compare equal.
+     * formatting differs on every whole number in the file (every dimension, coordinate
+     * and counter), so a save would read fine but never compare equal.
      *
      * @throws IllegalArgumentException on NaN or infinity, which cannot appear in JSON.
      *     Validated state can never contain either, so reaching this means a bug upstream
@@ -324,7 +324,7 @@ public final class Json {
                     if (c < 0x20) {
                         out.append(String.format("\\u%04x", (int) c));
                     } else {
-                        // Everything else, including non-ASCII, goes through as-is —
+                        // Everything else, including non-ASCII, goes through as-is,
                         // again matching JSON.stringify, which does not escape it.
                         out.append(c);
                     }
@@ -412,7 +412,7 @@ public final class Json {
                     return Long.parseLong(trimmed.substring(2), radix);
                 }
             }
-            // Java's parseDouble accepts things JavaScript rejects — a trailing 'd' or
+            // Java's parseDouble accepts things JavaScript rejects: a trailing 'd' or
             // 'f' suffix ("12f"), and hex floats. Reject those explicitly so "12f"
             // becomes NaN as it would in the browser.
             for (int i = 0; i < trimmed.length(); i++) {

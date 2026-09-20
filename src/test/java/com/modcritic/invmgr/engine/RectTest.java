@@ -45,7 +45,7 @@ class RectTest {
     @DisplayName("footprints that merely touch are not overlapping")
     void touchingIsNotOverlapping(String direction, double dx, double dy) {
         // Load-bearing, not a technicality: if flush edges counted as overlapping, boxes could
-        // never be placed side by side — they would refuse to sit together, and a box could
+        // never be placed side by side; they would refuse to sit together, and a box could
         // not be dragged while another rested against it.
         Rect a = Rect.at(0, 0, 96, 96);
         Rect b = Rect.at(dx, dy, 96, 96);

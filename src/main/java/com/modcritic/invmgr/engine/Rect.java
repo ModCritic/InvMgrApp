@@ -11,7 +11,7 @@ import com.modcritic.invmgr.model.Units;
  * far off the floor it sits are handled separately.
  *
  * <p>{@code x}/{@code y} are the top-left (north-west) corner, {@code x2}/{@code y2} the
- * bottom-right. X grows east, Y grows <b>south</b> — screen coordinates, so Y counts
+ * bottom-right. X grows east, Y grows <b>south</b>, screen coordinates, so Y counts
  * downward, not upward.
  *
  * <p>This is a {@code record}, a short way of writing a class whose values never change
@@ -39,9 +39,9 @@ public record Rect(double x, double y, double x2, double y2) {
      *
      * <p><b>The comparisons are strict on purpose: footprints that merely touch do not
      * overlap.</b> Two boxes pushed flush against each other share an edge exactly, and
-     * treating that as a collision would make it impossible to place boxes side by side —
-     * they would jitter apart or refuse to sit together. This one detail is relied on
-     * throughout the collision and stacking code.
+     * treating that as a collision would make it impossible to place boxes side by side;
+     * they would jitter apart or refuse to sit together. The collision and stacking code
+     * relies on this one detail throughout.
      */
     public boolean overlaps(Rect other) {
         return x < other.x2 && x2 > other.x && y < other.y2 && y2 > other.y;

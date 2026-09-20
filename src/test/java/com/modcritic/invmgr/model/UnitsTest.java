@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests for {@link Units}.
  *
- * <p>These are the first tests in the project, so they double as proof that the test
- * setup actually runs something — a test suite that passes because it found no tests is
- * the failure mode being ruled out here.
+ * <p>These are the project's first tests, so they double as proof the test setup
+ * actually runs something; a suite that passes because it found no tests is the
+ * failure mode this rules out.
  */
 class UnitsTest {
 
@@ -65,7 +65,7 @@ class UnitsTest {
     }
 
     @Test
-    @DisplayName("dimensions are clamped to the legal 1–1000 inch range")
+    @DisplayName("dimensions are clamped to the legal 1-1000 inch range")
     void clamping() {
         assertEquals(1.0, Units.cmDimensionInputToInches(1.0), EPSILON);      // 0.39 in → floor
         assertEquals(1000.0, Units.cmDimensionInputToInches(5000.0), EPSILON); // 1968 in → ceiling

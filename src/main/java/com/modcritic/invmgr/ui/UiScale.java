@@ -1,7 +1,7 @@
 package com.modcritic.invmgr.ui;
 
 /**
- * How large the interface is drawn — the Ctrl+scroll zoom.
+ * How large the interface is drawn: the Ctrl+scroll zoom.
  *
  * <p><b>What it does.</b> Ctrl+scroll steps the whole interface up and down through a fixed
  * ladder of sizes, and Ctrl+middle-click puts it back to 100%. It exists because the interface is
@@ -9,7 +9,7 @@ package com.modcritic.invmgr.ui;
  * it was designed for and small on a dense one.
  *
  * <p><b>What it deliberately does NOT do: the room never changes size.</b> The room is drawn to
- * scale — 8 pixels to the inch, 96 to the foot — so a box on screen is a real size, and stretching
+ * scale (8 pixels to the inch, 96 to the foot), so a box on screen is a real size, and stretching
  * that would destroy the one property the whole app exists for. Scaling up makes the controls
  * bigger and therefore shows <em>less</em> of the room, exactly as making the window smaller
  * would. See {@code RoomCanvasView.setUiScale} for how the room cancels the zoom back out.
@@ -43,7 +43,7 @@ public final class UiScale {
     }
 
     /**
-     * The step at {@code index}, as a multiplier — 1.0 at 100%.
+     * The step at {@code index}, as a multiplier: 1.0 at 100%.
      *
      * <p>Held inside the ladder rather than wrapping around, so scrolling past either end simply
      * stops instead of jumping from largest to smallest.

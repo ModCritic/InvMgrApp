@@ -11,7 +11,7 @@ import java.util.List;
  * Finds somewhere to put a new box.
  *
  * <p>Without this, adding several boxes in a row would drop them all on the same spot, and
- * each would hide the ones underneath — the room would look empty while holding five boxes.
+ * each would hide the ones underneath; the room would look empty while holding five boxes.
  */
 public final class Placement {
 
@@ -27,7 +27,7 @@ public final class Placement {
      */
     private static final int MAX_CHECKS = 4000;
 
-    /** Never search in steps smaller than this many pixels — two inches. */
+    /** Never search in steps smaller than this many pixels: two inches. */
     private static final double MIN_STEP_PX = 16;
 
     private Placement() {
@@ -37,7 +37,7 @@ public final class Placement {
     public static Collision.Point findOpenSpot(AppState state, double w_in, double l_in) {
         double widthPx = Units.inchesToPx(w_in);
         double lengthPx = Units.inchesToPx(l_in);
-        // Centred means the item's middle is at the room's middle, so the top-left corner
+        // Centered means the item's middle is at the room's middle, so the top-left corner
         // sits half the item's size back from it.
         return findOpenSpot(state, w_in, l_in,
                 (Units.feetToPx(state.room.w) - widthPx) / 2,
@@ -88,7 +88,7 @@ public final class Placement {
         for (int ring = 1; ring <= MAX_RINGS; ring++) {
             List<Collision.Point> candidates = ringCandidates(ring, startX, startY, step, maxX, maxY);
             // Nearest-first within the ring. Distances are measured after clamping, because
-            // clamping is what pulls candidates back inside the room — several may collapse
+            // clamping is what pulls candidates back inside the room; several may collapse
             // onto the same wall position, and those duplicates are kept so the search
             // behaves identically to the original's.
             candidates.sort(Comparator.comparingDouble(c -> squaredDistance(c, startX, startY)));
@@ -105,13 +105,13 @@ public final class Placement {
         return preferred;
     }
 
-    /** Every position on the square ring at distance {@code ring} steps from the centre. */
+    /** Every position on the square ring at distance {@code ring} steps from the center. */
     private static List<Collision.Point> ringCandidates(int ring, double startX, double startY,
             double step, double maxX, double maxY) {
         List<Collision.Point> candidates = new ArrayList<>();
         for (int dx = -ring; dx <= ring; dx++) {
             for (int dy = -ring; dy <= ring; dy++) {
-                // Only the ring's edge, not its filled interior — the inside was covered by
+                // Only the ring's edge, not its filled interior: the inside was covered by
                 // earlier, smaller rings.
                 if (Math.max(Math.abs(dx), Math.abs(dy)) != ring) {
                     continue;

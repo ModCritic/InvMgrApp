@@ -12,7 +12,7 @@ import java.util.List;
  * The list of things that can be undone, and the code that undoes them.
  *
  * <p><b>Capped at {@value #MAX_ENTRIES} actions</b>, oldest thrown away first. The original app has
- * no limit at all, which grows without bound for as long as it stays open — every entry holds a
+ * no limit at all, which grows without bound for as long as it stays open; every entry holds a
  * snapshot of every item, so the entries are not free. 500 is far more than anyone reaches by hand
  * and exists purely so a long session cannot grow forever (OD-6, decided by the user).
  *
@@ -50,7 +50,7 @@ public final class UndoHistory {
         return entries.isEmpty();
     }
 
-    /** Forgotten on load, exactly as the original does — a new room has no history. */
+    /** Forgotten on load, exactly as the original does; a new room has no history. */
     public void clear() {
         entries.clear();
     }
@@ -116,7 +116,7 @@ public final class UndoHistory {
     }
 
     private String undoDelete(AppState state, UndoEntry.Deleted deleted) {
-        // Another copy, so undoing twice — delete, undo, delete, undo — cannot hand out the same
+        // Another copy, so undoing twice (delete, undo, delete, undo) cannot hand out the same
         // object twice and let the two share a position.
         Item restored = copyOf(deleted.item());
         state.items.add(restored);

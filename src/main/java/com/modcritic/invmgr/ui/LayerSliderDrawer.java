@@ -20,7 +20,7 @@ import javafx.scene.text.Font;
  * The vertical slider down the left edge that peels back the upper layers of the room.
  *
  * <p>Sliding it down hides everything sitting at or above that height, so the user can see
- * what is underneath a stack — X-raying the pile from the top.
+ * what is underneath a stack, X-raying the pile from the top.
  *
  * <p>Two details that are not obvious:
  *
@@ -39,10 +39,10 @@ public final class LayerSliderDrawer extends VBox {
     private final VBox ticks = new VBox();
 
     /**
-     * The metre labels drawn over the tick column in metric mode.
+     * The meter labels drawn over the tick column in metric mode.
      *
      * <p>Its own layout, because each label sits at an arbitrary height rather than in a row: a
-     * metre is 3.28 ft, so the labels fall between the half-foot dots, not on them. Each child
+     * meter is 3.28 ft, so the labels fall between the half-foot dots, not on them. Each child
      * carries the fraction of the way up the column it belongs at, in its {@code userData}.
      */
     private final Pane meterLabels = new Pane() {
@@ -56,7 +56,7 @@ public final class LayerSliderDrawer extends VBox {
                 }
                 double labelHeight = label.prefHeight(width);
                 // Measured from the BOTTOM, because the slider's zero is at the bottom, and
-                // centred on that point so the text straddles the height it names rather than
+                // centered on that point so the text straddles the height it names rather than
                 // hanging below it.
                 double y = height - up * height - labelHeight / 2;
                 label.resizeRelocate(0, y, width, labelHeight);
@@ -76,8 +76,8 @@ public final class LayerSliderDrawer extends VBox {
      * @param initialState the state to start with. Deliberately NOT named {@code state}: a
      *     parameter of that name would shadow the field, and the value listener below writes
      *     through it. A lambda captures the parameter by value, so the listener would stay
-     *     bolted to the first AppState forever and {@link #setState} — which only rebinds the
-     *     field — could not reach it. That was a real bug: after loading a save the handle
+     *     bolted to the first AppState forever and {@link #setState} (which only rebinds the
+     *     field) could not reach it. That was a real bug: after loading a save the handle
      *     still moved but the cross-section froze, because every drag wrote {@code layerFeet}
      *     into the discarded pre-load state. The rename is what makes it impossible.
      */
@@ -87,6 +87,15 @@ public final class LayerSliderDrawer extends VBox {
         setPrefWidth(Tokens.SLIDER_DRAWER_WIDTH);
         setMinWidth(Tokens.SLIDER_DRAWER_WIDTH);
         setMaxWidth(Tokens.SLIDER_DRAWER_WIDTH);
+
+        // The panel is exactly as tall as the row it sits in and never taller: the original pins
+        // it `top: 0; bottom: 0` on touch and stretches it as a flex child on a desktop, so
+        // neither one lets it push past the room. Without this its own contents set a floor of
+        // 244 pixels, and a landscape window with the top bar open offers 64; at that point
+        // the StackPane holding it centers it and it hangs 100 pixels off each end, over the
+        // island above and the status bar below. What does not fit is cut off by #main; see
+        // Clips.
+        setMinHeight(0);
         setAlignment(Pos.TOP_CENTER);
         setPadding(new Insets(6, 0, 6, 0));
         setStyle("-fx-background-color: " + Tokens.hex(Tokens.DRAWER_BG) + ";"
@@ -104,15 +113,15 @@ public final class LayerSliderDrawer extends VBox {
             onStatus.accept(heightDescription());
         });
 
-        // Ticks fill the height beside the slider, spread evenly, counting UP from the bottom —
+        // Ticks fill the height beside the slider, spread evenly, counting UP from the bottom,
         // hence the reversed order and the space-between spacing.
         ticks.setAlignment(Pos.TOP_RIGHT);
         ticks.setFillWidth(true);
         ticks.setMaxHeight(Double.MAX_VALUE);
 
-        // The metre labels sit ON TOP of the dot column rather than beside it, so the two share
+        // The meter labels sit ON TOP of the dot column rather than beside it, so the two share
         // one cell and one height. Mouse-transparent so the overlay cannot swallow a click meant
-        // for the slider — the original marks it pointer-events:none for the same reason.
+        // for the slider; the original marks it pointer-events:none for the same reason.
         meterLabels.setMouseTransparent(true);
         StackPane tickColumn = new StackPane(ticks, meterLabels);
         tickColumn.setAlignment(Pos.TOP_RIGHT);
@@ -145,7 +154,7 @@ public final class LayerSliderDrawer extends VBox {
     }
 
     /**
-     * Where the slider is, said twice — once in the big unit and once in the small one.
+     * Where the slider is, said twice, once in the big unit and once in the small one.
      *
      * <p>Both, because the slider moves in half-foot steps while item heights are in inches:
      * "Layer: 3ft" does not obviously mean "hide anything whose base is at or above 36 in",
@@ -189,17 +198,17 @@ public final class LayerSliderDrawer extends VBox {
         //
         // The labels keep their natural height and the gaps between them stretch, so the first
         // and last sit flush against the top and bottom of the drawer and the rest are evenly
-        // spread — which is what lines each label up with its position on the slider beside it.
-        // (Stretching the labels themselves instead would centre each one in a band and push
+        // spread, which is what lines each label up with its position on the slider beside it.
+        // (Stretching the labels themselves instead would center each one in a band and push
         // every label away from the tick it belongs to.)
         for (int step = steps; step >= 0; step--) {
             double feet = step / 2.0;
             boolean wholeFoot = feet % 1 == 0;
 
             // In metric every step becomes a bare dot: the snap grid stays on half-FEET, because
-            // metres do not land on a half-foot boundary, so labelling the steps in metres would
-            // put the numbers in the wrong places. The metre labels are overlaid separately
-            // below, at their true heights. The dot's size and colour still key off wholeFoot —
+            // meters do not land on a half-foot boundary, so labeling the steps in meters would
+            // put the numbers in the wrong places. The meter labels are overlaid separately
+            // below, at their true heights. The dot's size and color still key off wholeFoot;
             // the original's CSS class does the same and ignores the unit entirely.
             boolean labelInFeet = wholeFoot && !state.metricMode;
             Label label = new Label(labelInFeet ? (long) feet + "ft" : "·");
@@ -225,9 +234,9 @@ public final class LayerSliderDrawer extends VBox {
      * The {@code 1m 2m 3m} labels shown over the tick column in metric mode.
      *
      * <p>They are a separate, freely-positioned layer rather than more entries in the tick column
-     * because a metre is not a whole number of feet. The column's dots are evenly spaced on
-     * half-feet — that is the grid the slider actually snaps to, and it does not change with the
-     * unit — so a metre label has to sit at its own true proportional height, between the dots
+     * because a meter is not a whole number of feet. The column's dots are evenly spaced on
+     * half-feet (that is the grid the slider actually snaps to, and it does not change with the
+     * unit), so a meter label has to sit at its own true proportional height, between the dots
      * rather than on one. Adding them to the column would drag the dots out of position.
      *
      * @param maxFeet the height of the room in feet, i.e. what the top of the track represents
@@ -238,15 +247,15 @@ public final class LayerSliderDrawer extends VBox {
             return;
         }
 
-        int maxMetres = (int) Math.floor(Units.ftToM(maxFeet));
-        for (int metre = 0; metre <= maxMetres; metre++) {
-            Label label = new Label(metre + "m");
+        int maxMeters = (int) Math.floor(Units.ftToM(maxFeet));
+        for (int meter = 0; meter <= maxMeters; meter++) {
+            Label label = new Label(meter + "m");
             label.setFont(Font.font(Tokens.FONT_FAMILY, Tokens.FONT_TICK));
             label.setTextFill(Tokens.METER_TICK_TEXT);
             label.setPadding(new Insets(0, 2, 0, 0));
             label.setAlignment(Pos.CENTER_RIGHT);
-            // How far up the column this metre falls, as a fraction. Read back in layoutChildren.
-            label.setUserData(Units.mToFt(metre) / maxFeet);
+            // How far up the column this meter falls, as a fraction. Read back in layoutChildren.
+            label.setUserData(Units.mToFt(meter) / maxFeet);
             meterLabels.getChildren().add(label);
         }
         meterLabels.requestLayout();

@@ -14,12 +14,10 @@ import org.junit.jupiter.api.Test;
  *
  * <p>{@link EngineDifferentialTest} already proves this code matches the original over 250
  * scenarios. These tests exist for a different reason: to say <em>why</em> each rule is there,
- * in a form someone can read. A failure here names the broken behaviour instead of printing a
+ * in a form someone can read. A failure here names the broken behavior instead of printing a
  * scenario index.
  */
 class CollisionTest {
-
-    private static final double PX_PER_FOOT = 96;
 
     @Test
     @DisplayName("an item is kept inside the room even with collision off")
@@ -77,7 +75,7 @@ class CollisionTest {
         state.items.add(mover);
         state.items.add(box("b", 2, 12, 12, 1000, 0));
 
-        // One enormous jump — far past the obstacle. The result must be flush against it:
+        // One enormous jump, far past the obstacle. The result must be flush against it:
         // 1000 - 96 = 904. This is the property a step-by-step search would miss, and
         // getting it wrong produced inconsistent gaps between boxes in the original.
         Collision.Point far = Collision.clampItem(state, mover, 5000, 0);
@@ -117,7 +115,7 @@ class CollisionTest {
         state.items.add(a);
         state.items.add(b);
 
-        // The drag is honoured as if there were no obstacles. Trying to resolve the existing
+        // The drag is honored as if there were no obstacles. Trying to resolve the existing
         // overlap would fling the box somewhere the user never asked for.
         Collision.Point result = Collision.clampItem(state, b, 300, 300);
         assertEquals(300, result.x());
@@ -231,9 +229,5 @@ class CollisionTest {
         item.customId = "";
         item.color = "hsl(0,55%,42%)";
         return item;
-    }
-
-    static double pxPerFoot() {
-        return PX_PER_FOOT;
     }
 }

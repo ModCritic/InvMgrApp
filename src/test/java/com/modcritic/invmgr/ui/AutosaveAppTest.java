@@ -27,7 +27,7 @@ import org.testfx.util.WaitForAsyncUtils;
  *
  * <p>{@code AutosaveTest} and {@code AutosavePolicyTest} cover the file and the timing on their
  * own. This file exists because those two passing proves nothing about whether the app is wired
- * to them — which is precisely how M3.5 shipped a fix that could never have worked in the real
+ * to them, which is precisely how M3.5 shipped a fix that could never have worked in the real
  * app while its tests stayed green. So every test here launches a real {@link App} through its
  * real {@code start} method and lets it find, or fail to find, a real autosave on disk.
  *
@@ -56,7 +56,7 @@ class AutosaveAppTest extends ApplicationTest {
             started.useAutosaveDirectory(dataDir);
             Stage stage = new Stage();
             started.start(stage);
-            // Undo the maximise, so a test machine's screen size cannot matter here.
+            // Undo the maximize, so a test machine's screen size cannot matter here.
             stage.setMaximized(false);
             stage.setWidth(1280);
             stage.setHeight(800);
@@ -134,7 +134,7 @@ class AutosaveAppTest extends ApplicationTest {
         App app = launchApp();
 
         assertTrue(app.state().items.isEmpty(), "a damaged file somehow produced a room");
-        // The app is open and usable, which is the point — a broken autosave must never be the
+        // The app is open and usable, which is the point: a broken autosave must never be the
         // reason someone cannot start the program at all.
         assertNotNull(app.canvas());
         // And the damaged file was copied aside before this session could overwrite it.
@@ -195,8 +195,8 @@ class AutosaveAppTest extends ApplicationTest {
 
     @Test
     void loadingAFileMakesThatTheAutosavedRoom() throws IOException {
-        // Autosave mirrors whatever is on screen, so anything that replaces the room — a Load,
-        // a Set Room, an undo — flows through without needing to know autosave exists.
+        // Autosave mirrors whatever is on screen, so anything that replaces the room (a Load,
+        // a Set Room, an undo) flows through without needing to know autosave exists.
         App app = launchApp();
 
         onFxThread(() -> {

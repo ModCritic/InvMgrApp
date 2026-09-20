@@ -190,7 +190,7 @@ class UndoHistoryTest {
         assertEquals(UndoHistory.MAX_ENTRIES, history.size());
         assertEquals(500, UndoHistory.MAX_ENTRIES, "OD-6: the user chose 500");
 
-        // The newest entry must still be there — the cap discards from the old end.
+        // The newest entry must still be there; the cap discards from the old end.
         history.undo(state);
         assertEquals(599, item.x_px, "the most recent action must be the first one undone");
 

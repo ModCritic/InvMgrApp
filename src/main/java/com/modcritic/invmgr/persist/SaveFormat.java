@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  *
  * <p><b>The contract this class exists to keep:</b> the Java app must open every file the
  * HTML app has ever written, and must write files the HTML app can still open. That is why
- * this code looks unusually literal — every range, default and fallback below is copied from
+ * this code looks unusually literal; every range, default and fallback below is copied from
  * the original's {@code loadState}, and several of them are surprising.
  *
  * <p><b>The loader never throws and never rejects a file for being ugly.</b> A value that is
@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * user's room.
  *
  * <p><b>Out-of-range numbers are replaced, not pinned.</b> A width of 99999 inches does not
- * become the 1000-inch maximum — it becomes the 12-inch default. That reads like a bug and
+ * become the 1000-inch maximum; it becomes the 12-inch default. That reads like a bug and
  * is not: it is what the original does, and matching it is the whole point.
  */
 public final class SaveFormat {
@@ -35,12 +35,12 @@ public final class SaveFormat {
     /**
      * The two accepted item ID shapes: the current {@code item-id-<uuid>} and the legacy
      * {@code i<digits>_<digits>} from older files. An item whose ID matches neither is
-     * <b>dropped silently</b>, which is why this pattern must not be tightened — a
+     * <b>dropped silently</b>, which is why this pattern must not be tightened; a
      * stricter rule here would look like data loss to the user.
      */
     private static final Pattern SAFE_ID = Pattern.compile("^(i\\d+_\\d+|item-id-[0-9a-f-]{36})$");
 
-    /** The only colour shape the format accepts. Note: no spaces after the commas. */
+    /** The only color shape the format accepts. Note: no spaces after the commas. */
     private static final Pattern SAFE_COLOR = Pattern.compile("^hsl\\(\\d+,\\d+%,\\d+%\\)$");
 
     private static final Random RANDOM = new Random();
@@ -51,9 +51,9 @@ public final class SaveFormat {
     /**
      * The outcome of a load: either a state, or a message to show the user.
      *
-     * <p>Modelled as a value rather than an exception because the original app treats a bad
+     * <p>Modeled as a value rather than an exception because the original app treats a bad
      * file as a status-bar message, not a crash, and because there are exactly two refusal
-     * cases — an unparseable or non-object file, and one with more than 500 items.
+     * cases: an unparseable or non-object file, and one with more than 500 items.
      */
     public static final class LoadResult {
         private final AppState state;
@@ -82,14 +82,14 @@ public final class SaveFormat {
         }
     }
 
-    /** A fresh random colour, matching the original's {@code randColor()}. */
+    /** A fresh random color, matching the original's {@code randColor()}. */
     public static String randomColor() {
         return "hsl(" + RANDOM.nextInt(360) + ",55%,42%)";
     }
 
     // ------------------------------------------------------------------- load
 
-    /** Loads with real random colours for items whose colour is missing or malformed. */
+    /** Loads with real random colors for items whose color is missing or malformed. */
     public static LoadResult load(String jsonText) {
         return load(jsonText, SaveFormat::randomColor);
     }
@@ -98,8 +98,8 @@ public final class SaveFormat {
      * Loads a save file.
      *
      * @param jsonText the file's contents
-     * @param colorSupplier what to use when an item's colour is absent or malformed. Exists
-     *     so tests can supply a fixed colour — the real behaviour is a random hue, which
+     * @param colorSupplier what to use when an item's color is absent or malformed. Exists
+     *     so tests can supply a fixed color; the real behavior is a random hue, which
      *     nothing could assert against.
      * @return a {@link LoadResult}; this method does not throw for bad input
      */
@@ -140,7 +140,7 @@ public final class SaveFormat {
         Object rawItems = Json.get(state, "items");
         List<Object> itemList = rawItems instanceof List ? castList(rawItems) : List.of();
         if (itemList.size() > AppState.MAX_ITEMS) {
-            // Refused wholesale rather than truncated — losing half a room silently would
+            // Refused wholesale rather than truncated; losing half a room silently would
             // be worse than refusing to open it.
             return new LoadResult(null,
                     "Load error: too many items (max " + AppState.MAX_ITEMS + ").");
@@ -163,7 +163,7 @@ public final class SaveFormat {
             // many earlier items were dropped. Read them before adding this one.
             item.serial = safeNum(Json.get(itemMap, "serial"), 1, AppState.MAX_COUNTER,
                     items.size() + 1);
-            // dragOrder falls back to the item's RAW serial — not the validated one above —
+            // dragOrder falls back to the item's RAW serial (not the validated one above)
             // so that files predating the dragOrder field still stack in a sane order.
             // If that is unusable too, the default is the position, with no +1.
             Object rawDragOrder = Json.get(itemMap, "dragOrder");
@@ -299,7 +299,7 @@ public final class SaveFormat {
      *
      * <p>Item keys are written in the order {@link Item} declares them, which is the order
      * the original uses for items the user just created. Note that the original writes a
-     * <em>different</em> key order for items it loaded from a file — an inconsistency in the
+     * <em>different</em> key order for items it loaded from a file: an inconsistency in the
      * original, not here. Since the HTML app reads keys by name, order affects only whether
      * files compare byte-identical, never whether they load.
      */

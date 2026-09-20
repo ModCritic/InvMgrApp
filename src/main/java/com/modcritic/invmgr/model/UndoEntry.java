@@ -5,20 +5,20 @@ import java.util.List;
 /**
  * One undoable action, remembering enough to put things back exactly as they were.
  *
- * <p>There are six kinds, and each stores something different — undoing a move needs the old
+ * <p>There are six kinds, and each stores something different; undoing a move needs the old
  * position, while undoing a deletion needs the whole item back. Written as a <b>sealed</b>
  * interface, which means this file lists every kind that can ever exist: the compiler then
  * refuses to build any code that handles some of them and forgets the rest. Six types with six
  * different shapes is exactly the situation where that matters.
  *
- * <p>Each kind is a {@code record} — a short way of writing a class whose values never change
+ * <p>Each kind is a {@code record}: a short way of writing a class whose values never change
  * after it is created. An undo entry describes something that already happened, so nothing about
  * it should ever be edited afterwards.
  *
  * <p><b>Why every entry carries a snapshot of every item's height.</b> Moving one box can change
  * the height of everything resting on it, and everything resting on those. A snapshot of just the
  * moved item would restore its position and leave the pile around it wrong. So the heights of all
- * items are captured, and undo <em>restores</em> them rather than recalculating — recalculating
+ * items are captured, and undo <em>restores</em> them rather than recalculating; recalculating
  * would only reproduce today's answer, not the arrangement that actually existed.
  */
 public sealed interface UndoEntry {
@@ -41,7 +41,7 @@ public sealed interface UndoEntry {
     /**
      * An item was deleted. Undoing puts it back.
      *
-     * <p>Holds a <b>copy</b> of the item, not the item itself — the original is gone from the
+     * <p>Holds a <b>copy</b> of the item, not the item itself; the original is gone from the
      * room, and a copy cannot be changed underneath the entry by anything that happens later.
      */
     record Deleted(Item item, List<HeightSnapshot> heights) implements UndoEntry {

@@ -29,7 +29,7 @@ import java.util.regex.Pattern;
  * <p>The file is written the only way a file can be replaced without a window where a crash
  * leaves rubble: the new text goes to a temporary file <em>in the same directory</em>, is forced
  * to the physical disk, and is then renamed over the target. A rename within one filesystem is
- * atomic — a reader sees either the whole old file or the whole new one, never a mixture. This
+ * atomic; a reader sees either the whole old file or the whole new one, never a mixture. This
  * is why the temporary file cannot go in the system temp directory: a rename across filesystems
  * is a copy, and a copy has exactly the half-written window being avoided.
  *
@@ -132,7 +132,7 @@ public final class Autosave {
      * Reads back the last autosave.
      *
      * <p>Never throws. A missing file is ordinary, and a damaged one must not stop the app
-     * opening — the user would be left with no way in at all. A damaged file is also left
+     * opening; the user would be left with no way in at all. A damaged file is also left
      * exactly where it is rather than deleted, because {@link #takeSessionBackup} has already
      * copied it aside by the time anything overwrites it.
      */
@@ -171,7 +171,7 @@ public final class Autosave {
                     StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
                 channel.write(java.nio.ByteBuffer.wrap(bytes));
                 // Without this the bytes may still be in the operating system's cache when the
-                // rename lands, and a power cut then leaves a correctly-named empty file — the
+                // rename lands, and a power cut then leaves a correctly-named empty file: the
                 // exact corruption the rename was supposed to rule out.
                 channel.force(true);
             }
@@ -218,7 +218,7 @@ public final class Autosave {
         return target;
     }
 
-    /** A name not already taken — two sessions can start inside the same second. */
+    /** A name not already taken: two sessions can start inside the same second. */
     private Path freeBackupPath(String stamp) {
         Path candidate = backupDir.resolve("autosave-" + stamp + ".json");
         for (int n = 2; Files.exists(candidate); n++) {
