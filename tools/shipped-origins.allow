@@ -47,13 +47,19 @@ com.google.common       | Apache-2.0 | Guava's listenablefuture stub only, pulle
 libsubstrate.so         | mixed, all cleared | Verified per-component in docs/LICENSE-AUDIT.md section 4.
 
 # ---------------------------------------------------------------------------
-# STILL NOT LISTED, ON PURPOSE:
+# FreeType. Held off this list from the M6.5a audit until 2026-09-20, because nobody could
+# say WHICH FreeType it was: the library is stripped and there is no license file beside
+# it. The answer was inside the binary all along. It keeps its build paths:
 #
-#   libfreetype.so   FreeType is dual licensed, FTL or GPLv2, and the choice is the
-#                    distributor's. The copy shipped here is stripped, no license file
-#                    exists anywhere on this machine, and the JavaFX SDK's own
-#                    ADDITIONAL_LICENSE_INFO says only that FreeType "may" be included
-#                    and is licensed "under their original licenses". Under FTL it is
-#                    permissive with an attribution requirement and would be fine.
-#                    Nobody has confirmed that from a file, so it stays off the list and
-#                    the check stays red until someone does.
+#     /Users/JosePereda/Downloads/freetype-2.14.1/src/base/ftbase.c
+#
+# so it is upstream FreeType 2.14.1, built from a release tarball by a Gluon developer.
+# The copy in the APK is byte identical to the one in the JavaFX static SDK
+# (md5 dd85693664cc336efe545c6ffe7db63c), so this build does not touch it.
+#
+# FreeType is dual licensed, FTL or GPLv2, and the choice is the redistributor's. GPLv2
+# has no classpath exception and would pull a 0BSD app under it, so this project elects
+# the FTL. Its only condition on a binary redistributor is one sentence of credit in the
+# distribution documentation, which is what NOTICE.md carries. Read from FTL.TXT clause 2
+# on this machine, not from a summary.
+libfreetype.so          | FTL (elected)               | Upstream FreeType 2.14.1, prebuilt in the JavaFX static SDK. Credit is in NOTICE.md.
