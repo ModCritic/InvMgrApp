@@ -17,10 +17,10 @@ import java.util.Map;
  *       license position simple and the Android build small. A JSON library would be the
  *       second, for a file format that is nine keys deep.
  *   <li><b>The Android build compiles to a native image</b>, which strips code it cannot
- *       see being called. The popular JSON libraries work by reflection, inspecting
- *       classes at runtime, which is exactly what a native image breaks, and two of the
- *       six failures in the OD-1 spike were reflection problems that presented as a black
- *       screen with no error. Plain code has none of that risk.
+ *       see being called. The popular JSON libraries work by reflection, inspecting classes at
+ *       runtime, which is exactly what a native image breaks, and two of the six failures in the
+ *       early research prototype that first ran JavaFX 3D on Android were reflection problems that
+ *       presented as a black screen with no error. Plain code has none of that risk.
  *   <li><b>We need <em>JavaScript's</em> conversion rules, not Java's</b>, to stay
  *       compatible: {@code Number(null)} is 0, {@code Number("")} is 0, and the number
  *       {@code 12} must be written as {@code 12}, not {@code 12.0}. A general-purpose
@@ -48,12 +48,25 @@ public final class Json {
         }
     }
 
+    /**
+     * How many objects and arrays deep a document may go before it is refused.
+     *
+     * <p><b>This is a guard, not a format rule.</b> The reader calls itself once per level, so
+     * every level costs the thread some stack, and a file of nothing but opening brackets runs
+     * out of it: 5,000 levels, a 10 KB file, overflowed the desktop's stack on 2026-10-06. That
+     * arrives as a {@code StackOverflowError}, which no caller catches, so the load died without
+     * a word. A save file is three levels deep (the file, its item list, one item), and the
+     * deepest file the tests read is four, so 32 refuses nothing real.
+     */
+    public static final int MAX_DEPTH = 32;
+
     // ---------------------------------------------------------------- reading
 
     /**
      * Parses JSON text into nested {@code Map}s, {@code List}s and leaves.
      *
-     * @throws JsonException if the text is not valid JSON, including trailing junk
+     * @throws JsonException if the text is not valid JSON, including trailing junk, or is nested
+     *     deeper than {@link #MAX_DEPTH}
      */
     public static Object parse(String text) {
         Parser parser = new Parser(text);
@@ -69,9 +82,20 @@ public final class Json {
     private static final class Parser {
         private final String src;
         private int pos;
+        /** How many objects and arrays enclose the current position; see {@link #MAX_DEPTH}. */
+        private int depth;
 
         Parser(String src) {
             this.src = src;
+        }
+
+        /** Called as an object or array opens, before anything inside it is read. */
+        private void descend() {
+            depth++;
+            if (depth > MAX_DEPTH) {
+                throw new JsonException("nested more than " + MAX_DEPTH
+                        + " levels deep at position " + pos);
+            }
         }
 
         boolean atEnd() {
@@ -118,9 +142,11 @@ public final class Json {
         private Map<String, Object> readObject() {
             Map<String, Object> map = new LinkedHashMap<>();
             pos++; // consume '{'
+            descend();
             skipWhitespace();
             if (!atEnd() && src.charAt(pos) == '}') {
                 pos++;
+                depth--;
                 return map;
             }
             while (true) {
@@ -147,6 +173,7 @@ public final class Json {
                     pos++;
                 } else if (c == '}') {
                     pos++;
+                    depth--;
                     return map;
                 } else {
                     throw new JsonException("expected ',' or '}' at position " + pos);
@@ -157,9 +184,11 @@ public final class Json {
         private List<Object> readArray() {
             List<Object> list = new ArrayList<>();
             pos++; // consume '['
+            descend();
             skipWhitespace();
             if (!atEnd() && src.charAt(pos) == ']') {
                 pos++;
+                depth--;
                 return list;
             }
             while (true) {
@@ -174,6 +203,7 @@ public final class Json {
                     pos++;
                 } else if (c == ']') {
                     pos++;
+                    depth--;
                     return list;
                 } else {
                     throw new JsonException("expected ',' or ']' at position " + pos);

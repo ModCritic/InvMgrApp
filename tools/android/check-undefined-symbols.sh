@@ -11,7 +11,9 @@
 #     java.lang.UnsatisfiedLinkError: dlopen failed: cannot locate symbol "JNI_OnLoad_awt"
 #         at com.modcritic.invmgr.android.InvMgrActivity.<clinit>
 #
-# That is exactly what M6.5b's first APK did. The host layer had been checked with
+# That is exactly what the first APK built after this project replaced Gluon's Android host
+# code with its own did. The host layer (the C in native/ that starts the Java VM on the phone
+# and hands JavaFX the screen and touches) had been checked with
 # `nm -D -u libInvMgr.so | grep '^Java_'`, which is a subset of what has to resolve: JNI's
 # static linking convention also produces JNI_OnLoad_<library> entry points, and two of
 # those were missing. Everything else about that build was correct, and none of the static
@@ -89,8 +91,9 @@ nm -D -u "$LIB" 2>/dev/null | awk '{print $NF}' | sed 's/@.*//' | sort -u > "$tm
 #
 # The NDK stubs describe API 21, which is this app's minSdk, while the phone runs something
 # far newer and its libc exports more than the stubs admit to. These three are referenced by
-# the M6.4i library as well, and that build loaded and ran on the user's device, which is the
-# evidence for letting them through. Check any addition the same way before adding it:
+# the library of an earlier build, made with Gluon's host code, as well, and that build loaded
+# and ran on the user's device, which is the evidence for letting them through. Check any
+# addition the same way before adding it:
 #
 #     nm -D -u <a known-good libsubstrate.so> | grep <symbol>
 cat > "$tmp/known.txt" <<'KNOWN'

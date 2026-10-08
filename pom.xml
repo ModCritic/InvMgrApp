@@ -7,9 +7,9 @@
     <dependencies> outside libraries this app uses
     <build>        the tools that do the actual work, each one a <plugin>
 
-  OD-2 (CLAUDE.md) locked this in as Maven, and Java 17 everywhere. Neither is a
-  preference: Gluon's GraalVM for Android native images is a JDK 17 build, so
-  Java 21 code would compile fine on the desktop and then fail on the phone.
+  Maven, and Java 17 everywhere, are fixed choices and not preferences: Gluon's
+  GraalVM for Android native images is a JDK 17 build, so Java 21 code would
+  compile fine on the desktop and then fail on the phone.
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -18,15 +18,20 @@
 
     <groupId>com.modcritic</groupId>
     <artifactId>invmgr</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <!-- THE app's version, and the only place it is written. The About page reads it through
+         com/modcritic/invmgr/app.properties, filtered below, and Substrate writes it into the
+         Android manifest as versionName through <releaseConfiguration>, so About and the Play
+         Store cannot disagree. 1.0.0 since 2026-09-24, the user's choice. -->
+    <version>1.0.0</version>
     <name>InvMgr</name>
     <description>Top-down room inventory manager with a walkable 3D view</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <!-- 17, not 21. See OD-2. The container's JDK is 21 and that is fine;
-             `release 17` makes it emit Java 17 class files regardless. -->
+        <!-- 17, not 21 (see the note at the top of this file). The container's JDK is
+             21 and that is fine; `release 17` makes it emit Java 17 class files
+             regardless. -->
         <maven.compiler.release>17</maven.compiler.release>
 
         <!-- JavaFX 21 is correct *with* release 17: JavaFX 21's own class files are
@@ -41,16 +46,16 @@
         <javafx.plugin.version>0.0.8</javafx.plugin.version>
         <gluonfx.plugin.version>1.0.29</gluonfx.plugin.version>
 
-        <!-- Build-time only, and only under the desktop-jar profile. -->
         <!-- Coverage, and ONLY under -Pcoverage. See the profile at the bottom of this file
              for why it is not in the main build. -->
         <jacoco.plugin.version>0.8.15</jacoco.plugin.version>
 
+        <!-- Build-time only, and only under the desktop-jar profile. -->
         <shade.plugin.version>3.6.0</shade.plugin.version>
 
         <!-- Which Mac the desktop-jar profile builds for. See the profile for why this
              is the one platform that cannot be covered twice in the same jar.
-               mac-aarch64  Apple Silicon, M1 and later (the default)
+               mac-aarch64  Apple Silicon, any M-series chip (the default)
                mac          Intel Macs: build with -Dmacos.classifier=mac -->
         <macos.classifier>mac-aarch64</macos.classifier>
 
@@ -59,9 +64,9 @@
     </properties>
 
     <dependencies>
-        <!-- The only shipped dependency, and it stays that way. OD-1/OD-3 forbid
-             Gluon Attach (GPLv3, no classpath exception) and Gluon Mobile (validates
-             its license over the network, which "no network access, ever" rules out).
+        <!-- The only shipped dependency, and it stays that way. Gluon Attach (GPLv3,
+             no classpath exception) and Gluon Mobile (validates its license over the
+             network, which "no network access, ever" rules out) are both off limits.
              The APK proven working on real hardware used OpenJFX alone. -->
         <dependency>
             <groupId>org.openjfx</groupId>
@@ -73,8 +78,9 @@
              Everything here is <scope>test</scope>, which means Maven puts it on
              the classpath when compiling and running tests and leaves it out of the
              packaged app entirely. That exclusion is what makes TestFX's copyleft
-             license harmless here; see CLAUDE.md §8's test-only carve-out. Do not
-             move any of these to compile scope. -->
+             license harmless here: this project accepts copyleft for test-only
+             dependencies and never for anything that ships. Do not move any of
+             these to compile scope. -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -106,8 +112,8 @@
     <build>
         <!-- What gets packaged into the jar alongside the compiled code.
 
-             The four icons are the user's own artwork and live in assets/icons/,
-             which is where they have always been and where CLAUDE.md §7 points.
+             The icons are the user's own artwork and live in assets/icons/,
+             which is where they have always been.
              They are mapped into the jar from there rather than copied into
              src/main/resources, so there is exactly ONE copy of each file and no
              chance of the two drifting apart. Edit the .svg, rebuild, and the
@@ -120,6 +126,22 @@
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>com/modcritic/invmgr/app.properties</exclude>
+                </excludes>
+            </resource>
+            <!-- The one file that is FILTERED: Maven replaces ${project.version} in it with the
+                 version above as it copies it, which is how the app learns its own version.
+
+                 ⚠ ONLY this file. Filtering the whole folder would run the same replacement over
+                 the bundled fonts, which are binary, and corrupt them. So it is excluded from
+                 the plain entry above and included, alone, here. -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>com/modcritic/invmgr/app.properties</include>
+                </includes>
             </resource>
             <resource>
                 <directory>assets/icons</directory>
@@ -153,8 +175,7 @@
 
                          Measured here, not assumed. Before this block, `mvn -B test`
                          printed `scene3d false` on all 13 lines of App's own startup
-                         report; after it, `scene3d true`. CLAUDE.md §5.7 item 4 called
-                         this out as M5's job and this is it.
+                         report; after it, `scene3d true`.
 
                          Room3dAppearanceTest.theGraphicsPipelineCanDraw3d asserts SCENE3D
                          is true and names both flags in its failure message, so if this
@@ -163,9 +184,8 @@
                          assumption on purpose: an assumption would skip, and a skipped
                          test looks like a passing one at a glance.
 
-                         (That test was called Scene3dAvailableTest until M6.7a folded it
-                         into the 3D appearance suite. M6.7c found this comment still
-                         naming the old class.) -->
+                         (That test was called Scene3dAvailableTest until it was folded
+                         into the 3D appearance suite.) -->
                     <systemPropertyVariables>
                         <prism.forceGPU>true</prism.forceGPU>
                         <prism.order>es2</prism.order>
@@ -212,11 +232,11 @@
                         <!-- Prints which rendering pipeline Prism actually picked.
                              This is the single most important 3D diagnostic we have:
                              the software pipeline cannot draw 3D at all and fails
-                             *silently*: a black view, no error. See OD-1 item 4. -->
+                             *silently*: a black view, no error. -->
                         <option>-Dprism.verbose=true</option>
 
                         <!-- These two are REQUIRED for 3D in this container, and
-                             measured, not guessed. Verified at M0 (2026-07-26):
+                             measured, not guessed. Verified 2026-07-26:
 
                                without them → "Failed Graphics Hardware Qualifier
                                                check. System GPU doesn't meet the es2
@@ -243,29 +263,30 @@
                 </configuration>
             </plugin>
 
-            <!-- Android/native packaging. Not used until M6, but every setting below
-                 was paid for with a failed build during the OD-1 spike, so it lives
-                 here from the start rather than being rediscovered later.
-                 SPIKE-OD-1.md §12.3 has the full post-mortem. -->
+            <!-- Android/native packaging. Every setting below was paid for with a
+                 failed build during the early research into whether JavaFX 3D could
+                 run on Android, so it lives here rather than being rediscovered. -->
             <plugin>
                 <groupId>com.gluonhq</groupId>
                 <artifactId>gluonfx-maven-plugin</artifactId>
                 <version>${gluonfx.plugin.version}</version>
 
                 <!-- ⚠ REQUIRED, AND IT EXISTS IN NO REPOSITORY. The Android build does
-                     not work without it; see CLAUDE.md §10.2 before the first Android
-                     build in a new session.
+                     not work without it; tools/substrate/README.md says how to make it
+                     before the first Android build on a machine.
 
                      Overrides the Substrate the plugin would otherwise pull with our own
                      local build, whose only change is that it contributes NO C of its own
-                     to the linked library. That is what lets our host layer replace
-                     Gluon's, which is what M6.5b was for. See
-                     docs/PLAN-M6.5B-HOST-LAYER.md §3.1.
+                     to the linked library. That is what lets our host layer (the C in
+                     native/ that starts the Java VM on the phone and hands JavaFX the
+                     screen and touches) replace Gluon's, which is what this project did
+                     when it swapped out Gluon's Android host code for its own.
                      Built from ~/ClaudeWorkspace/substrate-fork, published to ~/.m2.
 
-                     This was labeled a Phase 0 experiment when it was written on
-                     2026-09-01. M6.5b and M6.5c both shipped on it and it has been the
-                     only way to build the APK ever since, so M6.7c relabeled it. -->
+                     This was first labeled an experiment, when it was written on
+                     2026-09-01. The host layer and the bridge (the JNI calls between the
+                     app and Android's own Java) both shipped on it and it has been the
+                     only way to build the APK ever since, so it is no longer one. -->
                 <dependencies>
                     <dependency>
                         <groupId>com.gluonhq</groupId>
@@ -277,6 +298,46 @@
                 <configuration>
                     <target>${gluonfx.target}</target>
                     <mainClass>${mainClass}</mainClass>
+
+                    <!-- The Android application ID: the name Google Play files this
+                         app under, and the name the phone stores its data under at
+                         /data/user/0/<id>.
+
+                         ⚠ SET EXPLICITLY, AND IT MUST NEVER CHANGE AGAIN. Play
+                         identifies an app by this string. Changing it after the first
+                         upload does not rename the app, it creates a different one,
+                         with a different listing and no existing users; Google's own
+                         wording is that package names cannot be deleted or reused.
+
+                         Without this line gluonfx-maven-plugin falls back to
+                         groupId + artifactId, which gave com.modcritic.invmgr on every
+                         build up to 2026-09-22. Read out of NativeBaseMojo's own
+                         bytecode rather than guessed. The user registered
+                         asterkazika.com for this, so the reverse-DNS name is theirs.
+
+                         This is NOT the Java package, which stays com.modcritic.invmgr.
+                         AndroidManifest.xml names the activity by its fully qualified
+                         class name, which is absolute and does not follow the app ID.
+                         Anything that addresses the app on a phone (adb, run-as,
+                         am start) uses the ID below, and tools/android/ was updated
+                         with it. -->
+                    <appIdentifier>com.asterkazika.invmgr</appIdentifier>
+
+                    <!-- The Android versionName is the project's own version. Substrate
+                         rewrites src/android/AndroidManifest.xml in place with it
+                         (AndroidTargetConfiguration, read in the fork's source 2026-09-25), and
+                         without this it writes its default, "1.0". Nothing else is set here, so
+                         the build stays a debug build unless the release profile below adds
+                         the keystore.
+
+                         versionCode: Play's own counter, which must go up by at least one
+                         with every upload, whatever versionName says. Substrate writes it into
+                         src/android/AndroidManifest.xml in place, the same way as versionName.
+                         1 is the first upload. -->
+                    <releaseConfiguration>
+                        <versionName>${project.version}</versionName>
+                        <versionCode>1</versionCode>
+                    </releaseConfiguration>
 
                     <!-- JavaFX builds the App object reflectively, via
                          clazz.getConstructor().newInstance(). A native image strips
@@ -301,7 +362,7 @@
 
                          Gluon ships a curated list of JavaFX classes and it has holes:
                          Polygon is on it, Polyline is not, and they are siblings.
-                         M6.1's first APK reached NumberField's stepper arrow and threw
+                         The first APK reached NumberField's stepper arrow and threw
                          before drawing a single pixel: a black screen on the phone,
                          green everywhere else.
 
@@ -322,17 +383,18 @@
                         <list>javafx.animation.FadeTransition</list>
                         <list>javafx.animation.Interpolator</list>
                         <list>javafx.animation.PauseTransition</list>
-                        <!-- M6.3. Five classes below are used FULLY QUALIFIED in the source
+                        <!-- Five classes below are used FULLY QUALIFIED in the source
                              rather than imported, so check-reflection-list.sh (which read
                              import lines and nothing else) could not see them, and had been
-                             vouching for a list five names short since M5.2. The script now
-                             reads inline uses too. None of the five is a Node, so none has
-                             the ...Helper whose Class.forName made Polyline a black screen at
-                             M6.1, and the phone has demonstrably run without them; they are
-                             registered because this list's rule is "everything we use", and
-                             because the next name found this way may not be so harmless.
-                             They are SequentialTransition, ObservableValue, ActionEvent,
-                             CornerRadii and Robot. -->
+                             vouching for a list five names short since the 3D view's
+                             transitions were added on 2026-08-05. The script now reads
+                             inline uses too. None of the five is a Node, so none has the
+                             ...Helper whose Class.forName made Polyline a black screen on
+                             the first APK, and the phone has demonstrably run without
+                             them; they are registered because this list's rule is
+                             "everything we use", and because the next name found this way
+                             may not be so harmless. They are SequentialTransition,
+                             ObservableValue, ActionEvent, CornerRadii and Robot. -->
                         <list>javafx.animation.SequentialTransition</list>
                         <list>javafx.animation.Timeline</list>
                         <list>javafx.animation.TranslateTransition</list>
@@ -347,18 +409,31 @@
                         <list>javafx.event.EventTarget</list>
                         <list>javafx.geometry.Bounds</list>
                         <list>javafx.geometry.Point2D</list>
+                        <!-- Used by the drag ghost (CacheHint.ROTATE) and by LatencyClock's
+                             zoom and rotate filters, and missed until 2026-09-24, when
+                             check-reflection-list.sh caught them while an APK was being
+                             built. None is a Node, so none has the forceInit that
+                             black-screens, and the phone has run them. Registered under the
+                             list-everything rule all the same. -->
+                        <list>javafx.scene.CacheHint</list>
                         <list>javafx.scene.Cursor</list>
                         <list>javafx.scene.SnapshotParameters</list>
                         <list>javafx.scene.canvas.GraphicsContext</list>
                         <list>javafx.scene.control.Alert</list>
                         <list>javafx.scene.control.ButtonType</list>
-                        <!-- M6.4: Hints names DialogPane directly now, to set a confirmation's
+                        <!-- Hints names DialogPane directly, to set a confirmation's
                              preferred width. A maximum width alone left the box the right size
                              and placed as though it were the size it wanted. -->
                         <list>javafx.scene.control.DialogPane</list>
+                        <!-- ScrollEnds and ScrollHint reach the scroll pane's own bars, to
+                             stop them at their ends and to hide them under our own. Caught
+                             2026-09-26 by check-reflection-list.sh. The phone ran it unregistered
+                             without harm, because the scroll pane's skin had already loaded the
+                             class; registered under the list-everything rule all the same. -->
+                        <list>javafx.scene.control.ScrollBar</list>
                         <list>javafx.scene.control.Tooltip</list>
-                        <!-- M6.4i added SurfaceTexture's blank-texture check, which reads one
-                             pixel back, and the PixelReader entry was not added with it. Caught
+                        <!-- SurfaceTexture's blank-texture check reads one pixel back, and
+                             the PixelReader entry was not added with it. Caught
                              2026-09-09 by check-reflection-list.sh.
 
                              It cannot black-screen the app, and that is worth stating so nobody
@@ -374,11 +449,13 @@
                         <list>javafx.scene.input.KeyCode</list>
                         <list>javafx.scene.input.KeyEvent</list>
                         <list>javafx.scene.input.MouseEvent</list>
+                        <list>javafx.scene.input.RotateEvent</list>
                         <list>javafx.scene.input.ScrollEvent</list>
-                        <!-- M6.2. Gluon registers TouchPoint and not TouchEvent, the same
-                             sibling-shaped hole that cost M6.1 a black screen with Polygon
-                             registered and Polyline not. -->
+                        <!-- Gluon registers TouchPoint and not TouchEvent, the same
+                             sibling-shaped hole that cost the first APK a black screen with
+                             Polygon registered and Polyline not. -->
                         <list>javafx.scene.input.TouchEvent</list>
+                        <list>javafx.scene.input.ZoomEvent</list>
                         <list>javafx.scene.layout.Background</list>
                         <list>javafx.scene.layout.BackgroundFill</list>
                         <list>javafx.scene.layout.CornerRadii</list>
@@ -417,15 +494,14 @@
                          the same reason.
 
                          The four icons arrived after this block was first written and
-                         were missed by it (added at M6.1, before the first APK build).
+                         were missed by it (added before the first APK build).
                          Icons.java reads them with getResourceAsStream and throws its
                          own "icon missing from the app" if one is absent, so the top
                          bar's 3D button and both drawer tabs would have failed on the
                          phone and nowhere else. Note the path is the one they are
                          PACKED to (see <resources> above), not assets/icons/.
 
-                         Inert on the desktop build. Set now so M6 does not have to
-                         rediscover it.
+                         Inert on the desktop build.
 
                          ⚠ THE BACKSLASHES ARE DOUBLED, AND THEY HAVE TO BE.
                          Substrate copies each <list> entry into a generated JSON file
@@ -441,21 +517,24 @@
                          patterns in that same file are written ".*\\.zip$" for exactly
                          this reason.
 
-                         Found at M6.1 on the first real Android build. The two entries
-                         below it (the fonts and the stylesheet) had been wrong since
-                         M0 and could not have been caught before now: nothing outside
+                         Found on the first real Android build. The two entries below it
+                         (the fonts and the stylesheet) had been wrong since the project
+                         began and could not have been caught before then: nothing outside
                          the -Pandroid profile reads this block at all. -->
                     <resourcesList>
                         <!-- The whole fonts folder, not just *.ttf. It also holds
                              OFL.txt, the license those two faces are distributed
-                             under, and §8's rule is that a shipped font travels with
-                             its license. A *.ttf pattern quietly left the license
-                             behind in the APK while keeping it in the desktop jar,
-                             found at M6.1 by reading the built binary rather than by
+                             under, and this project's rule is that a shipped font
+                             travels with its license. A *.ttf pattern quietly left the
+                             license behind in the APK while keeping it in the desktop
+                             jar, found by reading the built binary rather than by
                              trusting the pattern. -->
                         <list>com/modcritic/invmgr/ui/fonts/.*</list>
                         <list>com/modcritic/invmgr/ui/canvas\\.css$</list>
                         <list>com/modcritic/invmgr/ui/icons/.*\\.svg$</list>
+                        <!-- The app's version, read by AppInfo. Missing here, the phone
+                             build would find no file and About would fail to open. -->
+                        <list>com/modcritic/invmgr/app\\.properties$</list>
                     </resourcesList>
 
                     <nativeImageArgs>
@@ -476,8 +555,8 @@
                     </nativeImageArgs>
 
                     <!-- Deliberately NOT set: enableSWRendering. Turning it on would
-                         force Prism's software pipeline and kill the 3D view outright
-                         (OD-1 item 5). -->
+                         force Prism's software pipeline, which cannot draw 3D, and kill
+                         the 3D view outright. -->
                 </configuration>
             </plugin>
         </plugins>
@@ -490,8 +569,8 @@
                    -> target/invmgr-<version>.jar, run with `java -jar`
 
                  A single self-contained jar, for handing the app to someone to
-                 try. It is NOT how the app ships: M6 ships an APK, and this
-                 profile must stay out of that build's way.
+                 try. It is not the Android build, and this profile must stay out
+                 of that build's way.
 
                  WHY A PROFILE AND NOT THE MAIN BUILD. The dependencies below
                  pull in JavaFX's native libraries for *four* platforms, so that
@@ -506,8 +585,7 @@
                  that gets distributed, so it carries no obligation into the
                  app. The JavaFX artifacts are the same OpenJFX project and the
                  same license (GPLv2 + Classpath Exception) already used by the
-                 shipped dependency; only the platform classifier differs. See
-                 CLAUDE.md §8 and the audit table in MANUAL.md.
+                 shipped dependency; only the platform classifier differs.
                  ============================================================ -->
             <id>desktop-jar</id>
 
@@ -662,31 +740,68 @@
         </profile>
 
         <profile>
+            <!-- `tools/android/build-release.sh`, which adds this to -Pandroid. Not by
+                 hand: the script is what asks for the passwords and cleans up after them.
+
+                 The signed build Google Play takes. Given all four of these, Substrate builds
+                 Gradle's Release instead of Debug (AndroidTargetConfiguration's
+                 generateSigningConfiguration, read in the fork's source 2026-09-26). If any is
+                 missing, or the path does not exist or end in .jks or .keystore, it logs one
+                 line and builds Debug anyway, which Play refuses. The script checks the result
+                 for that rather than trusting it.
+
+                 The passwords come from the environment and never appear in this file, which is
+                 published. The keystore path and alias are properties so the script can dry-run
+                 the whole thing against a throwaway key. -->
+            <id>release</id>
+            <properties>
+                <invmgr.keystore>${user.home}/invmgr-release.jks</invmgr.keystore>
+                <invmgr.keyAlias>invmgr</invmgr.keyAlias>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.gluonhq</groupId>
+                        <artifactId>gluonfx-maven-plugin</artifactId>
+                        <configuration>
+                            <releaseConfiguration>
+                                <providedKeyStorePath>${invmgr.keystore}</providedKeyStorePath>
+                                <providedKeyStorePassword>${env.INVMGR_STORE_PASSWORD}</providedKeyStorePassword>
+                                <providedKeyAlias>${invmgr.keyAlias}</providedKeyAlias>
+                                <providedKeyAliasPassword>${env.INVMGR_KEY_PASSWORD}</providedKeyAliasPassword>
+                            </releaseConfiguration>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
             <!-- ============================================================
                  `mvn -Pcoverage test`
                    -> target/site/jacoco/index.html
 
                  Which lines and which BRANCHES the suite actually reached.
-                 Added at M6.7c to answer the one question static analysis
+                 Added 2026-09-19 to answer the one question static analysis
                  cannot: a method nothing calls can be found by reading the
                  compiled classes, but a branch inside a live method that no
                  test ever takes cannot.
 
                  ⚠ WHY A PROFILE AND NOT THE MAIN BUILD. JaCoCo works by
                  instrumenting every class as it loads, which costs time on
-                 every call. M6.7b's whole point is measuring how long the app
-                 takes to put a result on the screen, and LatencyBench runs
-                 through the same `mvn test`. Instrumenting that would quietly
-                 add the agent's overhead to every number in
-                 docs/M6.7B-OPTIMIZATION-SUITE.md and there would be nothing in
-                 the output to say so. Kept behind a profile, an ordinary
-                 `mvn test` and every perf run are untouched.
+                 every call. The performance suite's whole point is measuring how
+                 long the app takes to put a result on the screen, and
+                 LatencyBench runs through the same `mvn test`. Instrumenting that
+                 would quietly add the agent's overhead to every number the
+                 suite writes to perf-runs/, and there would be nothing in the
+                 output to say so. Kept behind a profile, an ordinary `mvn test` and every
+                 perf run are untouched.
 
                  LICENSE. EPL-2.0, and it is a BUILD tool: the agent runs here,
                  attaches to the test JVM, and nothing of it is compiled into
-                 the app or linked into the APK. That is the test-only carve-out
-                 in CLAUDE.md §8, the same standing as TestFX under OD-4. Verify
-                 the usual way rather than trusting this line: the shipped
+                 the app or linked into the APK. That is the test-only exception
+                 to the no-copyleft rule, the same standing as TestFX. Verify the
+                 usual way rather than trusting this line: the shipped
                  artifact is what ./tools/check-shipped-licenses.sh reads.
                  ============================================================ -->
             <id>coverage</id>

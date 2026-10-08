@@ -9,17 +9,17 @@ import java.util.function.DoubleUnaryOperator;
  * of the five things that are moving</b>.
  *
  * <p>That last part is the whole reason this class exists rather than five separate numbers being
- * blended by hand, and {@code SPEC-3D-VIEW.md} §3 is emphatic about it: giving position and
- * orientation the same curve makes the descent look front-loaded and staggered <em>even when the
- * numbers are perfectly in step</em>. The original found that out over several attempts. See
- * {@link Transitions} for which channel gets which curve and why.
+ * blended by hand. Giving position and orientation the same curve makes the descent look
+ * front-loaded and staggered <em>even when the numbers are perfectly in step</em>, and the
+ * original found that out over several attempts. See {@link Transitions} for which channel gets
+ * which curve and why.
  *
  * <p><b>Why this is not the original's {@code playKeys3d}.</b> The original's player takes a list
  * of keyframes at arbitrary points along the timeline and picks the right segment for the moment
  * being drawn. It is called exactly twice in the whole app, and both times with a list of two:
  * a start and an end. Porting the segment machinery would be porting a capability nothing uses,
- * which CLAUDE.md §2 forbids for the same reason the dead {@code zoom} channel was dropped. Two
- * poses and a curve each is what the app actually does. If a future animation ever needs a
+ * which this project does not do, for the same reason the dead {@code zoom} channel was dropped.
+ * Two poses and a curve each is what the app actually does. If a future animation ever needs a
  * waypoint in the middle, this grows a list; until then it does not have one to get wrong.
  *
  * <p>No JavaFX and no clock: {@link #at(double)} is handed the fraction of the way through, so the
@@ -69,11 +69,6 @@ public final class CameraTween {
         return from.copy();
     }
 
-    /** Where the camera is headed. A copy. */
-    public CameraPose to() {
-        return to.copy();
-    }
-
     /** The curve this channel will be moved along. */
     public DoubleUnaryOperator curveFor(Channel channel) {
         return curves.getOrDefault(channel, Easing.IN_OUT_SINE);
@@ -98,10 +93,9 @@ public final class CameraTween {
     }
 
     /**
-     * Writes the pose at {@code progress} straight into an existing camera.
-     *
-     * <p>The render loop calls this sixty times a second, and a new {@link CameraPose} per frame
-     * would be sixty allocations a second for nothing. Same arithmetic as {@link #at(double)}.
+     * Writes the pose at {@code progress} into an existing camera, which is how the render loop
+     * moves the one camera it draws with. Same arithmetic as {@link #at(double)}, because it calls
+     * it, so it still builds one {@link CameraPose} per call.
      */
     public void applyTo(CameraPose camera, double progress) {
         camera.set(at(progress));

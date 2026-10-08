@@ -5,9 +5,9 @@
  * What is left to do here is translate the action codes, work out which point the gesture
  * is about, and pass the lot to JavaFX.
  *
- * ⚠ This file carries every gesture in the app. M6.4 and M6.4a spent ten bugs and a great
- * many builds getting touch to feel right, and none of that is testable anywhere except on
- * a phone. Treat MANUAL.md's M6.4a section as the acceptance list for changes here.
+ * ⚠ This file carries every gesture in the app. Ten touch bugs and a great many builds went
+ * into getting touch to feel right (August 2026), and none of that is testable anywhere
+ * except on a phone. Check any change here on a real phone.
  */
 
 #include "invmgr_host.h"

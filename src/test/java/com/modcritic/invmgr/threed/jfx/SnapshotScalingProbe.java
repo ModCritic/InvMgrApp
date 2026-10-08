@@ -274,7 +274,7 @@ class SnapshotScalingProbe extends ApplicationTest {
         List<Long> viaQuarter = new ArrayList<>();
 
         // Round robin, because this machine drifts more than several of the differences this
-        // milestone has had to resolve.
+        // probe has had to resolve.
         List<Long> quarterRough = new ArrayList<>();
         List<Long> halfRough = new ArrayList<>();
         for (int slice = 0; slice < SLICES; slice++) {

@@ -18,13 +18,14 @@ import java.util.List;
  *       without a window, on a machine with no screen. Every question below (which side of the
  *       screen a box is on, whether the nearer of two wins, whether something behind you can be
  *       picked) is answerable here in milliseconds and headless.</li>
- *   <li><b>It would put picking behind the renderer boundary.</b> OD-1's binding consequence 1
- *       keeps the 3D decision reversible by keeping that boundary thin, and picking is a large
- *       thing to push across it. This way a replacement renderer inherits picking for free.</li>
- *   <li><b>On Android {@code getIntersectedDistance()} is not in world units</b> (SPIKE-OD-1: it
- *       reported 1380.9 for a few feet). Nearest-hit still works there, but the number does not,
- *       and a caller that ever wants the real distance would find out the hard way. Here the
- *       distance is in feet on every platform because we computed it.</li>
+ *   <li><b>It would put picking behind the renderer boundary.</b> The choice of JavaFX for 3D
+ *       stays reversible only while the interface the renderer sits behind stays thin, and
+ *       picking is a large thing to push across it. This way a replacement renderer inherits
+ *       picking for free.</li>
+ *   <li><b>On Android {@code getIntersectedDistance()} is not in world units</b> (a test on the
+ *       phone reported 1380.9 for an item a few feet away). Nearest-hit still works there, but
+ *       the number does not, and a caller that ever wants the real distance would find out the
+ *       hard way. Here the distance is in feet on every platform because we computed it.</li>
  * </ol>
  *
  * <p><b>And it loses nothing, because an item <em>is</em> a box.</b> A bounding box is normally an
@@ -43,7 +44,7 @@ public final class Picking {
      * <p>{@code xPx} and {@code yPx} are in the surface's own pixels, measured from its top-left
      * corner with y counted downward, which is what every pointer event reports.
      *
-     * <p>The camera's basis comes straight from {@code SPEC-3D-VIEW.md} §1: forward is
+     * <p>The camera's basis is fixed by the original's 3D view: forward is
      * {@code (sin yaw · cos pitch, sin pitch, −cos yaw · cos pitch)}, right is
      * {@code (cos yaw, 0, sin yaw)}, and up is their cross product. At yaw 0 and pitch 0 those are
      * north, east and up, which is the check worth doing by hand if this is ever changed.

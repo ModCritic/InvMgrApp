@@ -28,12 +28,13 @@ import javafx.stage.Window;
 /**
  * The keyboard, the mouse and the fingers while you are standing in the 3D room.
  *
- * <p>Port of the original's {@code bindControls3d} / {@code unbindControls3d} (original lines
- * 3075-3220) and the loop that drives them ({@code loop3d}, lines 3044-3066). <b>This class holds
- * only the JavaFX plumbing</b>: the event handlers, the per-frame timer, and which keys are
- * currently down. Every number and every piece of arithmetic lives in {@code threed.Walk},
- * {@code threed.WalkInput}, {@code threed.Joystick} and {@code threed.WalkGesture}, where it can be
- * checked without a window.
+ * <p>Port of {@code bindControls3d} / {@code unbindControls3d} (original lines 3075-3220) and the
+ * loop that drives them ({@code loop3d}, lines 3044-3066). "The original" is the single-file HTML
+ * app, InvMgr 1.3.0, that this app rewrites, and "original line N" is a line of that file.
+ * <b>This class holds only the JavaFX plumbing</b>: the event handlers, the per-frame timer, and
+ * which keys are currently down. Every number and every piece of arithmetic lives in
+ * {@code threed.Walk}, {@code threed.WalkInput}, {@code threed.Joystick} and
+ * {@code threed.WalkGesture}, where it can be checked without a window.
  *
  * <h2>What a finger has to be told apart from</h2>
  *
@@ -47,8 +48,8 @@ import javafx.stage.Window;
  *       <em>and</em> the touch handlers, and without the {@code isSynthesized} guards on the mouse
  *       side every look would be applied twice, at two different sensitivities, and letting go would
  *       try to hide and warp a pointer that does not exist. <b>The guards return rather than
- *       consume</b>; see CLAUDE.md §5.8 item 5: those same synthesized events are what a finger
- *       scrolls the item list with, and swallowing them at the scene is how you freeze a phone.</li>
+ *       consume</b>: those same synthesized events are what a finger scrolls the item list with,
+ *       and swallowing them at the scene is how you freeze a phone.</li>
  *   <li><b>One touch event is fired per finger, per batch.</b> {@code Scene.processTouchEvent} loops
  *       over every current point and fires a separate {@code TouchEvent} for each, aimed at that
  *       point's own target, with the whole set attached to all of them. Two fingers moving therefore
@@ -72,7 +73,8 @@ import javafx.stage.Window;
  *       focuses the drawing surface (a {@code SubScene} is not focus-traversable by default), and
  *       the return button only takes focus <em>after</em> the camera has landed. A handler-based
  *       design would therefore have nothing listening during the way in, which is exactly when
- *       CLAUDE.md §5.5 <b>D-11</b>'s "any input lands the transition" has to work.</li>
+ *       "any input lands the transition" has to work (the original ignores input during its
+ *       transitions; this app does not).</li>
  *   <li><b>They see events aimed at nothing.</b> The 3D view does not pick on its bounds, the
  *       darkening and every room surface are mouse-transparent, and the 2D interface is hidden
  *       (and an invisible node is not pickable), so a press over empty room reaches the scene root
@@ -86,7 +88,7 @@ import javafx.stage.Window;
  * fields in the three dialogs), and every one is on a focused control. There is no global 2D key
  * binding to collide with, and no dialog can be open while the 3D view is up. So there is no
  * "is a dialog open" guard here: it would be a guard against a state that cannot happen, which
- * CLAUDE.md §2 calls dead code.
+ * is dead code, and this project keeps none.
  */
 public final class ThreeDControls {
 
@@ -169,8 +171,8 @@ public final class ThreeDControls {
      *
      * <p><b>Everything else about touch is wired unconditionally</b>, deliberately. A desktop never
      * delivers a {@code TouchEvent}, so listening for one costs nothing there, and it is what lets
-     * the gestures be driven by hand-built events from a test, the arrangement M6.2 used for the
-     * flat room's fingers.
+     * the gestures be driven by hand-built events from a test, the arrangement the flat room's
+     * finger gestures are tested with.
      */
     private boolean touch;
 
@@ -233,13 +235,10 @@ public final class ThreeDControls {
     /**
      * Asked to leave the 3D view. Wired to the same thing the return button does.
      *
-     * <p>Escape is CLAUDE.md §5.5 <b>D-12</b>, a key the original does not bind at all. It costs
-     * one line and reuses every guard the button already has.
+     * <p>Escape is a deliberate addition: the original does not bind it at all. It costs one line
+     * and reuses every guard the button already has.
      */
     private Runnable onExitRequested = () -> { };
-
-    /** The item the pointer was last resting on, so leaving one can be noticed. */
-    private String hoveredId;
 
     private boolean pressing;
     private double lastPointerX;
@@ -270,6 +269,9 @@ public final class ThreeDControls {
 
     private double lastCaptureY;
 
+    /** Notices when the camera stops, so the {@code 3d} topic can say where it ended up. */
+    private final CameraRest rest = new CameraRest();
+
     /**
      * The per-frame loop that actually moves the camera.
      *
@@ -285,9 +287,6 @@ public final class ThreeDControls {
      * {@code start()} so the first frame after a start is not handed the length of the pause since
      * the last one.
      */
-    /** Notices when the camera stops, so the {@code 3d} topic can say where it ended up. */
-    private final CameraRest rest = new CameraRest();
-
     private final AnimationTimer walking = new AnimationTimer() {
         private long lastNanos;
 
@@ -310,8 +309,8 @@ public final class ThreeDControls {
 
             // Drawn every frame whether or not anything moved, as the original draws it. Skipping
             // the draw when standing still is the obvious saving and it is not taken: it would be
-            // an optimization with no measurement behind it, and CLAUDE.md §2 asks for the
-            // measurement first.
+            // an optimization with no measurement behind it, and this project does not optimize
+            // without one.
             drawOneFrame.run();
 
             // One line each time the camera stops, and nothing on the frames in between. Asked
@@ -543,10 +542,10 @@ public final class ThreeDControls {
         //
         // `changed` is a statement of intent rather than a rule with teeth, and the mutation sweep
         // says so: dropping it, so that every auto-repeat asks again, changes no outcome, because
-        // skipTransition on an already-landed view returns immediately. It is the project's one
-        // documented survivor for this milestone. Kept because "a fresh press lands the way in"
-        // is what D-11 says, and code that says it is worth more than code that merely does not
-        // contradict it.
+        // skipTransition on an already-landed view returns immediately. It is the one documented
+        // survivor among the sweep's cases for the 3D controls. Kept because "a fresh press lands
+        // the way in" is the rule for 3D input, and code that says it is worth more than code that
+        // merely does not contradict it.
         if (changed && pressed) {
             onAnyInput.run();
         }
@@ -564,8 +563,9 @@ public final class ThreeDControls {
             case D: return Control.RIGHT;
             case SPACE: return Control.UP;
             // C is the original's own choice, made because Ctrl+W closes a browser tab. That is
-            // not a constraint in a desktop application, so Ctrl works as well (CLAUDE.md §5.5
-            // D-13). C is kept, so nothing is taken away from anyone used to the original.
+            // not a constraint in a desktop application, so Ctrl works as well, which is a
+            // deliberate addition. C is kept, so nothing is taken away from anyone used to the
+            // original.
             case C:
             case CONTROL: return Control.DOWN;
             case SHIFT: return Control.BOOST;
@@ -580,8 +580,8 @@ public final class ThreeDControls {
 
     // ------------------------------------------------------------- looking around
     //
-    // Two ways to look, and SPEC-3D-VIEW.md §4 defines both: with the pointer captured, at
-    // 0.0022 rad/px, and "if pointer lock is unavailable or denied" by dragging, at 1.4 times that
+    // Two ways to look, both as the original does them: with the pointer captured, at
+    // 0.0022 rad/px, and, if pointer lock is unavailable or denied, by dragging, at 1.4 times that
     // to make up for the shorter travel a window allows.
     //
     // JavaFX has no Pointer Lock API, so capture is emulated: hide the cursor, and after every
@@ -718,13 +718,12 @@ public final class ThreeDControls {
      *
      * <p>Called on every plain pointer movement. <b>The item is looked up fresh each time rather
      * than cached against the last id</b>, and that is deliberate: caching would be an
-     * optimization with no measurement behind it, which CLAUDE.md §2 rules out. The work is one
+     * optimization with no measurement behind it, which this project does not do. The work is one
      * ray against at most five hundred boxes, only on real pointer movements (not per frame), and
      * the boxes are already in a list the renderer holds.
      */
     private void updateHover(MouseEvent event) {
         String id = picker.itemAt(event.getSceneX(), event.getSceneY());
-        hoveredId = id;
         if (id == null) {
             onHoverEnded.run();
         } else {
@@ -732,11 +731,8 @@ public final class ThreeDControls {
         }
     }
 
-    /** Forgets what was being pointed at and takes the tooltip away. */
+    /** Takes the hover tooltip away. */
     private void endHover() {
-        if (hoveredId != null) {
-            hoveredId = null;
-        }
         onHoverEnded.run();
     }
 
@@ -752,7 +748,7 @@ public final class ThreeDControls {
      *
      * <p><b>Ignored, never consumed.</b> Those synthesized events are exactly what JavaFX's own
      * {@code ScrollPaneSkin} pans the item list with, so swallowing them at the scene freezes every
-     * list on the phone and nowhere else (CLAUDE.md §5.8 item 5, the trap M6.2 documented).
+     * list on the phone and nowhere else.
      */
     private static boolean isFinger(MouseEvent event) {
         return event.isSynthesized();
@@ -798,7 +794,8 @@ public final class ThreeDControls {
      * One finger sits dead until it is lifted.
      *
      * <p>The original has the identical race for the identical reason, so this is a bug fix rather
-     * than a §5.5 divergence, the same category as the keys a window never hears released.
+     * than a deliberate divergence from the original, the same category as the keys a window never
+     * hears released.
      *
      * <p>Idempotent: once the stick is held, {@link #grabsTheStick} is false for everybody.
      */
@@ -930,8 +927,8 @@ public final class ThreeDControls {
      * <p><b>The warp is checked rather than assumed.</b> Synthetic pointer movement is commonly
      * refused outright under Wayland, and some compositors rate-limit it. A refusal is silent: the
      * call returns normally and the pointer simply does not move, and the symptom in the app is a
-     * camera that will not turn with no error anywhere, which is the exact failure mode CLAUDE.md
-     * §5.7 item 8 warns about. So the first attempt sends the pointer to the middle and reads back
+     * camera that will not turn with no error anywhere, a failure no passing test run would
+     * report. So the first attempt sends the pointer to the middle and reads back
      * where it actually went; if it is not there, capture is written off, said out loud once, and
      * the drag path carries on working.
      */

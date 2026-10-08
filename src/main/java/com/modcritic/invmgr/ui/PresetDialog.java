@@ -158,8 +158,4 @@ public final class PresetDialog extends ModalDialog {
     public Button saveButton() {
         return saveButton;
     }
-
-    public Button cancelButton() {
-        return cancelButton;
-    }
 }

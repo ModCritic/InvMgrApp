@@ -38,7 +38,8 @@ class SurfaceTextureTest extends ApplicationTest {
     @Test
     @DisplayName("shrinking the vignette's picture does not change the vignette")
     void theSmallerVignetteIsTheSamePicture() {
-        // THE EVIDENCE FOR OI-4, and the reason it is a test rather than a paragraph.
+        // THE EVIDENCE FOR LOWERING THE VIGNETTE'S TEXTURE CAP from 2048 px to 512 (2026-09-15),
+        // and the reason it is a test rather than a paragraph.
         //
         // A vignette is a smooth radial gradient and nothing else, so drawing it at a fraction of
         // the resolution should cost nothing: there is no detail to lose. "Should" is the word
@@ -77,8 +78,8 @@ class SurfaceTextureTest extends ApplicationTest {
             // that rather than somewhere comfortable. 256 measures 0.0078 and 128 measures 0.0118,
             // both still invisible on a dark gradient and both a few milliseconds cheaper, so a
             // loose bar here would let the cap drift downward with nobody deciding anything. If
-            // this fails because someone lowered the cap deliberately, read OI-4 in
-            // docs/claude/OPEN-IDEAS.md and then move the bar on purpose.
+            // this fails because someone lowered the cap deliberately, move the bar on purpose, as
+            // part of that decision.
             assertTrue(worst < 0.005, where + ": the vignette at "
                     + SurfaceMetrics.MAX_TEXTURE_PX + " differs from the 2048 one by " + worst
                     + " at its worst, where 1 of 255 is 0.0039 and is what 512 gives");

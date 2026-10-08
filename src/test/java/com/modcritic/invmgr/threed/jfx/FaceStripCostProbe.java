@@ -17,10 +17,9 @@ import org.testfx.util.WaitForAsyncUtils;
  * and that method builds a fresh {@code WritableImage} every time. At the save format's cap of
  * 500 items that is 500 pictures, even in a room where every box is the same color.
  *
- * <p><b>Past tense since M6.7b</b>, which is the change this probe argued for: the renderer now
- * builds one {@code FaceStrip.atlas} for the whole room. The probe is kept because it is the
- * before half of that comparison, and it is the only thing left calling {@code forColor}. M6.7c
- * corrected this paragraph, which still described the old renderer.
+ * <p><b>Past tense now</b>, which is the change this probe argued for: the renderer builds one
+ * {@code FaceStrip.atlas} for the whole room. The probe is kept because it is the before half of
+ * that comparison, and it is the only thing left calling {@code forColor}.
  *
  * <p><b>This exists because the whole-room measurement could not settle the question.</b> Building
  * a 500-box room came out 19 ms slower with 500 distinct colors than with one on two runs and
@@ -45,8 +44,8 @@ class FaceStripCostProbe extends ApplicationTest {
         List<Long> same = new ArrayList<>();
         List<Long> cached = new ArrayList<>();
 
-        // Round robin, because the machine drifts more than the thing being measured. Two probes
-        // in this milestone already reported a different winner on consecutive runs.
+        // Round robin, because the machine drifts more than the thing being measured. Two earlier
+        // probes of this kind already reported a different winner on consecutive runs.
         for (int round = 0; round < ROUNDS; round++) {
             distinct.add(time(true, false));
             same.add(time(false, false));

@@ -20,8 +20,8 @@ import javafx.scene.layout.Region;
  * millisecond, with no window, which is the difference between the ratios being tested and being
  * hoped for.
  *
- * <p>The ratios are the design. Add is always larger than Undo, which is always larger than Fit,
- * Plan and Units, at every width, not just at the one a screenshot happened to be taken at.
+ * <p>The ratios are the design. Add is always larger than Undo, which is always larger than Fit
+ * and Plan, at every width, not just at the one a screenshot happened to be taken at.
  */
 public final class Fluid {
 

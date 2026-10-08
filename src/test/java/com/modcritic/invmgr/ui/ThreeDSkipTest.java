@@ -16,7 +16,8 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * Landing the way in or the way out the moment you touch a control: CLAUDE.md §5.5 <b>D-11</b>.
+ * Landing the way in or the way out the moment you touch a control. The original app ignores
+ * input during its transitions, so this is a deliberate difference.
  *
  * <p><b>Every case here is written so it cannot pass on a build where the skip does nothing.</b>
  * That is not automatic: "the view is open and the camera is at eye height" is true of an ordinary
@@ -438,10 +439,10 @@ class ThreeDSkipTest extends ApplicationTest {
     @Test
     @DisplayName("Escape lands the way in first, and a second Escape leaves")
     void escapeLandsThenLeaves() {
-        // CLAUDE.md §5.5 D-12, and deliberately not a special case: Escape counts as input like
-        // any other key, so during the way in it lands you, and leaveThreeD refuses while a
-        // transition is running. One rule, no exception, and the second press works almost at
-        // once because the first removed the wait.
+        // The original binds no key to leaving 3D. Escape is deliberately not a special case here:
+        // it counts as input like any other key, so during the way in it lands you, and
+        // leaveThreeD refuses while a transition is running. One rule, no exception, and the
+        // second press works almost at once because the first removed the wait.
         interact(() -> app.topBar().threeDButtonNode().fire());
         settle(1400);
         assertTrue(app.view3d().isAnimating(), "the camera should still be falling");

@@ -31,7 +31,7 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * Proves the 3D view actually draws, and draws the right colors.
  *
- * <p><b>This is the test that stops the whole milestone being a black rectangle.</b> When JavaFX
+ * <p><b>This is the test that stops the whole 3D view being a black rectangle.</b> When JavaFX
  * has no usable 3D pipeline it falls back to software rendering, where a 3D scene produces nothing
  * whatsoever and reports no error at all. Every other check in the 3D package is arithmetic and
  * would stay perfectly green while the app showed an empty screen.
@@ -110,9 +110,9 @@ class Room3dAppearanceTest extends ApplicationTest {
                         && ids.contains("room-east"),
                 "the room's surfaces are missing: " + ids);
         // Five surfaces and no ceiling, each one a grid quad with a vignette quad over it.
-        // Counting both halves separately is what catches a surface that lost one of them: since
-        // M6.7 a room with the grid but no vignette, or the other way round, would still look
-        // roughly right in a screenshot and be wrong.
+        // Counting both halves separately is what catches a surface that lost one of them: a room
+        // with the grid but no vignette, or the other way round, would still look roughly right in
+        // a screenshot and be wrong.
         assertEquals(5, ids.stream().filter(id -> id.startsWith("room-")
                         && !id.endsWith("-vignette")).count(),
                 "there should be exactly five grid surfaces and no ceiling, got " + ids);
@@ -202,11 +202,11 @@ class Room3dAppearanceTest extends ApplicationTest {
             }
             if (node.getId().startsWith("room-")) {
                 walls++;
-                // Hovering an item in M5.3 works by casting a ray and taking what it hits. A wall
-                // that can be hit stops the ray before it ever reaches a box, and NOTHING in the
-                // room is ever pickable. Pinned now rather than at M5.3, because the property is
-                // set now and a rule with no test is a rule waiting to be deleted; the mutation
-                // sweep turned this up as a blind spot exactly that way.
+                // Hovering an item works by casting a ray and taking what it hits. A wall that can
+                // be hit stops the ray before it ever reaches a box, and NOTHING in the room is
+                // ever pickable. Pinned here because the property is set in the renderer and a
+                // rule with no test is a rule waiting to be deleted; the mutation sweep turned
+                // this up as a blind spot exactly that way.
                 assertTrue(node.isMouseTransparent(),
                         node.getId() + " must be mouse-transparent, or picking hits it first");
             } else {
@@ -376,9 +376,9 @@ class Room3dAppearanceTest extends ApplicationTest {
         // straight at what they are checking, and one aim is as good as its mirror image when the
         // thing you are looking for only has to be somewhere on the screen.
         //
-        // This is not a small gap. Yaw's sign is what M5.3's mouse look is built on, and getting
-        // it backwards means the room turns the wrong way when the mouse moves, which is
-        // obvious the moment anybody tries it and invisible until then.
+        // This is not a small gap. Yaw's sign is what the mouse look is built on, and getting it
+        // backwards means the room turns the wrong way when the mouse moves, which is obvious
+        // the moment anybody tries it and invisible until then.
         assertTrue(after < before - 50,
                 "turning right should slide the room left across the screen, and the eastern box"
                         + " went from x=" + Math.round(before) + " to x=" + Math.round(after));
@@ -502,8 +502,8 @@ class Room3dAppearanceTest extends ApplicationTest {
             box.color = ITEM_COLOR;
             app.state().items.add(box);
 
-            // Opened directly rather than by pressing the button, since M5.2 put a two-and-a-half
-            // second flight behind the button and every test in this class would have to sit
+            // Opened directly rather than by pressing the button, since the button starts a
+            // two-and-a-half second flight and every test in this class would have to sit
             // through it to look at a room the flight only delivers you to. What the button does
             // is ThreeDEntryTest's job; what the room looks like once you are in it is this
             // class's, and `theDirectOpenLandsWhereTheDescentLands` below is the seam between
@@ -539,8 +539,8 @@ class Room3dAppearanceTest extends ApplicationTest {
     void theDirectOpenLandsWhereTheDescentLands() {
         // Every other test in this class opens the view directly, so if that shortcut ever
         // arrived somewhere the descent does not, they would all be describing a view the app
-        // never shows, which is precisely the M3.5 failure, where a fix stayed green for a week
-        // because the tests drove a path the running app never took.
+        // never shows, which is a failure this project has had before: a fix stayed green for a
+        // week because the tests drove a path the running app never took.
         interact(() -> app.view3d().open(app.state(), scene));
         WaitForAsyncUtils.waitForFxEvents();
 

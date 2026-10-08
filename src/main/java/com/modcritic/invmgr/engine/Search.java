@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * <p><b>The number is read in whatever unit is on screen.</b> In metric, {@code w20} means 20
  * centimeters and is converted before comparing; in imperial it means 20 inches. Searching in
  * the units you can see is the only behavior that makes sense, but it does mean the same query
- * finds different boxes depending on the Units button.
+ * finds different boxes depending on the Menu's Metric setting.
  *
  * <p>What you type here is <b>never saved</b>: not to the file, not to the undo history. It is
  * a view of the list, not part of the room.

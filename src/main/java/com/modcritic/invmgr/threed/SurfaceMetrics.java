@@ -13,7 +13,7 @@ package com.modcritic.invmgr.threed;
  * renderer</b> and then never shipped, because the CSS3D version had to tile its walls instead.
  * The comment above it says it is "kept for when that variant is revisited". This is that.
  *
- * <h2>⚠ This used to describe the grid as well, and at M6.7 it stopped</h2>
+ * <h2>⚠ This used to describe the grid as well, and it stopped</h2>
  *
  * <p>A surface was one picture: flat gray, a one-foot grid, and a darkening toward the edges, all
  * painted together and stretched over the whole wall. The grid has moved to {@link GridTile},
@@ -25,10 +25,10 @@ package com.modcritic.invmgr.threed;
  *
  * <p><b>The cap did come down, on 2026-09-15.</b> It was 2048, the original's own number, and a
  * 200 ft floor allocated 2048 x 2048 to hold a smooth gradient: 16 MB to say something a few
- * hundred pixels could say, on the same graphics memory B11 ran out of on the phone. It is now
- * {@link #MAX_TEXTURE_PX} = 512, which is the one number in this class that no longer matches the
- * original; that field's own documentation carries the measurement and what it bought. OI-4
- * closed with it.
+ * hundred pixels could say, on the same graphics memory a big room ran out of on the phone (its
+ * 3D floor came out dark). It is now {@link #MAX_TEXTURE_PX} = 512, which is the one number in
+ * this class that no longer matches the original; that field's own documentation carries the
+ * measurement and what it bought.
  */
 public final class SurfaceMetrics {
 
@@ -44,7 +44,7 @@ public final class SurfaceMetrics {
     /**
      * The longest a vignette may be along either side, in pixels.
      *
-     * <p><b>512, down from the original's 2048 at M6.7, and it is the one number here that no
+     * <p><b>512, down from the original's 2048, and it is the one number here that no
      * longer matches the original.</b> That 2048 was the reason a large room's grid used to be
      * blurry: a 200 ft wall at 96 px/ft would be 19,200 pixels across, so the cap traded detail
      * for being able to draw the room at all. The grid stopped paying that price when it moved to
@@ -61,7 +61,7 @@ public final class SurfaceMetrics {
      *
      * <p><b>What it bought.</b> Building a 200 ft room went from 41.4 ms to 14.0 ms and a 30 ft
      * room from 69.6 ms to 16.0 ms, and about 15 MB of graphics memory per room came back. That is
-     * the same pool B11 ran out of on a phone, on a room far smaller than 200 ft.
+     * the same pool a phone ran out of with a 30 ft x 40 ft room, far smaller than 200 ft.
      */
     public static final double MAX_TEXTURE_PX = 512;
 
@@ -99,7 +99,7 @@ public final class SurfaceMetrics {
      * proportions. That is what keeps the vignette a circle on the wall rather than an oval: the
      * radius below is a circle in the picture, and a picture with the wall's proportions stretches
      * onto it without distorting. Scaling the sides independently to fill a square texture is
-     * exactly where the OD-1 spike went wrong.
+     * exactly where an early prototype of the 3D view went wrong.
      */
     public static SurfaceMetrics forSurface(double widthFt, double heightFt) {
         return forSurface(widthFt, heightFt, MAX_TEXTURE_PX);

@@ -9,9 +9,9 @@ package com.modcritic.invmgr.model;
  * or typed in by them. Toggling the Units button re-labels the screen without changing a
  * single stored value.
  *
- * <p>Ported from SPEC-2D-ENGINE.md §2, which pins these formulas to specific lines of the
- * original HTML app. The numbers are not approximations to be tidied up: 2.54 cm per inch
- * and 0.3048 m per foot are the exact international definitions.
+ * <p>Ported from the original HTML app (InvMgr_V1.3.0.html, lines 608-613 and 669-695). The
+ * numbers are not approximations to be tidied up: 2.54 cm per inch and 0.3048 m per foot are the
+ * exact international definitions.
  */
 public final class Units {
 
@@ -29,12 +29,6 @@ public final class Units {
 
     /** Pixels per meter. Used for the metric grid; works out to ~314.96. */
     public static final double PX_PER_METER = PX_PER_FOOT / M_PER_FT;
-
-    /** Smallest storable item dimension, inches. */
-    public static final double MIN_DIMENSION_IN = 1.0;
-
-    /** Largest storable item dimension, inches. */
-    public static final double MAX_DIMENSION_IN = 1000.0;
 
     private Units() {
     }
@@ -75,7 +69,7 @@ public final class Units {
 
     /**
      * Turns a dimension the user typed <b>in centimeters</b> into the inches value that
-     * gets stored, following SPEC-2D-ENGINE.md §2's four steps in order:
+     * gets stored, following the original's four steps in order:
      *
      * <ol>
      *   <li>round to 3 decimals <em>while still in centimeters</em>
@@ -119,6 +113,6 @@ public final class Units {
 
     /** Holds an item dimension inside the legal range, in inches. */
     public static double clampDimension(double inches) {
-        return Math.min(MAX_DIMENSION_IN, Math.max(MIN_DIMENSION_IN, inches));
+        return Math.min(Item.MAX_DIMENSION_IN, Math.max(Item.MIN_DIMENSION_IN, inches));
     }
 }

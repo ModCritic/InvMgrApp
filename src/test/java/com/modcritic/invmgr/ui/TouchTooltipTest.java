@@ -114,7 +114,7 @@ class TouchTooltipTest extends ApplicationTest {
         WaitForAsyncUtils.waitForFxEvents();
     }
 
-    // ------------------------------------------------------- the marquee, M6.4
+    // ------------------------------------------------------- the marquee
 
     /** Far longer than any budget in this class, so every case below has to shorten it. */
     private static final String TOO_LONG =
@@ -230,7 +230,7 @@ class TouchTooltipTest extends ApplicationTest {
         assertTrue(tooltip.isScrolling(), "this case is only about a name that does overflow");
 
         // The literal, not the constant: computing the expectation out of the number under test is
-        // how a sensitivity assertion went blind in M6.3.
+        // how a sensitivity assertion once went blind.
         assertEquals(2, tooltip.passSeconds(), 0.01,
                 "the distance is short, so the floor is what sets the pace");
 
@@ -244,16 +244,17 @@ class TouchTooltipTest extends ApplicationTest {
     @DisplayName("the status bar tells a finger what a finger can do, not what a mouse can")
     void theRemindersMatchTheInput() {
         // On a phone the desktop line named a button that does not exist: "Right-click: delete"
-        // is not advice a thumb can take, and it is advice about the one gesture M6.2 replaced.
+        // is not advice a thumb can take, and it is advice about the one gesture touch replaced.
         assertEquals("Click: edit. Right-click: delete. Hover: tooltip.",
                 StatusBar.DESKTOP_INSTRUCTIONS, "the original's desktop line, verbatim");
         // The WHOLE line now, tail included: original line 672, character for character, double
-        // spaces and all. M6.2 wrote the first half and left a note saying the tail would arrive
-        // "with the touch layout at M6.4"; M6.4 built the three tabs the tail names and never came
-        // back for the sentence, so a phone spent a milestone being told about drawers it could not
-        // see named. Nothing checked that promise, which is why the tail is asserted here now.
+        // spaces and all. The first half was written first, with a note saying the tail would
+        // arrive with the touch layout; the touch layout then built the three tabs the tail names
+        // and never came back for the sentence, so for a while a phone was told about drawers it
+        // could not see named. Nothing checked that promise, which is why the tail is asserted here
+        // now.
         assertEquals("Tap: tooltip. Double-tap: edit. Hold 1.5s: delete. Drag: move."
-                        + " ► layer  ◄ items  ▼ menu",
+                        + " ► layer  ◄ items  ▼ room options",
                 StatusBar.TOUCH_INSTRUCTIONS,
                 "and the touch line names all four gestures AND the three drawer tabs");
 
@@ -261,10 +262,15 @@ class TouchTooltipTest extends ApplicationTest {
         // astray once already, and "the string is not what it was" is a poor way to be told.
         assertTrue(StatusBar.TOUCH_INSTRUCTIONS.contains("► layer"), "the layer-slider tab is named");
         assertTrue(StatusBar.TOUCH_INSTRUCTIONS.contains("◄ items"), "the item-list tab is named");
-        assertTrue(StatusBar.TOUCH_INSTRUCTIONS.contains("▼ menu"), "and the bar's own fold arrow");
+        // "room options", not the original's "menu": the island has a real Menu button (added
+        // 2026-09-24), and the user chose these words for the fold arrow so that "menu" means one
+        // thing.
+        assertTrue(StatusBar.TOUCH_INSTRUCTIONS.contains("▼ room options"),
+                "and the bar's own fold arrow");
 
-        // Wording is invisible to every other kind of test, exactly as with the button hints in
-        // D-7: nothing draws these until the app is running and idle.
+        // Wording is invisible to every other kind of test, exactly as with the button hints
+        // (three are worded differently from the original's, on purpose): nothing draws these
+        // until the app is running and idle.
         assertEquals(StatusBar.DESKTOP_INSTRUCTIONS, StatusBar.instructions(),
                 "a desktop must get the desktop line");
     }

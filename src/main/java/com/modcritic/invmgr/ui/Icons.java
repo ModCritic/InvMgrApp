@@ -22,7 +22,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 /**
- * Loads the app's four hand-drawn icons out of their original {@code .svg} files.
+ * Loads the app's hand-drawn icons out of their original {@code .svg} files.
  *
  * <p>The icons are the user's own artwork and the ground rules are explicit: <b>use the files, never
  * reconstruct them from a description</b>. JavaFX cannot open an SVG, so rather than copying the
@@ -68,6 +68,18 @@ public final class Icons {
     /** The three lines on the item list's drawer tab. */
     public static Node itemList(double sizePx) {
         return load("btn-itemlist.svg", sizePx);
+    }
+
+    /**
+     * The three lines on the Menu button, the outer two bent slightly outward at the ends.
+     *
+     * <p>Its paths carry a stroke and no {@code fill} at all, which SVG reads as black and
+     * {@link #fillOf} paints white. Neither shows: each path is a line or a two-pixel sliver, and
+     * an 11-unit stroke covers it completely. An icon with a real filled area and no
+     * {@code fill} would show the difference.
+     */
+    public static Node menu(double sizePx) {
+        return load("btn-menu.svg", sizePx);
     }
 
     /**
@@ -132,7 +144,7 @@ public final class Icons {
      * How big a square the icon was drawn in, taken from the file's {@code viewBox} rather than
      * assumed.
      *
-     * <p>All four icons are 128 px, so hardcoding that would work today and go on working until
+     * <p>Every icon so far is 128 px, so hardcoding that would work today and go on working until
      * somebody drew one at a different size, at which point it would come out the wrong size on
      * screen with nothing to say why. Reading it costs two lines.
      *
@@ -189,9 +201,9 @@ public final class Icons {
     /**
      * The outline a shape is drawn with, if it has one.
      *
-     * <p>Added at M6.4 for the two drawer tabs, and needed by both in different ways: the item
-     * list's icon is <em>nothing but</em> stroke, and the layer slider's middle square is a filled
-     * shape with a 3 px outline at 74.5% opacity, which is what makes it read as the selected layer
+     * <p>Added for the two drawer tabs, and needed by both in different ways: the item list's
+     * icon is <em>nothing but</em> stroke, and the layer slider's middle square is a filled shape
+     * with a 3 px outline at 74.5% opacity, which is what makes it read as the selected layer
      * rather than as one more square.
      *
      * <p>Silent about shapes that have no stroke, which is every shape in the two icons that were

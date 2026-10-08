@@ -37,13 +37,14 @@ import javafx.util.Duration;
  * zoomed interface rather than inside it.
  *
  * <p>That also means the 3D view does not zoom, which is correct: it is a camera you walk behind,
- * not an interface you make bigger. The original had no zoom control over it either.
+ * not an interface you make bigger. The original (the single-file HTML app this one rewrites) had
+ * no zoom control over it either.
  *
  * <p>The alternative, putting it inside and canceling the zoom again, is the shape of a bug this
- * project has already had once: at M3.2 the tooltip and the drag ghost were each handed a
- * coordinate in one space and positioned themselves in another, so the zoom applied twice and the
- * error grew the further across the window you went. Sitting outside the scaled part means there
- * is no second scale to get wrong.
+ * project has already had once: the 2D tooltip and the drag ghost were each handed a coordinate
+ * in one space and positioned themselves in another, so the zoom applied twice and the error grew
+ * the further across the window you went. Sitting outside the scaled part means there is no
+ * second scale to get wrong.
  */
 public final class View3D extends StackPane {
 
@@ -62,9 +63,9 @@ public final class View3D extends StackPane {
     /**
      * What the controls hint says.
      *
-     * <p>CLAUDE.md §5.5 <b>D-14</b>. The original has no on-screen control legend, but it also
-     * has a visible status bar, and here the status bar has slid away, so the equivalent
-     * information has nowhere else to live. Decided by the user 2026-08-05.
+     * <p>The original has no on-screen control legend, but it also has a visible status bar, and
+     * here the status bar has slid away, so the equivalent information has nowhere else to live.
+     * Decided by the user 2026-08-05.
      */
     public static final String CONTROLS_HINT =
             "WASD move · Space up · C or Ctrl down · Shift boost · drag to look · Esc exits";
@@ -131,11 +132,11 @@ public final class View3D extends StackPane {
     /**
      * The thumbstick, built always and shown only on a phone.
      *
-     * <p>The original creates it inside {@code if (isTouch())} and this does not, for the reason
-     * OD-5 gives: one interface with a switch in it can be run in both positions from this
-     * container, and a node that is never added to the scene is not something a test can look at.
-     * It reaches the window only through {@link #setTouchControls}, so a desktop still has no
-     * joystick in it anywhere.
+     * <p>The original creates it inside {@code if (isTouch())} and this does not, because this app
+     * is one interface with a switch between the desktop and touch layouts, so both positions can
+     * be run from this container, and a node that is never added to the scene is not something a
+     * test can look at. It reaches the window only through {@link #setTouchControls}, so a desktop
+     * still has no joystick in it anywhere.
      */
     private final JoystickView joystick = new JoystickView();
 
@@ -155,9 +156,9 @@ public final class View3D extends StackPane {
      * place), but a tooltip you cannot read is precisely what the zoom exists to fix. So the
      * picture stays at one-to-one and the interface on top of it scales.
      *
-     * <p>Reported by the user 2026-08-06 against the M5.3 jar. The 3D tooltip and the hint had
-     * silently inherited this class's exemption from the zoom, which nothing noticed because the
-     * only test of the tooltip's position ran at 100%.
+     * <p>Reported by the user 2026-08-06. The 3D tooltip and the hint had silently inherited this
+     * class's exemption from the zoom, which nothing noticed because the only test of the
+     * tooltip's position ran at 100%.
      *
      * <p>Built the same way {@code App} builds the 2D interface's zoom, including the two traps
      * that came with it: a {@link Group} between the scale and the content, because a scaled node
@@ -166,6 +167,21 @@ public final class View3D extends StackPane {
      */
     private final StackPane chrome = new StackPane();
 
+    /**
+     * Holds {@link #chrome} at the window's top-left corner, and nothing ever moves it from there.
+     *
+     * <p><b>Unmanaged, so this StackPane never positions it.</b> A {@link Group} is as big as
+     * everything inside it, including anything hanging off the edge, and a StackPane centers
+     * its children. So a tooltip running 300 px off the right-hand edge made the group 300 px
+     * wider than the window, and centering it moved the whole overlay left. The tooltip is
+     * placed in the overlay's own coordinates, so every mouse move pushed it back out and the
+     * overlay followed, until the return button sat as far left as the tooltip ran off the
+     * screen, to within a pixel. Reported by the user 2026-09-24; the bottom edge did the same thing upward.
+     * {@code ThreeDControlsTest.aTooltipOffTheEdgeDoesNotMoveTheReturnButton} is the test.
+     *
+     * <p>The 2D interface never had this, because its group is the scene's root and a scene does
+     * not center its root.
+     */
     private final javafx.scene.Group chromeHost = new javafx.scene.Group(chrome);
 
     private final javafx.scene.transform.Scale chromeScale =
@@ -202,8 +218,8 @@ public final class View3D extends StackPane {
      * True while the camera is on its way in or out.
      *
      * <p>The original's {@code busy3d}, and it guards the <b>transition</b>, not the view. That
-     * distinction is the M5.1 bug 3 trap: a flag that guards the view instead ends up never being
-     * cleared and the 3D view can be opened exactly once per run.
+     * distinction is a trap this view fell into once: a flag that guards the view instead ends up
+     * never being cleared and the 3D view can be opened exactly once per run.
      */
     private boolean animating;
 
@@ -222,11 +238,11 @@ public final class View3D extends StackPane {
      * Set when something asks for the transition to be over now. Read once per frame in
      * {@link #fly}, where it turns the progress into a flat 1.
      *
-     * <p>See CLAUDE.md §5.5 <b>D-11</b>. <b>It is deliberately not cleared in
-     * {@link #stopFlight()}</b>, which looks like the tidiest home and is a trap: {@code
-     * stopFlight} runs at the top of {@code fly}, so clearing there would wipe a request made
-     * during the fade a fraction of a second before the descent's timer starts, which is
-     * precisely the case that has to work.
+     * <p>Any 3D input lands the transition immediately; see {@link #skipTransition}. <b>It is
+     * deliberately not cleared in {@link #stopFlight()}</b>, which looks like the tidiest home and
+     * is a trap: {@code stopFlight} runs at the top of {@code fly}, so clearing there would wipe a
+     * request made during the fade a fraction of a second before the descent's timer starts, which
+     * is precisely the case that has to work.
      */
     private boolean skipping;
 
@@ -274,6 +290,8 @@ public final class View3D extends StackPane {
         chrome.setManaged(false);
         chrome.getTransforms().add(chromeScale);
         chrome.getChildren().addAll(returnButton, controlsHint, tooltipLayer);
+        // Or a tooltip off the edge drags the return button with it. See chromeHost.
+        chromeHost.setManaged(false);
 
         getChildren().addAll(subSceneHost, vignette, chromeHost);
     }
@@ -317,7 +335,7 @@ public final class View3D extends StackPane {
         return skipping;
     }
 
-    /** The camera, so the transitions in M5.2 can move it. */
+    /** The camera, so the entry and exit transitions can move it. */
     public CameraPose camera() {
         return camera;
     }
@@ -327,21 +345,19 @@ public final class View3D extends StackPane {
         return controls;
     }
 
-    /** The return button, so a test can find it and press it. */
     /**
      * Moves the things floating over the 3D picture inward, clear of the phone's system bars.
      *
      * <p><b>The picture itself is deliberately untouched.</b> The room keeps every pixel of the
      * screen, including the ones behind the clock and the navigation buttons, because a room drawn
-     * right to the edges of the glass is the whole appeal of the 3D view and is what the OD-1 spike
-     * looked like on the user's phone. Losing 216 pixels of a 2220-pixel screen to gray strips
-     * would be a worse picture in exchange for nothing: nothing in the room needs to be reachable,
-     * only looked at.
+     * right to the edges of the glass is the whole appeal of the 3D view. Losing 216 pixels of a
+     * 2220-pixel screen to gray strips would be a worse picture in exchange for nothing: nothing in
+     * the room needs to be reachable, only looked at.
      *
      * <p>What does move is everything you have to reach or read: the return button, the controls
-     * hint, and, since M6.3, the joystick. A return button under the clock is a return button that
-     * opens the notification shade instead, and a joystick over the navigation bar is a thumb that
-     * goes back to the home screen.
+     * hint, and the joystick. A return button under the clock is a return button that opens the
+     * notification shade instead, and a joystick over the navigation bar is a thumb that goes back
+     * to the home screen.
      *
      * <p>Called with nothing reserved from the constructor, so one place sets these margins.
      *
@@ -390,7 +406,7 @@ public final class View3D extends StackPane {
      * {@code Walk.MOVE_SPEED_FT_PER_S}'s 9 ft/s to {@code Walk.TOUCH_SPEED_FT_PER_S}'s 6.
      *
      * <p><b>Handed in rather than asked for.</b> {@code App} reads {@code Device.isTouch()} once and
-     * tells the view; the view never asks. That is the arrangement {@code TopBar.reserveTop} already
+     * tells the view; the view never asks. That is the arrangement {@code TopWrap.reserveTop} already
      * uses for the system bars, and the reason is the same: a test can drive both positions in one
      * run without touching a system property that every other test in the JVM would also see.
      *
@@ -426,6 +442,7 @@ public final class View3D extends StackPane {
         return joystick;
     }
 
+    /** The return button, so a test can find it and press it. */
     public Button returnButton() {
         return returnButton;
     }
@@ -458,10 +475,10 @@ public final class View3D extends StackPane {
      *
      * <p>Converts through {@code subSceneHost.sceneToLocal} rather than using the numbers as they
      * arrive. Today the two are the same, because this view is relocated to the window's origin
-     * and sits outside the interface zoom. Converting anyway is the M3.2 lesson: the tooltip and
-     * the drag ghost were each handed a coordinate in one space and used it in another, and the
-     * error grew the further across the window you went. {@code sceneToLocal} undoes whatever
-     * transforms exist, including ones nobody has added yet.
+     * and sits outside the interface zoom. Converting anyway is the lesson of an earlier bug: the
+     * 2D tooltip and the drag ghost were each handed a coordinate in one space and used it in
+     * another, and the error grew the further across the window you went. {@code sceneToLocal}
+     * undoes whatever transforms exist, including ones nobody has added yet.
      */
     public String pickItemAtScene(double sceneX, double sceneY) {
         if (!open) {
@@ -497,7 +514,7 @@ public final class View3D extends StackPane {
      * <p>That is only safe because the pose it produces is <em>exactly</em> the pose the descent
      * lands on: middle of the room, eye height, facing north, level. {@code Room3dAppearanceTest}
      * pins that the two agree, because the moment they drift every appearance test would be
-     * describing a view the app never actually shows, which is the M3.5 failure, where a fix was
+     * describing a view the app never actually shows, which has happened here before: a fix was
      * green for a week because the tests drove a path the running app never took.
      */
     public void open(AppState state, Scene scene) {
@@ -531,8 +548,8 @@ public final class View3D extends StackPane {
 
         // This way in skips the descent, so it also has to do what the descent's arrival does:
         // start listening and start walking. Without it every test using this path would be
-        // standing in a room it cannot move around, which is the M3.5 shape: tests driving a
-        // path the app never takes, and passing.
+        // standing in a room it cannot move around, the trap of tests driving a path the app
+        // never takes, and passing.
         controls.setRoom(state.room);
         controls.attach(scene);
         controls.startWalking();
@@ -541,7 +558,7 @@ public final class View3D extends StackPane {
     /**
      * Draws one frame from wherever the camera currently is.
      *
-     * <p>Separate from moving the camera, because M5.2's entry and exit animations move it many
+     * <p>Separate from moving the camera, because the entry and exit animations move it many
      * times a second and want to draw once per frame rather than once per change.
      */
     public void render() {
@@ -666,9 +683,9 @@ public final class View3D extends StackPane {
     /**
      * Lands the way in or the way out immediately, wherever it has got to.
      *
-     * <p>CLAUDE.md §5.5 <b>D-11</b>, and the user's own idea: a 2230 ms descent is a good first
-     * impression and an obstacle on the fiftieth entry, so touching any control during it puts you
-     * where the animation was going to put you anyway.
+     * <p>Asked for by the user 2026-08-05: a 2230 ms descent is a good first impression and an
+     * obstacle on the fiftieth entry, so touching any control during it puts you where the
+     * animation was going to put you anyway.
      *
      * <p><b>Nothing here duplicates an arrival.</b> All it does is arrange for the flight's next
      * frame to compute a progress of 1, after which {@link #fly} runs its ordinary ending: the
@@ -697,7 +714,6 @@ public final class View3D extends StackPane {
         }
     }
 
-    /** Cuts the fade and the pause short and falls straight into the room. */
     /**
      * The line of text that appears at the bottom when you land, telling you the controls.
      *
@@ -818,6 +834,7 @@ public final class View3D extends StackPane {
         chrome.resizeRelocate(0, 0, width / uiScaleFactor, height / uiScaleFactor);
     }
 
+    /** Cuts the fade and the pause short and falls straight into the room. */
     private void collapseEntry() {
         stopEntryAnimations();
         setOpacity(1);
@@ -870,7 +887,7 @@ public final class View3D extends StackPane {
         open = true;
 
         // Listening starts here rather than when the camera lands, so a control pressed during
-        // the way in is heard (see D-11).
+        // the way in is heard (see skipTransition).
         controls.setRoom(state.room);
         controls.attach(scene);
     }
@@ -952,7 +969,8 @@ public final class View3D extends StackPane {
         // showed deleting it changes nothing: a flight always clears the flag as it arrives, and
         // prepare() and close() clear it on the other paths, so it is never still set by the time
         // anything gets here. Two clears that each hide the other's absence is one clear and one
-        // piece of dead code (§2), and the one that stays is the one a test can see.
+        // piece of dead code, which this project does not keep, and the one that stays is the one
+        // a test can see.
         returnButton.setVisible(false);
         // And the stick, for the same reason the button goes: a thumb on it during the ascent would
         // be walking a camera that a flight is already flying.

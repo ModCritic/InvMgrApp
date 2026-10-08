@@ -103,11 +103,16 @@ class ChromeAppearanceTest extends ApplicationTest {
         assertColor("Fit resting (#303030)", shot,
                 centerOfX(app.topBar().fitButton()), centerOfY(app.topBar().fitButton()),
                 Tokens.BUTTON_TOGGLE_BG, 4);
-        assertColor("Units resting (#303030)", shot,
-                centerOfX(app.topBar().unitsButton()), centerOfY(app.topBar().unitsButton()),
-                Tokens.BUTTON_TOGGLE_BG, 4);
+        // The Menu button, which took Units' place in the top bar. Sampled 4 px in from its
+        // top-left corner rather than at its center, because the center of this button is the
+        // icon's middle line.
+        javafx.geometry.Bounds menu = app.topBar().menuButton()
+                .localToScene(app.topBar().menuButton().getBoundsInLocal());
+        assertColor("Menu (default #383838)", shot,
+                (int) Math.round(menu.getMinX() + 4), (int) Math.round(menu.getMinY() + 4),
+                Tokens.BUTTON_BG, 4);
 
-        // The 3D button's plain default, and THE LITERAL IS THE POINT: see CLAUDE.md §5.5 D-9.
+        // The 3D button's plain default, and THE LITERAL IS THE POINT.
         //
         // Every other line in this test compares a pixel against the token that painted it, so it
         // catches JavaFX overriding a color but is blind to the token itself changing: put
@@ -115,11 +120,13 @@ class ChromeAppearanceTest extends ApplicationTest {
         // both sides move together. That is fine for a color we are copying faithfully: the
         // original is the record, and the design system holds the number.
         //
-        // This one is not copied. It is a deliberate divergence, so the only record of the agreed
-        // value is here, and a test that reads it out of the constant would agree with any value
-        // at all. The hex is therefore written out, and reverting the token to the original's
-        // blue-gray (or back to the gold that was tried and rejected on 2026-08-05) fails this
-        // line, which is exactly the job. Same reasoning as D-7's hint wording, which no
+        // This one is not copied. The app deliberately differs from the original here (the
+        // original's 3D button is a blue-gray, #2e3a4e, which sits one digit from the Add
+        // button's color), so the only record of the agreed value is here, and a test that reads
+        // it out of the constant would agree with any value at all. The hex is therefore written
+        // out, and reverting the token to the original's blue-gray (or back to the gold that was
+        // tried and rejected on 2026-08-05) fails this line, which is exactly the job. The same
+        // goes for the three button hints whose wording differs from the original's, which no
         // screenshot could catch either.
         //
         // Note this now matches Save and Load, which is the divergence rather than a coincidence.
@@ -197,9 +204,11 @@ class ChromeAppearanceTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("Units switches the room labels to meters and converts what they show")
-    void unitsToggleSwitchesLabelsAndValues() {
-        clickOn(app.topBar().unitsButton());
+    @DisplayName("Metric switches the room labels to meters and converts what they show")
+    void metricSwitchesLabelsAndValues() {
+        clickOn(app.topBar().menuButton());
+        clickOn(app.menuWindow().metricEntry());
+        clickOn(app.menuWindow().closeButton());
         WaitForAsyncUtils.waitForFxEvents();
 
         assertEquals("W(m):", app.topBar().widthLabel().getText());
@@ -208,7 +217,9 @@ class ChromeAppearanceTest extends ApplicationTest {
         // The stored value is untouched: metric is a display conversion and nothing more.
         assertEquals(12, app.canvas().state().room.w);
 
-        clickOn(app.topBar().unitsButton());
+        clickOn(app.topBar().menuButton());
+        clickOn(app.menuWindow().metricEntry());
+        clickOn(app.menuWindow().closeButton());
         WaitForAsyncUtils.waitForFxEvents();
         assertEquals("W(ft):", app.topBar().widthLabel().getText());
         assertEquals("12", app.topBar().widthField().getText());
@@ -307,7 +318,8 @@ class ChromeAppearanceTest extends ApplicationTest {
         // entirely outside it. See Icons.load for the mechanism.
         //
         // Every scene-graph number was fine (the graphic existed, its shapes had content, its
-        // fill was white), so this had to be asked of the pixels, the same way M3.4's arrow did.
+        // fill was white), so this had to be asked of the pixels, the same way an earlier bug
+        // with a glyph sitting low in its button did.
         GlyphInk.assertCentered("the 3D button's cube", shot, app.topBar().threeDButtonNode(), 1);
 
         // And it is the right size. The reference screenshot's cube covers 13 x 15 px; the icon is
@@ -345,22 +357,23 @@ class ChromeAppearanceTest extends ApplicationTest {
         // 43 is measured off the reference screenshots, where the bar's bottom border is the row
         // at y=42. It went to 46 when the bundled fonts arrived, and nothing caught it.
         //
-        // Measured on the FRAME, not the bar, since M6.4. The 43 has not moved and neither have
-        // the pixels: one of those pixels is the bottom border, and the border now belongs to
-        // TopWrap, because on a phone the bar folds away and a border that folded with it would
-        // take the line under the island with it. So the bar is 42 inside a frame of 43.
+        // Measured on the FRAME, not the bar, since the phone layout was added. The 43 has not
+        // moved and neither have the pixels: one of those pixels is the bottom border, and the
+        // border now belongs to TopWrap, because on a phone the bar folds away and a border that
+        // folded with it would take the line under the island with it. So the bar is 42 inside a
+        // frame of 43.
         assertEquals(43, app.topWrap().getHeight(),
                 "the top bar must stay the height the reference screenshots show");
         assertEquals(1, app.topWrap().getHeight() - app.topBar().getHeight(),
                 "and the one pixel between them is the bottom border, which the frame draws");
 
         // And it stays 43 when the room is far bigger than the window, which is not the same
-        // question. M6.4 gave the bar the ability to fold, and the first version dropped its
-        // minimum height to zero permanently to allow that. A VBox short of room shrinks its
-        // children towards their minimums, so a 60 x 40 ft room, which is taller than any window,
-        // squashed the bar to nothing and left its buttons hanging off the top of the screen. It
-        // took a measurement to find because every symptom pointed elsewhere: Fit simply stopped
-        // working, because the pointer was clicking where the button used to be.
+        // question. The phone layout gave the bar the ability to fold, and the first version
+        // dropped its minimum height to zero permanently to allow that. A VBox short of room
+        // shrinks its children towards their minimums, so a 60 x 40 ft room, which is taller than
+        // any window, squashed the bar to nothing and left its buttons hanging off the top of the
+        // screen. It took a measurement to find because every symptom pointed elsewhere: Fit
+        // simply stopped working, because the pointer was clicking where the button used to be.
         interact(() -> {
             app.canvas().state().room.w = 60;
             app.canvas().state().room.l = 40;

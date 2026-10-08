@@ -3,6 +3,7 @@ package com.modcritic.invmgr.android;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.os.Bundle;
 import android.text.InputType;
@@ -14,6 +15,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
@@ -22,7 +24,8 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 
 /**
- * The Android side of InvMgr's host layer.
+ * The Android side of InvMgr's host layer: the code that starts the app's Java VM on the phone
+ * and hands JavaFX the screen and the touches.
  *
  * WHAT THIS IS
  *
@@ -35,23 +38,24 @@ import android.widget.FrameLayout;
  *
  * Gluon Substrate ships an Activity of its own and used to supply this. That file is
  * GPL-3.0-or-later with no classpath exception, and it was dexed into every APK this
- * project built from M6.1 onward, which conflicts with shipping the app under 0BSD. See
- * docs/LICENSE-AUDIT.md for how that was found and docs/PLAN-M6.5B-HOST-LAYER.md for the
- * plan this file belongs to. The app behaves identically either way; the difference is the
- * license on the binary.
+ * project built until this class replaced it, which conflicts with shipping the app under
+ * 0BSD. The app behaves identically either way; the difference is the license on the binary.
  *
  * WHAT IS DELIBERATELY UNCHANGED
  *
- * M6.5b's whole bar is that behavior does not change. So the window setup below matches
- * what the app has shipped with since M6.1 exactly, including two things that look like
- * bugs and are not:
+ * Replacing Gluon's Activity had to leave behavior unchanged, so the window is set up the
+ * way Gluon's Activity set it up, including two things that look like bugs and are not:
  *
- *   - SOFT_INPUT_ADJUST_NOTHING, so the window does NOT resize when the keyboard appears.
- *     A dialog that would sit under the keyboard has to move itself. Changing this is
- *     M6.5c's B7, deliberately, and not a free improvement to make here.
- *   - Edge to edge is on, so the app draws under the status and navigation bars. The 3D
- *     view wants that (it is full bleed and looks better than the original), and the 2D
- *     chrome pads itself through ui/SystemInsets.
+ *   - The window does NOT resize when the keyboard appears. A dialog that would sit under
+ *     the keyboard moves itself. The setting was later switched to ADJUST_RESIZE for what
+ *     it reports, not for what it does; see the comment in onCreate.
+ *   - Edge to edge is on, and both bars are transparent, so the app draws under the status
+ *     and navigation bars and shows through them. The 3D view wants that (it is full bleed
+ *     and looks better than the original), and the 2D chrome pads itself through
+ *     ui/SystemInsets.
+ *
+ * ⚠ The replacement copied only half of the second one, and the bars went opaque for three
+ * weeks without anyone noticing. See setEdgeToEdge.
  *
  * HOW IT CONNECTS
  *
@@ -66,8 +70,8 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
     private static final String TAG = "InvMgr";
 
     /**
-     * The one and only instance. The native side looks this up by name through JNI when it
-     * needs to touch the UI thread, so the field has to exist and has to be static.
+     * The one and only instance. Static because everything the native side calls on this class
+     * is static; the ones that need Android's UI thread reach it through this field.
      */
     private static InvMgrActivity instance;
 
@@ -127,8 +131,8 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         // What it does change is what getRootWindowInsets REPORTS, and that is the only way
         // to learn the keyboard's height before API 30. With ADJUST_NOTHING the bottom inset
         // stays at the navigation bar's 144 whatever the keyboard does; with this it goes to
-        // 1020 when the keyboard is up. That number is M6.5c's B7, and systemInsets() below
-        // hands it to the app so a dialog can move clear.
+        // 1020 when the keyboard is up. systemInsets() below hands that number to the app so
+        // a dialog can move clear of the keyboard.
         //
         // So do not "simplify" this back to ADJUST_NOTHING because the window does not
         // resize. The window not resizing is the point; the reading is the reason.
@@ -152,6 +156,14 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         ViewGroup group = new FrameLayout(this);
         group.addView(view);
         setContentView(group);
+        view.setOnApplyWindowInsetsListener((v, insets) -> {
+            rehideBarsAfterKeyboard();
+            return v.onApplyWindowInsets(insets);
+        });
+        if (backArrivesAsCallback()) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::backAsEscape);
+        }
 
         ime = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         sweepAwayOldFontCopies();
@@ -194,21 +206,48 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
     }
 
     /**
-     * Turns off the framework's automatic inset fitting so the app draws behind the status
-     * and navigation bars.
+     * Lets the app draw behind the status and navigation bars, and makes both bars
+     * transparent so it shows through them, with light icons on top.
      *
-     * Done by hand rather than through WindowCompat.enableEdgeToEdge so that this class does
-     * not drag in androidx just for one call. androidx is on the Dalvik classpath anyway,
-     * but the fewer things this file depends on the fewer ways the build can break.
+     * Done by hand rather than through androidx's WindowCompat.enableEdgeToEdge, which is
+     * what Gluon's Activity called, so that this class does not drag in androidx for one
+     * call. androidx is on the Dalvik classpath anyway, but the fewer things this file
+     * depends on the fewer ways the build can break.
      *
-     * ⚠ Two routes, because the app's minSdk is 21 and the modern call arrived in API 30.
-     * Compiling against API 36 makes setDecorFitsSystemWindows available to the compiler on
-     * every branch, so an unguarded call would build cleanly and then throw
-     * NoSuchMethodError on an older phone. The version check is the whole point.
+     * ⚠ SO THIS HAS TO DO EVERYTHING THAT CALL DID TO THE BARS, and at first it did not.
+     * Read out of androidx core 1.17.0's bytecode on 2026-09-24: besides the layout flags,
+     * enableEdgeToEdge sets both bar colors to transparent and turns off Android 10's
+     * contrast scrim. The first version copied only the flags. With no colors set the window
+     * keeps the default theme's (the manifest names no theme): a black status bar and a
+     * #f2f2f2 navigation bar, which the window paints itself, over the app. On the Samsung
+     * test phone the light navigation bar also brought dark icons with it, apparently because
+     * Samsung picks the icon shade from the bar's color. Every build from the day this class
+     * replaced Gluon's to 2026-09-24 shipped like that; installing each one on the phone found it.
+     *
+     * ⚠ Two routes, because the app's minSdk is 21 and the modern calls arrived in API 30.
+     * Compiling against API 36 makes them available to the compiler on every branch, so an
+     * unguarded call would build cleanly and then throw NoSuchMethodError on an older phone.
+     * The version checks are the whole point. The contrast calls arrived in API 29.
+     *
+     * ⚠ The API 30 route has never run on hardware: the test phone is Android 10, API 29.
+     * Below 30 the icons are light because the flags set here leave the two "light bar" bits
+     * out; from 30 on they are asked for through the insets controller instead.
      */
     @SuppressWarnings("deprecation")
     private void setEdgeToEdge() {
         Window window = getWindow();
+        // ⚠ THE DECOR VIEW FIRST, FOR TWO REASONS, BOTH FOUND ON EMULATORS 2026-09-29. This runs
+        // in onCreate, before setContentView would build the window's decor view, and
+        // getDecorView() builds it now.
+        // - Android 11 CRASHED ON LAUNCH without it: its PhoneWindow.getInsetsController, used
+        //   below, reads the mDecor field with no check (read out of that image's
+        //   framework.jar), so it threw a NullPointerException the moment the app opened.
+        // - Android 16 PAINTED THE NAVIGATION BAR without it: the transparent color set below
+        //   did not survive the decor view being built afterwards, and three-button navigation
+        //   drew the theme's window background at 80% over the app, (26,27,31) over the 2D
+        //   view's (26,26,26) and a visible band over the 3D room. Built first, the bar shows
+        //   the app's own pixels.
+        window.getDecorView();
         if (android.os.Build.VERSION.SDK_INT >= 30) {
             window.setDecorFitsSystemWindows(false);
         } else {
@@ -216,6 +255,139 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
                     View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                             | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        }
+
+        window.setStatusBarColor(Color.TRANSPARENT);
+        window.setNavigationBarColor(Color.TRANSPARENT);
+
+        // Left on, these let Android 10 and later decide a transparent bar needs a scrim to
+        // keep its icons readable against the app, and draw one: a band over the room that
+        // Gluon's build never had. (Android 10's Window.java, the javadoc on both setters.)
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            window.setStatusBarContrastEnforced(false);
+            window.setNavigationBarContrastEnforced(false);
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            window.getInsetsController().setSystemBarsAppearance(0,
+                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                            | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+        }
+    }
+
+    /**
+     * Whether the user asked for the status and navigation bars to be hidden (the Settings
+     * window's Hide system bars option).
+     *
+     * Kept here as well as in the app's settings file because Android can put the bars back on
+     * its own, and the Activity is the one that hears about it: see onWindowFocusChanged.
+     */
+    private static volatile boolean barsHidden;
+
+    /**
+     * Hides the status and navigation bars until a swipe in from an edge brings them back for a
+     * moment, or shows them again.
+     *
+     * The two routes do the same thing, which androidx's WindowInsetsControllerCompat was read to
+     * confirm (core 1.17.0's bytecode, 2026-09-25), since Android's own page on immersive mode
+     * describes only the API 30 route:
+     *
+     * - From API 30: the window's insets controller hides WindowInsets.Type.systemBars() with
+     *   BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE. ⚠ Never run on hardware: the test phone is API 29.
+     * - Below 30: the flags androidx sets itself below 30. SYSTEM_UI_FLAG_FULLSCREEN hides the
+     *   status bar, SYSTEM_UI_FLAG_HIDE_NAVIGATION the navigation bar, and
+     *   SYSTEM_UI_FLAG_IMMERSIVE_STICKY is what "show transient bars by swipe" turns into there.
+     *   They are added to the edge-to-edge flags setEdgeToEdge set, never in place of them.
+     *
+     * Android's page (developer.android.com, "Hide system bars for immersive mode", read
+     * 2026-09-25) says the bars a swipe reveals "overlay your app's content" and "are
+     * automatically hidden after a short timeout", so nothing in the app moves when they appear.
+     */
+    static void setSystemBarsHidden(boolean hidden) {
+        barsHidden = hidden;
+        if (instance != null) {
+            instance.runOnUiThread(instance::applySystemBars);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void applySystemBars() {
+        Window window = getWindow();
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController controller = window.getInsetsController();
+            if (controller == null) {
+                return;
+            }
+            if (barsHidden) {
+                controller.setSystemBarsBehavior(
+                        WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                controller.hide(android.view.WindowInsets.Type.systemBars());
+            } else {
+                controller.show(android.view.WindowInsets.Type.systemBars());
+            }
+            return;
+        }
+        View decor = window.getDecorView();
+        int hiding = View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+        int flags = decor.getSystemUiVisibility();
+        decor.setSystemUiVisibility(barsHidden ? flags | hiding : flags & ~hiding);
+    }
+
+    /**
+     * Puts the bars away again when the window gets focus back, if they are meant to be hidden.
+     *
+     * ⚠ NOT A PRECAUTION: WITHOUT IT THE BARS COME BACK. Measured on the test phone 2026-09-25 with
+     * this method's body taken out: bars hidden, flags 0x970e; one trip to the file picker and
+     * back, and Android had cleared SYSTEM_UI_FLAG_FULLSCREEN and _HIDE_NAVIGATION, 0x9708, with
+     * both bars showing. The task switcher and Home did the same. With it, all three come back
+     * 0x970e. The device suite's "the bars stay hidden after leaving the app" holds it there.
+     */
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && barsHidden) {
+            applySystemBars();
+        }
+    }
+
+    /**
+     * Puts the bars away again once the keyboard has gone, if they are meant to be hidden.
+     *
+     * ⚠ THE KEYBOARD BRINGS THE BARS BACK, AND onWindowFocusChanged NEVER HEARS ABOUT IT, because
+     * the keyboard does not take the window's focus. Measured on the test phone 2026-09-29 with
+     * the bars hidden, 0x970e: the moment the keyboard showed, the window manager cleared
+     * SYSTEM_UI_FLAG_FULLSCREEN and _HIDE_NAVIGATION on this window, 0x9718, and when the keyboard
+     * went away it dropped only the light navigation bit, 0x9708, leaving both bars over the
+     * island and the status line until something took the focus away and gave it back.
+     *
+     * Called from the view's insets listener, which runs on every change to the window's insets,
+     * and the keyboard coming or going is one. While the keyboard is up this leaves the bars
+     * alone: Android is the one showing them then, and hiding them under it would only be
+     * cleared again. Once the keyboard's height reads zero, the bars go back.
+     *
+     * ⚠ THE KEYBOARD IS READ OFF THE ROOT INSETS, NOT THE ONES THE LISTENER IS HANDED. By the time
+     * insets reach this view the window has used up their stable part, so the stable bottom reads
+     * 0 and the navigation bar's 144 looks like a keyboard that never goes away. Logged on the
+     * phone 2026-09-29, the first version of this failing because of it. The root insets are the
+     * window's own, the ones systemInsets reads for the same reason.
+     *
+     * ⚠ Below API 30 only, where it was measured. The API 30 route hides the bars through the
+     * insets controller instead, and on the Android 15 and 16 emulators the keyboard did not
+     * bring them back there (2026-09-29); no Android 11+ phone has run it.
+     */
+    @SuppressWarnings("deprecation")
+    private void rehideBarsAfterKeyboard() {
+        android.view.WindowInsets root = view.getRootWindowInsets();
+        if (!barsHidden || android.os.Build.VERSION.SDK_INT >= 30 || root == null
+                || legacyKeyboardHeight(root) > 0) {
+            return;
+        }
+        int hiding = View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION;
+        if ((getWindow().getDecorView().getSystemUiVisibility() & hiding) != hiding) {
+            // Posted rather than done here: this runs in the middle of Android handing out
+            // insets, and changing the flags asks for a new layout of the same window.
+            view.post(this::applySystemBars);
         }
     }
 
@@ -258,6 +430,13 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         density = getResources().getDisplayMetrics().density;
         nativeSetDensity(density);
         nativeSetSurface(holder.getSurface());
+        surfaceHeld = true;
+        if (started) {
+            uiThread.removeCallbacks(redrawTheNewSurface);
+            for (long delay : REDRAW_AFTER_MS) {
+                uiThread.postDelayed(redrawTheNewSurface, delay);
+            }
+        }
 
         if (!started) {
             started = true;
@@ -278,8 +457,36 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         Log.v(TAG, "surfaceDestroyed");
+        surfaceHeld = false;
+        uiThread.removeCallbacks(redrawTheNewSurface);
         nativeSetSurface(null);
     }
+
+    /** Whether the app has a surface right now: from surfaceChanged to surfaceDestroyed. */
+    private static volatile boolean surfaceHeld;
+
+    /**
+     * How long after a returning surface to ask JavaFX, again, to redraw everything.
+     *
+     * ⚠ WITHOUT THESE THE SCREEN CAN STAY BLACK after the app comes back, for as long as nothing
+     * on screen changes. Seen on the Android 15 emulator 2026-09-29, one return from the file
+     * picker in about eight, and caught with every EGL swap logged: Android's own redraw
+     * request (surfaceRedrawNeeded) arrives while JavaFX still holds the GL surface of the
+     * window it lost, so that full frame is drawn into the dead surface and its swap fails
+     * (EGL_BAD_SURFACE). JavaFX then builds a surface on the new window and draws only what it
+     * thinks changed. A good return logged two swaps after that and showed the app; a black
+     * one logged one, then nothing, for as long as it was watched; a tap on blank space did
+     * not wake it. Two later requests, by which time JavaFX has built its new surface, give it
+     * the full frame the first one lost.
+     */
+    private static final long[] REDRAW_AFTER_MS = { 500, 1500 };
+
+    /** Asks JavaFX to redraw everything, if the surface it would draw on is still there. */
+    private static final Runnable redrawTheNewSurface = () -> {
+        if (surfaceHeld && instance != null) {
+            instance.nativeSurfaceRedrawNeeded();
+        }
+    };
 
     @Override
     public void surfaceRedrawNeeded(SurfaceHolder holder) {
@@ -296,9 +503,9 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
      * ⚠ EVERY ONE OF THESE IS LOAD-BEARING, and leaving them out fails a long way from here.
      *
      *   user.home       the app's private directory, which is the ONLY place it may write.
-     *                   M4's autosave and the save format both write relative to this, and
-     *                   OD-1 section 12.2 is the whole reason this app needs no Attach and
-     *                   no storage permission. Wrong value, silent data loss.
+     *                   Autosave and the save file both write relative to this, and it is
+     *                   the whole reason this app needs no Gluon Attach library and no
+     *                   storage permission. Wrong value, silent data loss.
      *   java.io.tmpdir  where JavaFX writes a bundled font before handing it to freetype.
      *                   The default is /tmp, which an Android app cannot write to, and the
      *                   failure surfaces as Font.loadFont simply returning null with nothing
@@ -320,9 +527,24 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         String verbose = verboseTopicsFromTheIntent();
         if (verbose != null) {
             args.add("-Dinvmgr.verbose=" + verbose);
+            java.util.List<String> words = java.util.Arrays.asList(verbose.split(","));
+            keyboardLogging = words.contains("keyboard") || words.contains("all");
         }
         return args.toArray(new String[0]);
     }
+
+    /**
+     * Whether JavaFxInputConnection logs the keyboard's calls, which only the verbose word
+     * "keyboard" (or "all") turns on:
+     *
+     *   adb shell am start -n \
+     *       com.asterkazika.invmgr/com.modcritic.invmgr.android.InvMgrActivity --es verbose keyboard
+     *
+     * Off by default because Android's log keeps them, and before 2026-10-06 they were always
+     * on and held every word typed into the app. They now hold lengths and key names instead;
+     * see JavaFxInputConnection.lengthOf.
+     */
+    private static volatile boolean keyboardLogging;
 
     /**
      * The one launch setting a person outside the phone is allowed to choose.
@@ -330,7 +552,12 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
      * A desktop passes -Dinvmgr.verbose on the command line. A phone has no command line, so
      * the same switch arrives as an intent extra and is copied into the argument vector here:
      *
-     *   adb shell am start -n com.modcritic.invmgr/.android.InvMgrActivity --es verbose latency
+     *   adb shell am start -n \
+     *       com.asterkazika.invmgr/com.modcritic.invmgr.android.InvMgrActivity --es verbose latency
+     *
+     * The class name is written out in full because the app ID and this class's package are
+     * different strings since 2026-09-22. A leading dot would resolve against the app ID and
+     * name a class that does not exist.
      *
      * ⚠ WHY ONLY THIS ONE, and why the value is checked rather than passed through. Everything
      * in launchArguments() above puts JavaFX on its Android paths and the app does not start
@@ -339,7 +566,7 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
      * the topic names Verbose already knows, matched exactly, and anything else is dropped
      * without the app starting differently.
      *
-     * Added at M6.7b, because the phone is the machine the latency suite most needs to hear
+     * Added because the phone is the machine the latency suite (tools/perf) most needs to hear
      * from and there was no other way to ask it.
      */
     private String verboseTopicsFromTheIntent() {
@@ -354,9 +581,11 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
             // The same words Verbose understands, written out because this class is compiled
             // for Dalvik and cannot see the app's own classes: the two halves live in separate
             // VMs (see the class documentation on the bridge). A word added to Verbose.Topic and
-            // forgotten here simply never reaches the app, and the app's own complaint about an
-            // unknown topic is what says so.
-            if (trimmed.equals("all") || trimmed.equals("3d") || trimmed.equals("latency")) {
+            // forgotten here never reaches the app: this loop drops it, and the warning it logs,
+            // "ignoring unknown verbose topic", is what says so. A word listed here that Verbose
+            // does not know does reach the app, and the app's own complaint is what says so.
+            if (trimmed.equals("all") || trimmed.equals("3d") || trimmed.equals("latency")
+                    || trimmed.equals("keyboard")) {
                 kept.append(kept.length() == 0 ? "" : ",").append(trimmed);
             } else {
                 Log.w(TAG, "ignoring unknown verbose topic from the intent: " + trimmed);
@@ -509,6 +738,42 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         }
     }
 
+    /**
+     * The phone's Back button as Android 16 and later deliver it: Escape to the app, as the key
+     * always was (see toJavaFxKey).
+     *
+     * ⚠ WITHOUT IT, BACK LEAVES THE APP ON ANDROID 16. For an app targeting API 36 on Android 16
+     * or later, Back goes to callbacks like this one (developer.android.com, "Behavior changes:
+     * apps targeting Android 16", read 2026-09-29), and with none registered Android's own
+     * default sent the app to the home screen. Found on an Android 16 emulator 2026-09-29: Back
+     * with the Menu open closed the Menu AND left the app.
+     *
+     * ⚠ AND THE KEY STILL ARRIVES THERE TOO, which is why dispatchKeyEvent drops it on these
+     * versions. Google's page says KEYCODE_BACK "is not dispatched anymore", and onKeyDown and
+     * onBackPressed are indeed quiet, but the Activity's own dispatchKeyEvent still got the key
+     * down and up, with this callback running between them (logged on the emulator). Handling
+     * both sent two Escapes, and Back on About closed the whole window instead of going back one
+     * page.
+     */
+    private void backAsEscape() {
+        char[] none = javafx.scene.input.KeyCode.ESCAPE.impl_getChar().toCharArray();
+        sendKey(GLASS_PRESS, javafx.scene.input.KeyCode.ESCAPE, none, 0);
+        sendKey(GLASS_RELEASE, javafx.scene.input.KeyCode.ESCAPE, none, 0);
+    }
+
+    /**
+     * Whether Back reaches the app as an OnBackInvokedCallback rather than as a key.
+     *
+     * ⚠ API 36 AND UP, BECAUSE THE APP TARGETS 36. Android turns the callback on by default only
+     * when both the phone and the app's target are 36 or later; from API 33 to 35 it needs
+     * android:enableOnBackInvokedCallback in the manifest, which this app does not set, so
+     * there the key is the only route, as it is below 33. Lower the target below 36 and this
+     * has to change with it.
+     */
+    private static boolean backArrivesAsCallback() {
+        return android.os.Build.VERSION.SDK_INT >= 36;
+    }
+
     /** Sends one Glass key event. */
     private void sendKey(int glassType, javafx.scene.input.KeyCode code, char[] chars, int mods) {
         int count = chars == null ? 0 : chars.length;
@@ -531,12 +796,11 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
      * typed carrying the character. JavaFX needs all three, and the third is the one that
      * makes the character appear.
      *
-     * ⚠ {@code mayType} is the whole reason this method takes an argument, and getting it
-     * wrong doubles every character on screen. A hardware key is the only source of a
-     * character; pass true. The soft keyboard is not, and pass false: see
-     * {@link JavaFxInputConnection#sendKeyEvent} for what it sends instead.
+     * ⚠ It types every character it is handed, so it must never be handed a copy of text
+     * already typed. The only source of such copies is BaseInputConnection's own resend, and
+     * {@link JavaFxInputConnection#sendKeyEvent} drops that before calling this.
      */
-    private void processKeyEvent(android.view.KeyEvent event, boolean mayType) {
+    private void processKeyEvent(android.view.KeyEvent event) {
         int mods = modifiersOf(event);
         javafx.scene.input.KeyCode code = toJavaFxKey(event.getKeyCode());
 
@@ -547,23 +811,19 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
 
             case android.view.KeyEvent.ACTION_UP:
                 sendKey(GLASS_RELEASE, code, code.impl_getChar().toCharArray(), mods);
-                if (mayType) {
-                    int unicode = event.getUnicodeChar();
-                    if (unicode != 0) {
-                        sendTyped(Character.toChars(unicode), mods);
-                    }
+                int unicode = event.getUnicodeChar();
+                if (unicode != 0) {
+                    sendTyped(Character.toChars(unicode), mods);
                 }
                 break;
 
             case android.view.KeyEvent.ACTION_MULTIPLE:
-                // The deprecated way of delivering a run of characters at once. A hardware
-                // key never produces one; only an IME does, and an IME has already sent the
-                // same text through commitText.
-                if (mayType) {
-                    String characters = event.getCharacters();
-                    if (characters != null) {
-                        sendTyped(characters.toCharArray(), mods);
-                    }
+                // The deprecated way of delivering a run of characters at once. The
+                // superclass's resend uses it and never gets this far, so one that does is
+                // the only copy of its text.
+                String characters = event.getCharacters();
+                if (characters != null) {
+                    sendTyped(characters.toCharArray(), mods);
                 }
                 break;
 
@@ -582,21 +842,22 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
                 || code == android.view.KeyEvent.KEYCODE_VOLUME_MUTE) {
             return super.dispatchKeyEvent(event);
         }
+        // Back is backAsEscape's on the versions where it arrives as a callback; the key that
+        // still comes here as well would be a second Escape. See backAsEscape.
+        if (code == android.view.KeyEvent.KEYCODE_BACK && backArrivesAsCallback()) {
+            return true;
+        }
         // A real key, from a hardware keyboard or from `adb shell input`. Nothing else has
-        // delivered its character, so this path is the one allowed to type it.
-        processKeyEvent(event, true);
+        // delivered its character.
+        processKeyEvent(event);
         return true;
     }
 
     // ---- Called from the native side --------------------------------------------------
     //
-    // These are looked up by JNI from native/invmgr_launcher.c. Renaming one, or changing a
-    // signature, breaks the app at runtime with no compiler complaint, because the lookup is
-    // by string. Change both sides together.
-
-    static InvMgrActivity getInstance() {
-        return instance;
-    }
+    // These are looked up by JNI from native/invmgr_launcher.c and native/invmgr_bridge.c.
+    // Renaming one, or changing a signature, breaks the app at runtime with no compiler
+    // complaint, because the lookup is by string. Change both sides together.
 
     /**
      * How long a hide waits to find out whether a show is right behind it.
@@ -625,8 +886,29 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
     private static final android.os.Handler uiThread =
             new android.os.Handler(android.os.Looper.getMainLooper());
 
+    /**
+     * Whether the app wants the keyboard up: true from a show until a hide has gone through.
+     *
+     * ⚠ THIS IS WHAT KEEPS THE KEYBOARD FROM COMING BACK BY ITSELF, reported by the user
+     * 2026-09-24: type in a box, close the dialog it was in, go to the task switcher and come
+     * back, and the keyboard was up again over a room with no box on it.
+     *
+     * The app did not ask for that. Android did. On coming back the window is marked
+     * IS_FORWARD_NAVIGATION, and with STATE_UNSPECIFIED and ADJUST_RESIZE (both needed, see
+     * onCreate) Android 10 shows the keyboard by itself for any focused view that calls
+     * itself a text editor. This view used to say yes unconditionally. Read off the phone
+     * with dumpsys input_method: the keyboard after the return was up with
+     * mShowExplicitlyRequested=false, where every show this class asks for reads true.
+     *
+     * So the view calls itself a text editor only while this is true. Coming back after the
+     * keyboard was put away brings nothing up; coming back while still typing lets Android
+     * put it back, which is the one case where it should.
+     */
+    private static volatile boolean keyboardWanted;
+
     /** The hide, once it has waited its turn and no show has overtaken it. */
     private static final Runnable dropTheKeyboard = () -> {
+        keyboardWanted = false;
         if (ime != null && view != null && view.getWindowToken() != null) {
             ime.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
@@ -649,10 +931,15 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         }
         instance.runOnUiThread(() -> {
             uiThread.removeCallbacks(dropTheKeyboard);
+            boolean wasWanted = keyboardWanted;
+            keyboardWanted = true;
             view.requestFocus();
-            if (connectedInputType != inputType) {
-                // Only when the layout being asked for is not the one the keyboard is
-                // already showing. onCreateInputConnection records what it was given.
+            if (!wasWanted || connectedInputType != inputType) {
+                // When the layout being asked for is not the one the keyboard is already
+                // showing (onCreateInputConnection records what it was given), and also when
+                // the keyboard was put away before this. While it was away the view said it
+                // was no text editor, and a restart is how Android hears that it is one again.
+                // The keyboard is down in that case, so the restart cannot flash it.
                 ime.restartInput(view);
             }
             ime.showSoftInput(view, 0);
@@ -676,10 +963,10 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
      * The app divides by the density itself, because the density is already something it
      * knows and passing design pixels from here would put the same arithmetic in two places.
      *
-     * This is OD-3, and it is the measurement that class was written to wait for. Until now
-     * {@code ui/SystemInsets} shipped Android's published 24 dip status bar as a constant,
-     * because the only documented way to read the real one was a GPL-licensed library this
-     * app may not link. Owning the Activity makes it a plain framework call.
+     * This is the measurement {@code ui/SystemInsets} was written to wait for. Until this
+     * existed it shipped Android's published 24 dip status bar as a constant, because the
+     * only documented way to read the real one was a GPL-licensed library this app may not
+     * link. Owning the Activity makes it a plain framework call.
      *
      * ⚠ The four edges matter far more in landscape than in portrait, which is what made
      * this worth doing now. Held upright the navigation bar is at the bottom and the old
@@ -706,8 +993,18 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         int keyboard;
 
         if (android.os.Build.VERSION.SDK_INT >= 30) {
-            android.graphics.Insets bars =
-                    insets.getInsets(android.view.WindowInsets.Type.systemBars());
+            // ⚠ THE CAMERA CUTOUT AS WELL AS THE BARS. From Android 15, for an app targeting
+            // 35 or later, Android lays every window into the cutout (developer.android.com,
+            // "Behavior changes: apps targeting Android 15": SHORT_EDGES, NEVER and DEFAULT
+            // "are interpreted as ALWAYS"), where before it kept apps out of it on its own when
+            // the phone was sideways. Measured on the Android 15 emulator 2026-09-29 with a
+            // punch hole simulated: sideways, the hole took 136 px down the left edge, where
+            // the layer slider's tab sits, and the bars alone reserved nothing there. Asking for
+            // both gives the larger of the two on each edge, and the cutout stays reserved while
+            // the bars are hidden, so the island never sits under the camera either.
+            android.graphics.Insets bars = insets.getInsets(
+                    android.view.WindowInsets.Type.systemBars()
+                            | android.view.WindowInsets.Type.displayCutout());
             top = bars.top;
             right = bars.right;
             bottom = bars.bottom;
@@ -776,8 +1073,8 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
     // FileChooser throws UnsupportedOperationException on this platform: Monocle implements no
     // file chooser, so Save, Load and Export were all dead. Android's answer is the Storage
     // Access Framework (the system picker), which needs NO PERMISSIONS AT ALL. That last part
-    // matters beyond convenience: this app requests nothing today and M6.8 wants to keep it
-    // that way, so anything that asked for storage access would be a step backwards.
+    // matters beyond convenience: this app requests no permissions and should stay that way,
+    // so anything that asked for storage access would be a step backwards.
     //
     // ⚠ THE WHOLE THING IS A POLL, AND THAT IS NOT LAZINESS. Android answers a file picker by
     // calling onActivityResult, and the Activity has no way to call into the application:
@@ -831,6 +1128,57 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
                 instance.startActivityForResult(intent, REQUEST_SAVE);
             } catch (RuntimeException e) {
                 fail("could not open the save picker: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Opens a web address in whatever browser the phone uses (the About window's Source code
+     * link).
+     *
+     * Hands the address to Android as an ACTION_VIEW intent and nothing more. The browser makes
+     * the connection; this app asks for no permission and opens no connection of its own, and
+     * this project never allows one. A phone with nothing to open it with gets a line in the
+     * log and no other sign, which is also all the desktop does when HostServices finds no
+     * browser.
+     */
+    static void openLink(String url) {
+        if (instance == null || url == null) {
+            return;
+        }
+        instance.runOnUiThread(() -> {
+            try {
+                instance.startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)));
+            } catch (RuntimeException e) {
+                Log.e(TAG, "could not open " + url + ": " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Hands a feedback message to the phone's mail app (the Menu's Feedback entry), addressed
+     * and ready to send.
+     *
+     * Android's own recipe for "only email apps" ("Common intents", Compose an email,
+     * developer.android.com, read 2026-09-25): ACTION_SENDTO with a bare "mailto:" as its data,
+     * and the address, subject and text as extras. On the test phone Gmail and Samsung Email both
+     * answer it, so Android asks which to use unless one is the default. The mail app sends it;
+     * this app still opens no connection of its own. A phone with no mail app gets a line in the
+     * log, as openLink does.
+     */
+    static void composeEmail(String to, String subject, String body) {
+        if (instance == null || to == null) {
+            return;
+        }
+        instance.runOnUiThread(() -> {
+            try {
+                Intent intent = new Intent(Intent.ACTION_SENDTO, android.net.Uri.parse("mailto:"));
+                intent.putExtra(Intent.EXTRA_EMAIL, new String[] { to });
+                intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+                intent.putExtra(Intent.EXTRA_TEXT, body);
+                instance.startActivity(intent);
+            } catch (RuntimeException e) {
+                Log.e(TAG, "could not open a mail app: " + e.getMessage());
             }
         });
     }
@@ -944,7 +1292,24 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         }
     }
 
-    /** Reads a document the user picked, as UTF-8, which is what the save format is. */
+    /**
+     * The largest file readFrom reads, the same 4 MB as SaveFormat.MAX_FILE_BYTES in the app. Written
+     * out here because this class runs in Android's own Java and cannot see the app's classes.
+     * See SaveFormat for why 4 MB refuses no real room.
+     */
+    private static final long MAX_FILE_BYTES = 4L * 1024 * 1024;
+
+    /**
+     * Reads a document the user picked, as UTF-8, which is what the save format is.
+     *
+     * ⚠ Counted as it is read, and refused past MAX_FILE_BYTES. Without a limit the whole file
+     * was read into memory, on Android's main thread, before anything looked at it. A large
+     * enough one would fill the memory Android gives this app, and the OutOfMemoryError that
+     * follows is not one of the exceptions onActivityResult catches, so the app would close.
+     * That is from reading the code; a 5 MB file did not do it on the test phone, and nothing
+     * larger was tried. Counting covers every document, whatever its provider says about its
+     * size.
+     */
     private String readFrom(android.net.Uri uri) throws java.io.IOException {
         try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
             if (in == null) {
@@ -955,6 +1320,10 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
             int read;
             while ((read = in.read(chunk)) != -1) {
                 buffer.write(chunk, 0, read);
+                if (buffer.size() > MAX_FILE_BYTES) {
+                    // The same words SaveFormat.TOO_LARGE uses on a desktop.
+                    throw new java.io.IOException("the file is over 4 MB, and no room file is that big.");
+                }
             }
             return new String(buffer.toByteArray(), java.nio.charset.StandardCharsets.UTF_8);
         }
@@ -1002,9 +1371,10 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
             super(context);
         }
 
+        /** Only while the app wants the keyboard. See keyboardWanted for why not always. */
         @Override
         public boolean onCheckIsTextEditor() {
-            return true;
+            return keyboardWanted;
         }
 
         @Override
@@ -1038,81 +1408,40 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
      * first version sent press/release pairs and every text field on the phone was silently
      * read-only.
      *
-     * <h2>⚠ THE SOFT KEYBOARD SENDS EVERY EDIT TWICE, AND FORWARDING BOTH DOUBLES IT</h2>
+     * <h2>⚠ TEXT ARRIVES TWICE, AND ANDROID SENDS THE SECOND COPY</h2>
      *
-     * This is the trap in this class and it cost a device test to find. Samsung's keyboard,
-     * and the IME contract generally, delivers one edit through two channels at once:
+     * This is the trap in this class. Every call logged on the phone 2026-09-26, with
+     * Samsung's keyboard:
      *
      * <pre>
-     *   tap the suggestion "cats"   commitText("cats")  AND  sendKeyEvent(ACTION_MULTIPLE,
-     *                                                          characters="cats")
-     *   tap the space bar          commitText(" ")      AND  sendKeyEvent(KEYCODE_SPACE)
-     *   tap the letter a           setComposingText("a") AND sendKeyEvent(KEYCODE_A)
+     *   tap a letter               setComposingText("des"), and nothing else
+     *   tap the suggestion "desk"  commitText("desk"), then ACTION_MULTIPLE "desk"
+     *   tap the space bar          commitText(" "), then KEYCODE_SPACE down and up
+     *   tap Enter                  finishComposingText, then ACTION_MULTIPLE of the word,
+     *                              then KEYCODE_ENTER down and up
+     *   tap a digit on the pad     KEYCODE_7 down and up, and nothing else
      * </pre>
      *
-     * Typing on both paths put {@code "catcat  a"} in the field for what was typed as
-     * {@code "cat a"}. So the rule is: <b>text belongs to commitText and setComposingText;
-     * this class's sendKeyEvent never types a character.</b> It still forwards the press and
-     * release, because that is how BACK_SPACE and ENTER reach JavaFX, and neither of those
-     * inserts anything.
+     * The ACTION_MULTIPLE and KEYCODE_SPACE events do not come from the keyboard.
+     * BaseInputConnection sends them itself, from inside commitText and finishComposingText;
+     * see {@link #resending}. Until 2026-09-26 this class blamed the keyboard for them and
+     * tried to recognize each copy by its characters, which missed the one sent when a word
+     * finishes. That typed a word twice, or into the next box.
+     *
+     * So the rule is: <b>text belongs to commitText and setComposingText, and whatever
+     * BaseInputConnection sends from inside those calls is dropped.</b> Every other key
+     * event is the keyboard's own and is the only copy there will be: a digit from the
+     * number pad, Backspace, Enter.
      *
      * <h2>Why composing text is forwarded, when it used to be dropped</h2>
      *
      * The first version deliberately sent nothing for a word still being predicted, so that
-     * a half-guessed word could not appear and then need taking back. That is untenable once
-     * the duplicate key events are suppressed: a predictive keyboard composes every letter
-     * until you press space, so the field would stay visibly empty for the whole word. It is
-     * forwarded instead, and {@link #composedLength} is what makes it retractable.
+     * a half-guessed word could not appear and then need taking back. A predictive keyboard
+     * composes every letter until you press space, so the field stayed visibly empty for the
+     * whole word. It is forwarded instead, and {@link #mirrored} is what makes it retractable.
      */
     private static final class JavaFxInputConnection extends BaseInputConnection {
 
-        /**
-         * How many characters JavaFX has been sent for the word still being composed.
-         *
-         * JavaFX's field is a mirror of the IME's buffer, and this is the only piece of that
-         * buffer we may still take back. Replacing composing text means backspacing exactly
-         * this many characters and sending the new ones; committing means the same, and then
-         * forgetting them, because committed text is permanent.
-         *
-         * It cannot drift far: the IME calls finishComposingText whenever input restarts,
-         * which happens on every focus change, and that resets it.
-         */
-        private int composedLength;
-
-        /**
-         * The characters just handed to JavaFX through the text channel, waiting to be
-         * recognized and swallowed when the keyboard echoes them as a key event.
-         *
-         * ⚠ THIS IS WHAT MAKES BOTH KEYBOARDS WORK, AND THEY BEHAVE DIFFERENTLY.
-         *
-         * Measured on the phone 2026-09-04, by logging every call:
-         *
-         *   letter keyboard, 'a'      setComposingText("a")  AND  sendKeyEvent(KEYCODE_A)
-         *   letter keyboard, space    commitText(" ")        AND  sendKeyEvent(SPACE)
-         *   letter keyboard, "cats"   commitText("cats")     AND  sendKeyEvent(MULTIPLE)
-         *   NUMBER pad, '7'           nothing at all         AND  sendKeyEvent(KEYCODE_7)
-         *
-         * So the letter keyboard says everything twice and the number pad says it once.
-         * Ignoring key events outright fixed the doubling and made the number pad type
-         * nothing at all: every digit was dropped, which is the state the user found.
-         *
-         * The rule that covers both: a key event types its character UNLESS the text
-         * channel just delivered that same character, in which case this is the echo and
-         * it is swallowed. Anything else is the only copy there will be, so it types.
-         */
-        private String pendingEcho = "";
-
-        /**
-         * The last run of text handed to JavaFX, kept after the composition is finished.
-         *
-         * ⚠ THIS IS WHAT STOPS A NAME DOUBLING. Samsung's keyboard finishes a word by calling
-         * finishComposingText and THEN committing the same text again, so "box" typed into
-         * the Add dialog's Name box came out as "boxbox". Measured on the phone 2026-09-04.
-         *
-         * composedLength cannot catch it, because finishComposingText is exactly the call that
-         * says "those characters are permanent now" and zeroes it, and the duplicate arrives
-         * after that. This remembers what was delivered so the repeat can be recognized.
-         */
         /**
          * Exactly what JavaFX is showing for the word being composed.
          *
@@ -1123,21 +1452,62 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
         private String mirrored = "";
 
         /**
-         * The word the composition just ended on, still owed a possible duplicate commit.
+         * The word the composition just ended on, in case the keyboard commits it again.
          *
-         * ⚠ THIS IS THE SECOND HALF OF NOT DOUBLING A NAME, and it is needed even with the
-         * mirror above. Samsung's keyboard ends a word by calling finishComposingText (which
-         * means "those characters are permanent now", so the mirror is emptied) and THEN
-         * commits the same text again. With an empty mirror that commit looks like brand new
-         * text and types the whole word a second time: "desk" became "deskdesk".
-         *
-         * Measured on the phone 2026-09-04. The mirror alone cannot catch it, because emptying
-         * the mirror is precisely what finishComposingText is supposed to do.
+         * <p>Recorded on 2026-09-04 as Samsung's keyboard ending a word with
+         * finishComposingText and then committing the same text, which with the mirror
+         * already emptied would type the word a second time. ⚠ That order did not show up on
+         * 2026-09-26, when a space, Enter and a suggestion were each logged. The "deskdesk" it
+         * was credited with fits the resend at {@link #resending} instead, and this guard could
+         * not have stopped that: its branch still called super.commitText, which resent the
+         * word. It stays because nothing shows the keyboard never does it, and it does nothing
+         * when the keyboard does not.
          */
         private String justFinished = "";
 
+        /**
+         * True while BaseInputConnection is sending back text this class has already typed.
+         *
+         * <p>⚠ THIS IS WHAT STOPS A WORD GOING IN TWICE, OR GOING INTO THE NEXT BOX. Found on
+         * the phone 2026-09-26, and it had three faces: a space after "abc" left "abcabc ",
+         * Enter after "ab" left "abab", and "abcd" still being typed in the Add dialog's Name
+         * box went into Width as well when Width was tapped, which then read "12abcd".
+         *
+         * <p>The {@code false} passed to the superclass puts it in what Android calls dummy
+         * mode, meant for a view that only understands keys. In that mode commitText,
+         * finishComposingText and setComposingRegion each end by handing the whole of the
+         * superclass's own text buffer to {@link #sendKeyEvent}: key events for one
+         * character, one ACTION_MULTIPLE event carrying the lot for more. Read out of the
+         * phone's own {@code /system/framework/framework.jar} (Android 10) with dexdump, in
+         * {@code BaseInputConnection.sendCurrentText}. And {@code closeConnection}, which
+         * Android calls on the old connection when a box that wants a different keyboard
+         * takes focus, is nothing but finishComposingText.
+         *
+         * <p>This class typed every one of those characters itself as they arrived, so the
+         * resend is always a second copy, and while this is true sendKeyEvent drops it. The
+         * old code tried to spot the copies by their characters, and finishComposingText
+         * forgot the characters just before its own resend, so the word was typed again into
+         * whichever box had focus by then.
+         */
+        private boolean resending;
+
         JavaFxInputConnection(View target) {
             super(target, false);
+        }
+
+        /** One of the superclass's calls that ends by resending its buffer; see resending. */
+        private interface Resends {
+            boolean call();
+        }
+
+        /** Runs {@code superCall} with its resend dropped. */
+        private boolean dropTheResend(Resends superCall) {
+            resending = true;
+            try {
+                return superCall.call();
+            } finally {
+                resending = false;
+            }
         }
 
         /**
@@ -1172,72 +1542,108 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
             String added = text.substring(shared);
             if (!added.isEmpty()) {
                 instance.sendTyped(added.toCharArray(), 0);
-                // The keyboard may now echo these as key events; remember them so they can
-                // be told apart from a key press that is the only copy.
-                pendingEcho = added;
             }
             mirrored = text;
             justFinished = "";
-            composedLength = text.length();
+        }
+
+        /**
+         * Text as the keyboard log shows it: how long it is, never what it says. The words are
+         * the user's, and verbose lines are written to be pasted into a public bug report. A
+         * doubled word still shows, as a doubled length. A newline is named, because whether a
+         * keyboard sends Enter as text or as a key is one of the things the log is for.
+         */
+        private static String lengthOf(CharSequence text) {
+            if (text == null) {
+                return "nothing";
+            }
+            if ("\n".contentEquals(text)) {
+                return "a newline";
+            }
+            return text.length() + (text.length() == 1 ? " char" : " chars");
+        }
+
+        /** A key event as the keyboard log shows it: the key's name, unless it types a character. */
+        private static String describe(android.view.KeyEvent event) {
+            if (event.getAction() == android.view.KeyEvent.ACTION_MULTIPLE) {
+                return "multiple, " + lengthOf(event.getCharacters());
+            }
+            String action = event.getAction() == android.view.KeyEvent.ACTION_DOWN ? "down" : "up";
+            return action + " " + (event.isPrintingKey() ? "a character key"
+                    : android.view.KeyEvent.keyCodeToString(event.getKeyCode()));
         }
 
         @Override
         public boolean commitText(CharSequence text, int newCursorPosition) {
-            Log.v(TAG, "IC COMMIT [" + text + "] mirror=[" + mirrored + "] fin=[" + justFinished + "]");
+            if (keyboardLogging) {
+                Log.v(TAG, "IC COMMIT " + lengthOf(text) + ", mirror " + lengthOf(mirrored)
+                        + ", just finished " + lengthOf(justFinished));
+            }
             String committed = text == null ? "" : text.toString();
 
-            // Enter arrives as a committed newline rather than as a key. JavaFX wants it as
-            // a key, and a literal newline in a single-line field would be wrong anyway.
+            // A committed newline goes to JavaFX as the Enter key, since a literal newline in
+            // a single-line field would be wrong. Samsung's keyboard does not come this way:
+            // its Enter is a key event (logged 2026-09-26), which sendKeyEvent forwards.
             if ("\n".equals(committed)) {
                 if (instance != null) {
                     instance.sendKey(GLASS_PRESS, javafx.scene.input.KeyCode.ENTER, null, 0);
                     instance.sendKey(GLASS_RELEASE, javafx.scene.input.KeyCode.ENTER, null, 0);
                 }
-                composedLength = 0;
-                return super.commitText(text, newCursorPosition);
+                return dropTheResend(() -> super.commitText(text, newCursorPosition));
             }
 
             // The finished-then-committed-again case; see justFinished.
             if (mirrored.isEmpty() && !justFinished.isEmpty() && committed.equals(justFinished)) {
                 justFinished = "";
-                return super.commitText(text, newCursorPosition);
+                return dropTheResend(() -> super.commitText(text, newCursorPosition));
             }
 
             replaceComposed(committed);
-            composedLength = 0;                  // committed text can no longer be retracted
-            mirrored = "";
+            mirrored = "";                       // committed text can no longer be retracted
             justFinished = "";
-            return super.commitText(text, newCursorPosition);
+            return dropTheResend(() -> super.commitText(text, newCursorPosition));
         }
 
         @Override
         public boolean setComposingText(CharSequence text, int newCursorPosition) {
+            if (keyboardLogging) {
+                Log.v(TAG, "IC COMPOSE " + lengthOf(text) + ", mirror " + lengthOf(mirrored));
+            }
             replaceComposed(text == null ? "" : text.toString());
             return super.setComposingText(text, newCursorPosition);
         }
 
-        /** The IME has settled on what was being predicted, so it stops being retractable. */
+        /**
+         * The IME has settled on what was being predicted, so it stops being retractable.
+         *
+         * <p>⚠ Android calls this too, on the old connection, when a box that wants a
+         * different keyboard takes focus. By then JavaFX's focus is already in the new box,
+         * which is why the superclass's resend must be dropped rather than typed; see
+         * resending.
+         */
         @Override
         public boolean finishComposingText() {
-            Log.v(TAG, "IC FINISH mirror=[" + mirrored + "]");
-            composedLength = 0;
+            if (keyboardLogging) {
+                Log.v(TAG, "IC FINISH mirror " + lengthOf(mirrored));
+            }
             justFinished = mirrored;      // a duplicate commit of this must not type it again
             mirrored = "";
-            pendingEcho = "";
-            return super.finishComposingText();
+            return dropTheResend(super::finishComposingText);
         }
 
         /**
-         * The IME has decided that text already in the field is now the word being composed.
+         * The IME marking text it has already sent as the word being composed again.
          *
-         * Because JavaFX mirrors the buffer, the characters it may take back are exactly the
-         * ones in that region.
+         * <p>Left to the superclass, with its resend dropped. The superclass
+         * empties its buffer after every commit, so the keyboard cannot read back an earlier
+         * word to take up again, and none of the runs logged on 2026-09-26 called this.
          */
         @Override
         public boolean setComposingRegion(int start, int end) {
-            Log.v(TAG, "IC REGION " + start + ".." + end);
-            composedLength = Math.max(0, end - start);
-            return super.setComposingRegion(start, end);
+            if (keyboardLogging) {
+                Log.v(TAG, "IC REGION " + start + ".." + end);
+            }
+            return dropTheResend(() -> super.setComposingRegion(start, end));
         }
 
         @Override
@@ -1248,62 +1654,33 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
                     instance.sendKey(GLASS_RELEASE, javafx.scene.input.KeyCode.BACK_SPACE, null, 0);
                 }
             }
-            composedLength = Math.max(0, composedLength - beforeLength);
             mirrored = "";
             return super.deleteSurroundingText(beforeLength, afterLength);
         }
 
         /**
-         * Keys from the soft keyboard, with their characters deliberately ignored.
+         * Keys from the soft keyboard, less the superclass's resend of text already typed.
          *
-         * See the class comment: whatever this event carries has already arrived through
-         * commitText or setComposingText, so typing it here would double it. What is still
-         * wanted is the press and release, because BACK_SPACE and ENTER are keys rather than
-         * text and reach JavaFX no other way.
+         * <p>See the class comment and {@link #resending}. What is left is the keyboard's
+         * own, and it is the only copy: a digit from the number pad, which arrives no other
+         * way, and Backspace and Enter, which are keys rather than text.
          */
         @Override
         public boolean sendKeyEvent(android.view.KeyEvent event) {
             if (instance == null) {
                 return true;
             }
-            instance.processKeyEvent(event, !isEchoOfTextAlreadySent(event));
+            if (resending) {
+                if (keyboardLogging) {
+                    Log.v(TAG, "IC RESEND dropped " + describe(event));
+                }
+                return true;
+            }
+            if (keyboardLogging) {
+                Log.v(TAG, "IC KEY " + describe(event));
+            }
+            instance.processKeyEvent(event);
             return true;
-        }
-
-        /**
-         * Is this key event the letter keyboard repeating something already delivered?
-         *
-         * <p>Consumes the echo as it recognizes it, so the same characters cannot swallow a
-         * second, genuine key press later. Only an ACTION_UP is tested, because that is the
-         * only action {@link #processKeyEvent} would type from.
-         */
-        private boolean isEchoOfTextAlreadySent(android.view.KeyEvent event) {
-            if (pendingEcho.isEmpty()) {
-                return false;
-            }
-            // ⚠ ACTION_MULTIPLE FROM AN IME IS ALWAYS A RESTATEMENT, never new text.
-            //
-            // It is the deprecated way of delivering a run of characters, and a soft keyboard
-            // only sends it alongside the same text through commitText or setComposingText.
-            // Matching it against the echo was not enough: the echo now holds only the last
-            // letter added, while this event carries the WHOLE WORD, so "desk" typed into the
-            // Add dialog's Name box arrived as "deskdesk". Measured on the phone.
-            //
-            // The number pad does not use it at all (its digits come through as real key
-            // codes), so dropping it costs nothing there.
-            if (event.getAction() == android.view.KeyEvent.ACTION_MULTIPLE) {
-                pendingEcho = "";
-                return true;
-            }
-            if (event.getAction() != android.view.KeyEvent.ACTION_UP) {
-                return false;                     // a press types nothing, so nothing to eat
-            }
-            int unicode = event.getUnicodeChar();
-            if (unicode != 0 && pendingEcho.indexOf(unicode) >= 0) {
-                pendingEcho = "";
-                return true;
-            }
-            return false;
         }
 
         /**
@@ -1328,7 +1705,6 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
                 // already learns about the keyboard's height and the file picker's answer.
                 // The app knows which boxes hold numbers; this side does not.
                 nextFieldRequests++;
-                pendingEcho = "";
                 return true;
             }
             return super.performEditorAction(actionCode);

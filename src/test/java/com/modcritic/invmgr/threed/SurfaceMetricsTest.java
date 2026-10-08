@@ -16,13 +16,13 @@ import org.junit.jupiter.api.Test;
  * Checks the vignette's arithmetic against the original's own {@code drawSurfaceCanvas}.
  *
  * <p>Worth a differential because of one number that is easy to get plausibly wrong: the radius is
- * a fraction of the <em>longer side</em> rather than of the half-diagonal. The OD-1 spike got that
- * wrong, using {@code hypot(cx, cy) * 0.7}, which is about 1.4x tighter, and the result still looks
- * like a vignette, which is exactly why it needs measuring rather than eyeballing.
+ * a fraction of the <em>longer side</em> rather than of the half-diagonal. The early 3D prototype
+ * got that wrong, using {@code hypot(cx, cy) * 0.7}, which is about 1.4x tighter, and the result
+ * still looks like a vignette, which is exactly why it needs measuring rather than eyeballing.
  *
- * <p><b>The grid used to be checked here too, and moved to {@code GridTileTest} at M6.7</b>, along
- * with the grid itself. The golden file is the same one and the line positions are still compared
- * against it; only the class doing the comparing changed.
+ * <p><b>The grid used to be checked here too, and moved to {@code GridTileTest}</b> when the grid
+ * became a repeating tile ({@code GridTile}). The golden file is the same one and the line
+ * positions are still compared against it; only the class doing the comparing changed.
  *
  * <p>Regenerate with {@code node tools/golden/original-3d.js --run}.
  */
@@ -36,7 +36,8 @@ class SurfaceMetricsTest {
     @Test
     @DisplayName("all 16 surfaces put the vignette where the original puts it")
     void matchesTheOriginalSurfaceMetrics() throws IOException {
-        // WHAT THIS COMPARES CHANGED AT M6.7, AND THE REASON IS WORTH READING BEFORE TRUSTING IT.
+        // WHAT THIS COMPARES CHANGED WHEN THE GRID MOVED OFF THIS PICTURE, AND THE REASON IS
+        // WORTH READING BEFORE TRUSTING IT.
         //
         // It used to compare the picture's size in pixels against the original's, exactly. It
         // cannot any more, because the cap deliberately differs: the original sizes this picture
@@ -46,7 +47,7 @@ class SurfaceMetricsTest {
         // What is compared instead is everything about the vignette that a viewer can see, and
         // none of it depends on the cap: how far the darkening reaches AS A FRACTION of the
         // surface, and whether the picture has the surface's own proportions. Both would fail on
-        // the half-diagonal mistake the OD-1 spike made, and both would fail on a picture
+        // the half-diagonal mistake the early prototype made, and both would fail on a picture
         // stretched to fill a square texture.
         List<?> cases = (List<?>) Json.parse(Fixtures.read("golden/3d-surfaces.expected.json"));
         assertTrue(cases.size() >= 16, "expected at least 16 surface cases");
@@ -99,7 +100,7 @@ class SurfaceMetricsTest {
     @Test
     @DisplayName("the vignette reaches 70% of the longer side, not of the half-diagonal")
     void theVignetteRadiusIsTheOriginalsNotTheSpikes() {
-        // The spike used hypot(halfWidth, halfHeight) * 0.7. For a square surface that is 0.495
+        // The prototype used hypot(halfWidth, halfHeight) * 0.7. For a square surface that is 0.495
         // of the side where the original is 0.7 of it: a noticeably tighter, darker vignette.
         SurfaceMetrics square = SurfaceMetrics.forSurface(10, 10);
         double side = square.widthPx;
@@ -160,7 +161,7 @@ class SurfaceMetricsTest {
         // against the constant, so that reverting the constant fails here rather than passing
         // quietly against itself.
         assertTrue(SurfaceMetrics.MAX_TEXTURE_PX < 2048,
-                "M6.7 lowered this below the original's 2048; see OI-4 and SurfaceTextureTest");
+                "M6.7.1 lowered this below the original's 2048; see OI-4 and SurfaceTextureTest");
     }
 
     private void compare(String what, double want, double got, List<String> mismatches) {

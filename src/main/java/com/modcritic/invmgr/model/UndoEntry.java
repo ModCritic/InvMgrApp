@@ -27,15 +27,8 @@ public sealed interface UndoEntry {
     record HeightSnapshot(String id, double baseHeight_in, double dragOrder) {
     }
 
-    /** The heights this action should restore, or an empty list if it does not affect them. */
-    List<HeightSnapshot> heights();
-
     /** An item was added. Undoing removes it again. */
     record Added(String id) implements UndoEntry {
-        @Override
-        public List<HeightSnapshot> heights() {
-            return List.of();
-        }
     }
 
     /**
@@ -54,10 +47,6 @@ public sealed interface UndoEntry {
 
     /** A planned item was committed to the room. Undoing makes it a ghost again. */
     record Committed(String id) implements UndoEntry {
-        @Override
-        public List<HeightSnapshot> heights() {
-            return List.of();
-        }
     }
 
     /** An item's footprint was swapped (width and length exchanged). */

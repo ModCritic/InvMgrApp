@@ -1,5 +1,6 @@
 package com.modcritic.invmgr.ui;
 
+import com.modcritic.invmgr.model.WholeCharacters;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -159,11 +160,15 @@ public final class Dialogs {
      * the text is trimmed as it is typed. Doing it here rather than when the dialog is confirmed
      * matters: a name silently losing its last forty characters on OK would be a nasty surprise,
      * whereas a field that simply stops taking input is obvious.
+     *
+     * <p>The cut is {@link WholeCharacters#cut}, so an emoji that does not fit is refused whole. A
+     * plain {@code substring} kept the first half of it, and a name holding half a character
+     * made every desktop Save fail.
      */
     public static void limitLength(TextInputControl field, int maxLength) {
         field.textProperty().addListener((observable, before, after) -> {
             if (after != null && after.length() > maxLength) {
-                field.setText(after.substring(0, maxLength));
+                field.setText(WholeCharacters.cut(after, maxLength));
             }
         });
     }
@@ -225,24 +230,37 @@ public final class Dialogs {
      * the same gray.
      */
     public static Button button(String text, ButtonKind kind) {
-        Button button = button(text, kind,
+        return button(text, kind, TouchType.dialogButtonFont(), TouchType.dialogButtonHeight());
+    }
+
+    /**
+     * The same, in a type size and height of the caller's choosing.
+     *
+     * <p>For the windows that open from the Menu, which take the Menu's own sizes on a
+     * phone rather than the 13 px the original's dialogs keep there. See
+     * {@link TouchType#menuButtonHeight}.
+     */
+    public static Button button(String text, ButtonKind kind, double fontSize, double height) {
+        Button button = button(text, kind, fontSize,
                 TouchType.dialogButtonPaddingV(), TouchType.dialogButtonPaddingH());
-        button.setMinHeight(TouchType.dialogButtonHeight());
-        button.setPrefHeight(TouchType.dialogButtonHeight());
-        button.setMaxHeight(TouchType.dialogButtonHeight());
+        button.setMinHeight(height);
+        button.setPrefHeight(height);
+        button.setMaxHeight(height);
         return button;
     }
 
     /**
-     * The same, with the padding chosen by the caller.
+     * The same, with the type size and the padding chosen by the caller.
      *
-     * <p>Only {@link #symbolButton} needs this, and it needs it because the padding is written
+     * <p>The type size is for the Menu's windows; see the public overload above. The padding
+     * only {@link #symbolButton} needs, and it needs it because the padding is written
      * into the style string rather than set on the button. Anything that calls {@code setPadding}
      * afterwards is quietly ignored; a JavaFX inline style outranks a value set from code, and
      * these buttons rewrite their style on every hover, so it is overwritten again the first time
      * the pointer crosses them. That trap cost a real line of dead code in {@code EditItemDialog}.
      */
-    private static Button button(String text, ButtonKind kind, double paddingV, double paddingH) {
+    private static Button button(String text, ButtonKind kind, double fontSize, double paddingV,
+            double paddingH) {
         Color resting = switch (kind) {
             case CONFIRM -> Tokens.BUTTON_CONFIRM_BG;
             case DANGER -> Tokens.BUTTON_DANGER_BG;
@@ -257,7 +275,7 @@ public final class Dialogs {
                 ? Tokens.BUTTON_DANGER_BORDER : Tokens.CONTROL_BORDER;
 
         Button button = new Button(text);
-        button.setFont(Font.font(Tokens.FONT_FAMILY, TouchType.dialogButtonFont()));
+        button.setFont(Font.font(Tokens.FONT_FAMILY, fontSize));
         // A button may never ellipsize its own label. A browser's never does (it grows the box and
         // lets the flex row wrap), and JavaFX's default is the opposite, which is what turned
         // Cancel into "C..." on the phone. Tying the minimum to the preferred width takes the
@@ -301,7 +319,7 @@ public final class Dialogs {
      * @see Fonts#SYMBOL_FAMILY
      */
     public static Button symbolButton(String text, ButtonKind kind, double size) {
-        Button button = button(text, kind, 0, 0);
+        Button button = button(text, kind, TouchType.dialogButtonFont(), 0, 0);
         button.setText(null);
         button.setGraphic(Fonts.symbolGlyph(text, TouchType.dialogFont(), button));
         button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);

@@ -15,8 +15,9 @@ import javafx.scene.transform.Shear;
  * a generic <em>alias</em>, and every system resolves it to a different typeface: Noto Sans Mono
  * on the author's Linux machine and on Android, Courier New on Windows, Menlo on macOS, DejaVu
  * Sans Mono in the build container. The interface therefore looked different on every platform.
- * Bundling the real files fixes the alias to one answer everywhere. See {@code CLAUDE.md} §5.5
- * <b>D-6</b> for why that is a deliberate divergence from the original app rather than a bug fix.
+ * Bundling the real files fixes the alias to one answer everywhere. This is a deliberate
+ * divergence from the original app (the single-file HTML app this one rewrites, which asks for
+ * {@code monospace}) rather than a bug fix.
  *
  * <p><b>Why this class appears to be called by nothing.</b> Almost nothing references it
  * directly. It is reached through {@link Tokens#FONT_FAMILY}, which is initialized from
@@ -45,8 +46,8 @@ import javafx.scene.transform.Shear;
  *       {@link Font#loadFont} is a plain number here for exactly that reason.</li>
  *   <li>Loading a font writes it to a temporary file first, so {@code java.io.tmpdir} has to be
  *       writable. Desktop is fine. On Android it may not be, which is why {@link #ensureLoaded()}
- *       exists and is called from a known point in {@code App.start}; M6 can set the property
- *       before that line and be certain it took effect.</li>
+ *       exists and is called from a known point in {@code App.start}; the Android build can set
+ *       the property before that line and be certain it took effect.</li>
  * </ul>
  */
 public final class Fonts {
@@ -56,7 +57,7 @@ public final class Fonts {
     /** Every word of text in the interface. */
     private static final String TEXT_FILE = DIRECTORY + "NotoSansMono-Regular.ttf";
 
-    /** Two button glyphs, and nothing else; see {@link #SYMBOL_FAMILY}. */
+    /** A few glyphs the text face lacks, and nothing else; see {@link #SYMBOL_FAMILY}. */
     private static final String SYMBOL_FILE = DIRECTORY + "NotoSansMath-Regular.ttf";
 
     /**
@@ -97,8 +98,9 @@ public final class Fonts {
      * The family name of the symbol face: {@code "Noto Sans Math"}.
      *
      * <p>The one place a second family is allowed, and only because Noto Sans Mono has no drawing
-     * for two of the characters the interface uses as buttons: {@code ⤓} (export the list) and
-     * {@code ↻} (swap width and length). Everything else, including the Add button's {@code ■},
+     * for a few characters the interface uses: {@code ⤓} (export the list), {@code ↻} (swap width
+     * and length), and the {@code ↗} on About's Source code link, which marks the one entry that
+     * leaves the app. Everything else, including the Add button's {@code ■},
      * the {@code ×} on the clear-search button and the {@code ·} on the layer ticks, is in the
      * text face. The original app had the same gap and the browser filled it silently from
      * whatever else was installed; naming a file makes that explicit and identical everywhere.
@@ -119,8 +121,9 @@ public final class Fonts {
      *
      * <p>The work happens in this class's initializer, so simply mentioning the class is what
      * triggers it; this method exists to give that a name and a deliberate moment. {@code App}
-     * calls it as its first statement so a broken build fails before a window exists, and so M6
-     * has somewhere to put the {@code java.io.tmpdir} fix described in the class note.
+     * calls it as its first statement so a broken build fails before a window exists, and so the
+     * Android build has somewhere to put the {@code java.io.tmpdir} fix described in the class
+     * note.
      */
     public static void ensureLoaded() {
         // Reaching this method has already run the static initializer above. Nothing to do.
@@ -131,7 +134,10 @@ public final class Fonts {
         return Font.font(TEXT_FAMILY, size);
     }
 
-    /** The typeface for {@code ⤓} and {@code ↻}, which the text face cannot draw. */
+    /**
+     * The typeface for {@code ⤓}, {@code ↻} and About's {@code ↗}, which the text face cannot
+     * draw.
+     */
     public static Font symbol(double size) {
         return Font.font(SYMBOL_FAMILY, size);
     }
@@ -145,9 +151,10 @@ public final class Fonts {
      * built for text. Noto Sans Math is not: it is a mathematics face, and its ascent has to leave
      * room for tall operators like {@code ∑} and full-height brackets. So its line box towers above
      * the baseline, centering that box puts the baseline low in the button, and a small arrow drawn
-     * on that baseline rides down with it. Measured on the M3.3 build, {@code ⤓} ended up touching
-     * the bottom border of the export button with six pixels of air above it, and {@code ↻} sat
-     * twelve pixels below the top of its button and five above the bottom. The Add button's
+     * on that baseline rides down with it. Measured when this typeface was first bundled,
+     * {@code ⤓} ended up touching the bottom border of the export button with six pixels of air
+     * above it, and {@code ↻} sat twelve pixels below the top of its button and five above the
+     * bottom. The Add button's
      * {@code ■} (same centering code, but drawn in the <em>text</em> face) was dead center, which
      * is what shows the fault is the face's metrics rather than the layout.
      *
@@ -177,7 +184,7 @@ public final class Fonts {
      * untouched, including ones written later.
      *
      * <p>The original app centered both of these glyphs, so this restores its behavior rather than
-     * departing from it; there is no {@code CLAUDE.md} §5.5 entry for it.
+     * departing from it.
      *
      * @param owner the button this glyph will be the graphic of, whose text color it follows
      */
@@ -276,9 +283,10 @@ public final class Fonts {
      * <p>Every failure here throws rather than falling back to the old {@code "monospace"}
      * alias. Falling back would restore exactly the behavior this change exists to remove, and
      * it would look completely normal: the app would start, text would render, nothing would be
-     * red. That is the silent-fallback shape {@code CLAUDE.md} OD-1 already forbids for the 3D
-     * pipeline. None of these failures can be caused by anything the person using the app did;
-     * each one means the artifact was built wrong, so there is nothing to recover from.
+     * red. That is the same silent fallback the app refuses for the 3D pipeline, whose absence it
+     * reports loudly at startup. None of these failures can be caused by anything the person
+     * using the app did; each one means the artifact was built wrong, so there is nothing to
+     * recover from.
      *
      * @return the family name JavaFX filed the font under, which is the authoritative one;
      *         guessing it and being wrong is itself one of the failures caught below
@@ -302,7 +310,9 @@ public final class Fonts {
             // loadFont reports failure by returning null rather than by throwing.
             throw new IllegalStateException("The bundled font " + resource
                     + " is present but JavaFX could not parse it. It is most likely truncated or"
-                    + " corrupt; check its size against the one recorded in MANUAL.md.");
+                    + " corrupt; compare it with the hinted TTF of the same name in the"
+                    + " notofonts/notofonts.github.io repository on GitHub, which is where it"
+                    + " came from.");
         }
         String family = font.getFamily();
         String resolved = Font.font(family, PROBE_SIZE).getFamily();

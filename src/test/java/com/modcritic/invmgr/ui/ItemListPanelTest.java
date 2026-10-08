@@ -212,12 +212,12 @@ class ItemListPanelTest extends ApplicationTest {
         int selected = brightestTextIn(app.listPanel().rowFor(first.id));
 
         // ⚠ THIS WAS WRONG FROM THE DAY THE LIST WAS WRITTEN AND NOTHING CAUGHT IT. Every row
-        // rendered pure white. Three things say #ccc: SPEC-DESIGN-SYSTEM.md's color table, the
-        // original's own stylesheet, where only `.list-entry.selected` is given `color: #fff`,
-        // and the brightest pixel anywhere in the list panel of the original's reference
-        // screenshot, which is 204 and not 255. See ItemListPanel.restyle for the cause, which
-        // is the same one AddItemDialog.titleRow writes up: an inline background makes JavaFX
-        // derive the text color inline too, and inline beats setTextFill.
+        // rendered pure white. Two things say #ccc: the original's own stylesheet, where only
+        // `.list-entry.selected` is given `color: #fff`, and the brightest pixel anywhere in
+        // the list panel of the original's reference screenshot, which is 204 and not 255. See
+        // ItemListPanel.restyle for the cause, which is the same one AddItemDialog.titleRow
+        // writes up: an inline background makes JavaFX derive the text color inline too, and
+        // inline beats setTextFill.
         assertEquals(0xcc, unselected, 6,
                 "an unselected row should be #ccc like every other piece of primary text; the "
                         + "brightest pixel in it was " + unselected);
@@ -294,7 +294,9 @@ class ItemListPanelTest extends ApplicationTest {
         WaitForAsyncUtils.waitForFxEvents();
         assertEquals(1, app.listPanel().rowCount(), "20 inches, searched in inches");
 
-        clickOn(app.topBar().unitsButton());
+        clickOn(app.topBar().menuButton());
+        clickOn(app.menuWindow().metricEntry());
+        clickOn(app.menuWindow().closeButton());
         WaitForAsyncUtils.waitForFxEvents();
         assertEquals(0, app.listPanel().rowCount(),
                 "the same query now means 20 cm, and the box is 50.8 cm wide");

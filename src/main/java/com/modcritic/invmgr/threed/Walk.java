@@ -16,11 +16,11 @@ import com.modcritic.invmgr.model.Room;
  * back in.
  *
  * <p><b>Speed and sensitivity are parameters, not constants read from inside.</b> That is
- * deliberate and it is what let M6.3's touch controls arrive as <em>callers</em>: the joystick moves
+ * deliberate and it is what let the touch controls arrive as <em>callers</em>: the joystick moves
  * at {@link #TOUCH_SPEED_FT_PER_S} = 6 ft/s rather than 9 and one-finger look turns at 0.006 rad/px
  * rather than 0.0022, so they hand these same functions different numbers instead of bringing a
- * second copy of the math. {@code threed.WalkGesture} and {@code threed.Joystick} are those
- * callers.
+ * second copy of the math. {@code threed.WalkGesture} is one of those callers, and
+ * {@code ui.ThreeDControls}, which moves the camera for the joystick, is the other.
  *
  * <h2>Four movements, one direction</h2>
  *
@@ -28,7 +28,7 @@ import com.modcritic.invmgr.model.Room;
  * forward, and every one of them needs to know which way "forward" and "right" are. That is written
  * down <b>once</b>, in {@link #forwardX}/{@link #forwardZ}/{@link #rightX}/{@link #rightZ}, and
  * three callers read it. A second copy is exactly how a camera ends up strafing east while it walks
- * north, and the mirror bug of M5.1 (CLAUDE.md §5.7 item 2) is what that class of mistake costs.
+ * north, and the room that once shipped mirrored east to west is what that class of mistake costs.
  */
 public final class Walk {
 
@@ -37,7 +37,7 @@ public final class Walk {
 
     /**
      * How fast the touch joystick moves the camera at full deflection, in feet per second. Original
-     * line 2783; {@code SPEC-3D-VIEW.md} §9 calls it {@code TOUCH_SPEED_3D}.
+     * line 2783, where it is called {@code TOUCH_SPEED_3D}.
      *
      * <p>Two thirds of {@link #MOVE_SPEED_FT_PER_S}, and <b>touch has no boost at all</b>; the
      * original gives the joystick no equivalent of Shift, because there is no second hand free to
@@ -61,7 +61,7 @@ public final class Walk {
 
     /**
      * What {@link #MOUSE_SENS_RAD_PER_PX} is multiplied by on the drag fallback, giving
-     * 0.00308 rad/px. {@code SPEC-3D-VIEW.md} §4.
+     * 0.00308 rad/px. Original line 3130.
      */
     public static final double DRAG_LOOK_MULT = 1.4;
 
@@ -132,8 +132,8 @@ public final class Walk {
      *
      * <p>Not ported: the original's {@code if (ad3d.dolly) ad3d.dolly(dF, cam3d)} on the line
      * after the move. No adapter in the original ever defines {@code dolly}, so the branch is dead
-     * there too. <b>{@link #dolly} below is not that hook resurrected</b>; it is §5.5 D-15, a
-     * gesture the original does not have, and it happens to want the same word.
+     * there too. <b>{@link #dolly} below is not that hook resurrected</b>; it is the pinch
+     * gesture, which the original does not have, and it happens to want the same word.
      */
     public static void step(CameraPose cam, double fwd, double str, double vert,
             double speedFtPerS, boolean boost, double dtSeconds, Room room) {
@@ -195,8 +195,7 @@ public final class Walk {
 
     /**
      * Moves the camera along the direction it faces, flat, then pulls it back inside the allowed
-     * volume. CLAUDE.md §5.5 <b>D-15</b>: spreading two fingers moves you forward, squeezing them
-     * moves you back.
+     * volume. Spreading two fingers moves you forward, squeezing them moves you back.
      *
      * <p><b>New behavior, not a port.</b> The original reads only the <em>midpoint</em> of two
      * fingers and never the distance between them, so a pinch does nothing at all there. Asked for
@@ -221,8 +220,8 @@ public final class Walk {
     // ------------------------------------------------------- which way is forward
     //
     // One copy, read by step, pan and dolly. At yaw 0 forward is north and right is east, which is
-    // what the camera faces the moment it lands; see Transitions and CLAUDE.md §5.7 item 2, where
-    // negating y and z together is what makes that true with no correction anywhere else.
+    // what the camera faces the moment it lands; see Transitions. Negating y and z together when
+    // converting the original's coordinates is what makes that true with no correction elsewhere.
     //
     // Package-private rather than public: WalkTest pins the directions directly, and nothing outside
     // this package has any business asking. Four scalar methods rather than one returning a pair,

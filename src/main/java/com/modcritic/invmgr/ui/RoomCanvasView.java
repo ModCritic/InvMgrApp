@@ -23,7 +23,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Cursor;
 import javafx.scene.Group;
-import javafx.scene.canvas.Canvas;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
@@ -35,7 +34,6 @@ import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.RadialGradient;
 import javafx.scene.paint.Stop;
 import javafx.scene.shape.Line;
-import javafx.scene.shape.Path;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.StrokeType;
 import javafx.scene.transform.Scale;
@@ -49,10 +47,10 @@ import javafx.util.Duration;
  *
  * <p><b>How it's drawn.</b> The floor, its grid and its vignette are painted onto a single
  * JavaFX {@code Canvas}; they only change when the room's size changes. Each box, by
- * contrast, is its own {@code Rectangle} node. That mirrors the original app, where every item
- * was its own element, and it buys three things cheaply: front-to-back ordering by list order,
- * per-item opacity for the dim effect, and hit detection for dragging without any manual
- * coordinate math.
+ * contrast, is its own {@code Rectangle} node. That mirrors the original app (the single-file
+ * HTML app, InvMgr 1.3.0, that this one rewrites), where every item was its own element, and it
+ * buys three things cheaply: front-to-back ordering by list order, per-item opacity for the dim
+ * effect, and hit detection for dragging without any manual coordinate math.
  *
  * <p><b>Coordinates.</b> Everything inside the room is in room pixels, where 8 pixels is one
  * inch and 96 is one foot. Item positions are stored that way, so the view never converts
@@ -67,11 +65,10 @@ public final class RoomCanvasView extends ScrollPane {
         void hover(Item item, double sceneX, double sceneY);
     }
 
-    /** Floor, grid and vignette. Repainted only when the room's dimensions change. */
     /**
      * The floor itself, and the one node a click on bare floor lands on.
      *
-     * <p><b>Three shapes rather than one canvas, and that is B11's fix.</b> A {@code Canvas} is a
+     * <p><b>Three shapes rather than one canvas.</b> A {@code Canvas} is a
      * raster: it takes a texture the size of the room times the screen's scale, and nothing capped
      * it. A 30 ft x 40 ft room on a phone wanted 380 MB of it and left nothing for the 3D wall
      * textures, which then failed to allocate and drew black; a 180 ft room passes the 16384
@@ -144,9 +141,9 @@ public final class RoomCanvasView extends ScrollPane {
      * The red square that warns a hold is about to delete a box: one node for the whole view.
      *
      * <p>Only one box can ever be held at a time, so one is enough. The original makes one per
-     * element because that is how a CSS child works, but a third node per item is exactly the cost
-     * {@code CLAUDE.md} §5.6 <b>OI-1</b> already warns about: {@link #rebuildItems()} recreates
-     * every node it owns, and 500 items is where that starts to show.
+     * element because that is how a CSS child works, but a third node per item is a cost worth
+     * avoiding: {@link #rebuildItems()} recreates every node it owns, and 500 items is where that
+     * starts to show.
      */
     private final Rectangle holdRing = new Rectangle();
 
@@ -215,7 +212,7 @@ public final class RoomCanvasView extends ScrollPane {
     private final PauseTransition inertiaFromBoxDrag =
             new PauseTransition(Duration.millis(Tokens.BOX_DRAG_INERTIA_GUARD_MS));
 
-    // ------------------------------------------------------- the room's own coasting (B9)
+    // ------------------------------------------------------- the room's own coasting
 
     /** How fast the room was moving when the finger left it, and where it goes next. */
     private final PanMomentum panMomentum = new PanMomentum();
@@ -268,15 +265,6 @@ public final class RoomCanvasView extends ScrollPane {
     private UndoEntry pendingTouchUndo;
 
     /**
-     * The per-frame clock behind the hold: it fades the ring in and fires the delete.
-     *
-     * <p>An {@link AnimationTimer} rather than a one-shot 1500 ms timer, and that is forced rather
-     * than preferred. {@link TouchGesture#holdFired} is written to be asked every frame and to
-     * answer yes exactly once, and {@link TouchGesture#isHolding} exists only to be polled; a
-     * single delayed timer would make both of them dead code. It also keeps the ring and the
-     * delete on one clock, so the red cannot finish early or late.
-     */
-    /**
      * How many frames the hold clock has run, ever. For tests, and it earns its keep.
      *
      * <p>An {@code AnimationTimer} will not say whether it is running, and a separate flag would
@@ -287,6 +275,15 @@ public final class RoomCanvasView extends ScrollPane {
      */
     private long holdFrames;
 
+    /**
+     * The per-frame clock behind the hold: it fades the ring in and fires the delete.
+     *
+     * <p>An {@link AnimationTimer} rather than a one-shot 1500 ms timer, and that is forced rather
+     * than preferred. {@link TouchGesture#holdFired} is written to be asked every frame and to
+     * answer yes exactly once, and {@link TouchGesture#isHolding} exists only to be polled; a
+     * single delayed timer would make both of them dead code. It also keeps the ring and the
+     * delete on one clock, so the red cannot finish early or late.
+     */
     private final AnimationTimer holdClock = new AnimationTimer() {
         @Override
         public void handle(long nanos) {
@@ -343,12 +340,13 @@ public final class RoomCanvasView extends ScrollPane {
         // `setPannable(false)` does NOT disable panning on a touch platform: ScrollPaneSkin installs
         // a separate press/drag pan on its inner viewRect inside `if (IS_TOUCH_SUPPORTED)`, and that
         // branch never asks whether the pane is pannable. Android drives it with the mouse events it
-        // manufactures from a finger, and §5.8 item 5 records that this is exactly how the room gets
-        // panned at all, so it must keep working.
+        // manufactures from a finger (on Android a finger arrives twice, as a touch and as a
+        // synthesized mouse copy, and the copy is exactly how the room gets panned at all), so it
+        // must keep working.
         //
         // The per-rectangle filter that consumes those synthesized events cannot help here. It sits
         // ON the box, and the skin's handlers sit on an ANCESTOR of the box; consuming at the target
-        // stops the bubble, which is why that filter looked sufficient for four milestones and why
+        // stops the bubble, which is why that filter looked sufficient for so long and why
         // three separate theories about this bug were wrong. Whatever the remaining path is (and
         // the phone says the scroll happens while `activeTouchId` is set, tracking the finger one to
         // one), it reaches the skin without passing through the box.
@@ -364,7 +362,7 @@ public final class RoomCanvasView extends ScrollPane {
         });
         addEventFilter(ScrollEvent.ANY, this::ignoreScrollWhileDragging);
 
-        // B9. Registered AFTER the guard above so that ordering reads the way the two behave:
+        // Registered AFTER the guard above so that ordering reads the way the two behave:
         // the guard decides whether this scroll belongs to a box drag, and this one only ever
         // looks at scrolls that are the room's.
         addEventFilter(ScrollEvent.ANY, this::trackPanForMomentum);
@@ -397,10 +395,10 @@ public final class RoomCanvasView extends ScrollPane {
         // makes on purpose: scrollItemIntoView runs when an item is added or selected, never during
         // a drag. The guard stops the listener reacting to its own correction.
         //
-        // B9 hangs its sampling off the same two listeners, and for the same reason they exist at
-        // all: what the room is asked to do is the skin's business, and what the room actually DID
-        // is observable right here. Measuring the movement rather than the request means the coast
-        // continues whatever really happened, at whatever scale Fit had it at.
+        // The coasting hangs its sampling off the same two listeners, and for the same reason they
+        // exist at all: what the room is asked to do is the skin's business, and what the room
+        // actually DID is observable right here. Measuring the movement rather than the request
+        // means the coast continues whatever really happened, at whatever scale Fit had it at.
         hvalueProperty().addListener((observable, before, after) -> {
             samplePan(true, before.doubleValue(), after.doubleValue());
             holdScroll(true, after.doubleValue());
@@ -650,8 +648,8 @@ public final class RoomCanvasView extends ScrollPane {
      * Where the room's north-west corner sits on screen.
      *
      * <p>Needed by anything that has to convert between the window and the room: the appearance
-     * tests sample pixels this way, and M3's drag-an-item-out-of-the-list needs it to work out
-     * where in the room a drop landed.
+     * tests sample pixels this way, and dragging an item out of the item list needs it to work
+     * out where in the room a drop landed.
      */
     public javafx.geometry.Point2D roomOriginInScene() {
         return room.localToScene(0, 0);
@@ -755,9 +753,6 @@ public final class RoomCanvasView extends ScrollPane {
         // One line per foot, or per meter in metric mode, which is the one place the unit
         // setting changes something drawn rather than merely labeled. Note the lines start one
         // step in and stop before the far edge: nothing is drawn on the room's own boundary.
-        //
-        // All of them in ONE Path, not one node each. A 200 ft room in metric is about 1,300
-        // lines, and that many nodes would cost more in layout than the grid is worth.
         floorGrid.getChildren().clear();
         double step = state.metricMode ? Units.PX_PER_METER : Units.PX_PER_FOOT;
         for (double x = step; x < widthPx; x += step) {
@@ -851,7 +846,8 @@ public final class RoomCanvasView extends ScrollPane {
             rect.setOnMouseExited(event -> onHoverEnded.run());
 
             // Right-click deletes, immediately. Hold-to-delete is a touch gesture and is never
-            // wired on desktop: see CLAUDE.md §5.5 D-1.
+            // wired on desktop: one deletion gesture per input type. The original also accepts a
+            // hold on desktop; this app does not, on purpose.
             //
             // Not wired at all on touch, and that is the other half of the same rule. A
             // ContextMenuEvent is not a MouseEvent, so the synthesized-mouse filter above cannot
@@ -1018,6 +1014,19 @@ public final class RoomCanvasView extends ScrollPane {
             }
 
             dragTo(item, rect, startItemX + dx, startItemY + dy);
+
+            // The tooltip rides along with the box, as the original's does. There, whatever box
+            // is under the pointer keeps getting mousemove during a drag, so the tooltip follows
+            // the dragged box, describes another box once a wall or that box holds it back and
+            // the pointer slides onto it, and goes over bare floor. JavaFX reports a move with
+            // the button down as MOUSE_DRAGGED to the pressed box alone, which the hover handler
+            // never sees, so without this the tooltip stayed where the press was.
+            Item under = visibleItemAt(drag.getSceneX(), drag.getSceneY());
+            if (under != null) {
+                onItemHover.hover(under, drag.getSceneX(), drag.getSceneY());
+            } else {
+                onHoverEnded.run();
+            }
             drag.consume();
         });
 
@@ -1036,16 +1045,30 @@ public final class RoomCanvasView extends ScrollPane {
     }
 
     /**
-     * Moves a box to where the pointer or finger has taken it, as far as the room allows.
+     * The box drawn on top at a point in the window, or null over bare floor.
      *
-     * <p>Shared by the mouse and the touch path so there is one copy of what dragging means.
-     *
-     * @param roomX where the box would go with nothing in the way, in room pixels
+     * <p>Only boxes the layer slider leaves showing count, the same rule the hover handler
+     * follows. "On top" is the paint order, so a box half under another loses the overlap.
      */
+    private Item visibleItemAt(double sceneX, double sceneY) {
+        Item top = null;
+        for (Item candidate : state.items) {
+            Rectangle rect = itemRects.get(candidate.id);
+            if (rect == null || !Layers.isVisible(state, candidate)
+                    || !rect.contains(rect.sceneToLocal(sceneX, sceneY))) {
+                continue;
+            }
+            if (top == null || Layers.comparePaint(candidate, top) > 0) {
+                top = candidate;
+            }
+        }
+        return top;
+    }
+
     /**
      * Fixes how much there is to scroll, so that moving a box can never change it.
      *
-     * <p><b>This is B2: "dragging an item to move it also moves the canvas".</b> Three theories
+     * <p><b>This fixes "dragging an item to move it also moves the canvas".</b> Three theories
      * about it were wrong before a stack trace and a scroll log between them named the real one, and
      * it is not an event being mishandled at all.
      *
@@ -1064,12 +1087,10 @@ public final class RoomCanvasView extends ScrollPane {
      * such thing: a ring is a real node and real nodes have bounds. So the property has to be
      * recreated deliberately.
      *
-     * <p>Done by clipping rather than by moving the ring, and the clip is <b>bigger than the room</b>
-     * by the ring's own reach, so the scrollable area is constant, and nothing that was visible
-     * before is hidden now. Clipping tight to the room would also have fixed the scrolling, and
-     * would have sliced the ring off a box parked against a wall.
+     * <p>Done by clipping the room to exactly its own bounds, so the scrollable area is constant.
+     * The comment in the body says why the clip is tight rather than generous, and what that costs.
      *
-     * <p>Phone-only in practice, which is why four milestones missed it: a desktop window is bigger
+     * <p>Phone-only in practice, which is why it was missed for so long: a desktop window is bigger
      * than the room, so there is no scrolling to be had and the content growing costs nothing.
      */
     private void pinScrollableArea() {
@@ -1134,19 +1155,9 @@ public final class RoomCanvasView extends ScrollPane {
     }
 
     /**
-     * Whether a scroll gesture currently belongs to a box drag rather than to the room.
-     *
-     * <p>Its own method, and visible to the tests, because the rule can be asked here and cannot be
-     * observed any other way in this container: no Android launcher means no scroll recognizer, so
-     * the events this exists to swallow are never generated, and {@code ScrollPaneSkin}'s own
-     * handler consults {@code IS_TOUCH_SUPPORTED} internally and moves nothing on a desktop. Reading
-     * a fired event's consumed flag back does not work either: JavaFX re-targets a gesture, so the
-     * object handed to {@code fireEvent} is not the one the handlers see.
-     */
-    /**
      * The floor rectangle, which is also what a click on bare floor lands on.
      *
-     * <p>Visible to the tests because B11's rule can only be asked of the node: the floor must
+     * <p>Visible to the tests because the rule can only be asked of the node: the floor must
      * cost no pixel buffer that grows with the room. A {@code Rectangle} answers that by being a
      * {@code Rectangle}, and a test that finds a {@code Canvas} here again has found the bug back.
      */
@@ -1167,13 +1178,23 @@ public final class RoomCanvasView extends ScrollPane {
         return line;
     }
 
+    /**
+     * Whether a scroll gesture currently belongs to a box drag rather than to the room.
+     *
+     * <p>Its own method, and visible to the tests, because the rule can be asked here and cannot be
+     * observed any other way in this container: no Android launcher means no scroll recognizer, so
+     * the events this exists to swallow are never generated, and {@code ScrollPaneSkin}'s own
+     * handler consults {@code IS_TOUCH_SUPPORTED} internally and moves nothing on a desktop. Reading
+     * a fired event's consumed flag back does not work either: JavaFX re-targets a gesture, so the
+     * object handed to {@code fireEvent} is not the one the handlers see.
+     */
     boolean swallowsScrollGesture() {
         return activeTouchId != null
                 || inertiaFromBoxDrag.getStatus() == Animation.Status.RUNNING;
     }
 
     /**
-     * B9. Throws away the platform's fling and measures the gesture so the app can do its own.
+     * Throws away the platform's fling and measures the gesture so the app can do its own.
      *
      * <p><b>Why the platform's is not simply tuned.</b> Glass's {@code ScrollGestureRecognizer}
      * decides whether to fling by asking how long the whole gesture lasted, flinging only under
@@ -1211,8 +1232,9 @@ public final class RoomCanvasView extends ScrollPane {
 
         // Compared inline rather than through a local of type EventType, deliberately: naming that
         // type would add two javafx.event imports, and every javafx class this project names has to
-        // earn an entry in the pom's reflectionList (§5.8 item 1). Two classes registered for a
-        // local variable would be two nobody could later explain.
+        // earn an entry in the pom's reflectionList (a native-image build cannot follow JavaFX's
+        // reflective class loading, so each class named directly must be registered). Two classes
+        // registered for a local variable would be two nobody could later explain.
         if (event.getEventType() == ScrollEvent.SCROLL_STARTED) {
             stopCoasting();
             panMomentum.began();
@@ -1332,6 +1354,13 @@ public final class RoomCanvasView extends ScrollPane {
         }
     }
 
+    /**
+     * Moves a box to where the pointer or finger has taken it, as far as the room allows.
+     *
+     * <p>Shared by the mouse and the touch path so there is one copy of what dragging means.
+     *
+     * @param roomX where the box would go with nothing in the way, in room pixels
+     */
     private void dragTo(Item item, Rectangle rect, double roomX, double roomY) {
         Collision.Point allowed = Collision.clampItem(state, item, roomX, roomY);
         item.x_px = allowed.x();
@@ -1592,11 +1621,11 @@ public final class RoomCanvasView extends ScrollPane {
             fitScale.setY(1 / uiScale);
             holder.setPadding(new Insets(Tokens.CANVAS_MARGIN));
 
-            // §5.5 D-3, amended: a phone gets no scrollbars on the room at all. The vertical one
-            // is too thin to catch on a waterfall-edge screen and widening it would spend width a
-            // phone has not got, and since B9 there is nothing left for it to do that dragging and
-            // the coast do not already do. Desktop keeps AS_NEEDED, where a pointer can hit a
-            // 12 px bar and there is width to spare.
+            // A phone gets no scrollbars on the room at all. The vertical one is too thin to catch
+            // on a waterfall-edge screen and widening it would spend width a phone has not got, and
+            // now that the room coasts after a fling there is nothing left for it to do that
+            // dragging and the coast do not already do. Desktop keeps AS_NEEDED, where a pointer
+            // can hit a 12 px bar and there is width to spare.
             //
             // Not the same call as Fit mode's below. That one hides them because nothing CAN be
             // off-screen, so a bar would be a lie; this one hides a bar that would tell the truth

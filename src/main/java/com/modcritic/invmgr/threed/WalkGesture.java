@@ -5,8 +5,9 @@ import com.modcritic.invmgr.model.Room;
 /**
  * What the fingers that are <em>not</em> on the joystick mean while you are standing in the 3D room.
  *
- * <p>Port of the original's look and pan recognizer (original lines 3152-3210), plus CLAUDE.md §5.5
- * <b>D-15</b>, the pinch, which the original does not have.
+ * <p>Port of the look and pan recognizer in the original (the single-file HTML app, InvMgr 1.3.0,
+ * that this app rewrites; original lines 3152-3210), plus the pinch, which the original does not
+ * have.
  *
  * <ul>
  *   <li><b>One finger</b> looks around: swipe direction is look direction.
@@ -38,22 +39,23 @@ import com.modcritic.invmgr.model.Room;
  *
  * <h2>Why two fingers do one job at a time</h2>
  *
- * <p>They did both at once until 2026-08-11, which is what D-15 originally asked for, and on a real
- * hand it was wrong. <b>A pinch drags its own midpoint.</b> Pinch one-handed (thumb resting, index
- * finger doing the moving) and the midpoint travels exactly <em>half</em> the change in separation,
- * because only one of the two contributed to it. Multiply that half by the pan's 0.03 ft/px and the
- * whole separation by the pinch's 0.015, and the two come out <b>exactly equal</b>: every one-handed
- * pinch moved the camera at forty-five degrees, forward and sideways in equal measure, and which way
- * sideways depended on which finger the hand happened to anchor. The very halving that makes a pinch
- * and a pan feel matched for the same effort is what makes the artifact match the intent so precisely.
+ * <p>They did both at once until 2026-08-11, which is how the pinch was first specified, and on a
+ * real hand it was wrong. <b>A pinch drags its own midpoint.</b> Pinch one-handed (thumb resting,
+ * index finger doing the moving) and the midpoint travels exactly <em>half</em> the change in
+ * separation, because only one of the two contributed to it. Multiply that half by the pan's 0.03
+ * ft/px and the whole separation by the pinch's 0.015, and the two come out <b>exactly equal</b>:
+ * every one-handed pinch moved the camera at forty-five degrees, forward and sideways in equal
+ * measure, and which way sideways depended on which finger the hand happened to anchor. The very
+ * halving that makes a pinch and a pan feel matched for the same effort is what makes the artifact
+ * match the intent so precisely.
  *
- * <p>Reported by the user 2026-08-08 against {@code InvMgr-M6.3.apk}: <i>"it changes the angle of
+ * <p>Reported by the user 2026-08-08 against that day's phone build: <i>"it changes the angle of
  * movement seemingly with where the midpoint of the two fingers goes"</i>, and the fix is theirs
  * too: two fingers are a slide or a pinch, never both. Whichever the hand does first by
  * {@link #TWO_FINGER_DECIDE_PX} claims the pair, and the other does nothing until a finger lifts. It
  * is the same shape as the item list's direction lock and as {@code ui.TouchGesture}'s rule that
- * crossing the drag threshold is permanent. <b>It amends D-15</b>, which promised the two would
- * compose; see CLAUDE.md §5.5.
+ * crossing the drag threshold is permanent. <b>It replaces the first pinch design</b>, which
+ * promised the two would compose.
  *
  * <p>Nothing is thrown away by waiting. The movement up to the decision is applied in full the moment
  * it is made (see {@link #moved}), so the threshold delays the commitment without costing the hand
@@ -80,8 +82,8 @@ public final class WalkGesture {
 
     /**
      * How far spreading two fingers moves the camera forward, in feet per pixel of extra separation.
-     * CLAUDE.md §5.5 <b>D-15</b>; deliberately half {@link #PAN_SENS_FT_PER_PX}; see the note on
-     * this class.
+     * New here, since the original ignores a pinch; deliberately half {@link #PAN_SENS_FT_PER_PX};
+     * see the note on this class.
      */
     public static final double PINCH_SENS_FT_PER_PX = 0.015;
 
@@ -138,7 +140,7 @@ public final class WalkGesture {
         UNDECIDED,
         /** Sliding the pair moves the camera sideways and up. The original's own gesture. */
         SLIDE,
-        /** Spreading and squeezing moves the camera forward and back. D-15's addition. */
+        /** Spreading and squeezing moves the camera forward and back. Not in the original. */
         PINCH
     }
 
@@ -222,8 +224,8 @@ public final class WalkGesture {
      * it wins and the other is off for the rest of the gesture. The reason is on this class: a
      * one-handed pinch drags its own midpoint by exactly half its separation change, which at these
      * two sensitivities is exactly as much sideways movement as forward, so composing the two (as
-     * D-15 first asked for, and as this did until 2026-08-11) sent every one-handed pinch off at
-     * forty-five degrees.
+     * the pinch was first specified, and as this did until 2026-08-11) sent every one-handed pinch
+     * off at forty-five degrees.
      *
      * <p><b>The wait costs nothing.</b> The deciding call applies the movement measured from where
      * the fingers landed, not from the previous frame, so a fast pinch that clears the threshold in
@@ -304,8 +306,8 @@ public final class WalkGesture {
      * lifting one of three fingers leaves it panning from the midpoint of a pair that no longer
      * exists, and the next movement subtracts that stale midpoint from the new one and jumps the
      * camera by the whole distance between them, which on a phone is several feet. Nothing is
-     * intentional about that, so it is not a §5.5 divergence; it is the same kind of inherited fault
-     * as the keys a window never hears released.
+     * intentional about that, so it is not a deliberate departure from the original; it is the same
+     * kind of inherited fault as the keys a window never hears released.
      *
      * @param xy the fingers <b>still down</b>, the lifted one already removed
      * @return where a tap landed, or null if this lift was not one

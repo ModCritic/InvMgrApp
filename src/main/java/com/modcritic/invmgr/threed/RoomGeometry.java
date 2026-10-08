@@ -10,10 +10,10 @@ import com.modcritic.invmgr.model.Room;
  * open top is what stops a small room feeling like a sealed box, and the specification calls it out.
  *
  * <p><b>These face inward, where an item's faces face outward.</b> You stand inside the room and
- * outside the boxes. That is the whole difference, and it is the half the OD-1 spike never had to
- * get right, because it switched face culling off entirely. With culling on, getting it backwards
- * means standing in a room with no walls, every one of them invisible from the only place you can
- * stand.
+ * outside the boxes. That is the whole difference, and it is the half the early research program
+ * that first proved JavaFX 3D works never had to get right, because it switched face culling off
+ * entirely. With culling on, getting it backwards means standing in a room with no walls, every
+ * one of them invisible from the only place you can stand.
  *
  * <p>As with {@link BoxGeometry}, y and z are both negated on the way out. That pair is a half
  * turn rather than a mirror, so the corners go through in the order they are written and the
@@ -60,8 +60,8 @@ public final class RoomGeometry {
          * seen from opposite sides. The same for west and east.
          *
          * <p>It only matters when a room dimension is not a whole number of feet: see
-         * {@link SurfaceMetrics#verticalLines()}, where it decides which end of the wall gets the
-         * leftover part of a foot.
+         * {@link GridTile#originX}, where it decides which end of the wall gets the leftover part
+         * of a foot.
          */
         public final boolean mirroredGridX;
 
@@ -142,9 +142,9 @@ public final class RoomGeometry {
     /**
      * The same four corners, moved {@code distanceFt} off the surface towards a point.
      *
-     * <p>Used to float one layer of a surface just clear of another: since M6.7 a wall is a grid
-     * quad with a vignette quad over it, and two quads in exactly the same plane fight over the
-     * depth buffer instead of stacking.
+     * <p>Used to float one layer of a surface just clear of another: a wall is a grid quad with a
+     * vignette quad over it, and two quads in exactly the same plane fight over the depth buffer
+     * instead of stacking.
      *
      * <p><b>Which way is off the surface comes from the corners themselves</b>, rather than from a
      * list of which surface is which. The cross product of two edges gives the plane's normal, and

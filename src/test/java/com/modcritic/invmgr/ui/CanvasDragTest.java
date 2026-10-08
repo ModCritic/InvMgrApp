@@ -305,9 +305,64 @@ class CanvasDragTest extends ApplicationTest {
     }
 
     @Test
+    @DisplayName("the tooltip rides along with a dragged box, then follows the pointer off it")
+    void tooltipFollowsADrag() {
+        Item blocker = item("item-id-22222222-3333-4444-8555-666666666666", 2, 24, 24, 768, 192);
+        interact(() -> {
+            state.layerCollision = true;
+            state.items.add(blocker);
+            canvas.rebuildItems();
+        });
+        // Which box the tooltip last described, and where; both null once it was told to go.
+        Item[] shownFor = {null};
+        Point2D[] shownAt = {null};
+        interact(() -> {
+            canvas.setOnItemHover((hovered, x, y) -> {
+                shownFor[0] = hovered;
+                shownAt[0] = new Point2D(x, y);
+            });
+            canvas.setOnHoverEnded(() -> {
+                shownFor[0] = null;
+                shownAt[0] = null;
+            });
+        });
+
+        Point2D center = centerOf(box);
+        moveTo(center.getX(), center.getY());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(box, shownFor[0], "resting on the box should show its tooltip");
+        Point2D before = shownAt[0];
+
+        // Mid-drag, not after the release: a tooltip left where the press was is the bug.
+        press(MouseButton.PRIMARY);
+        moveBy(100, 20);
+        moveBy(100, 20);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(box, shownFor[0], "the tooltip should still describe the moving box");
+        assertEquals(before.getX() + 200, shownAt[0].getX(), 1, "beside the pointer");
+        assertEquals(before.getY() + 40, shownAt[0].getY(), 1, "beside the pointer");
+
+        // The blocker stops the box at 576 and the pointer carries on onto the blocker, which
+        // in the original fires the blocker's own mousemove.
+        moveBy(300, 0);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(576, box.x_px, 2, "the blocker should be holding the box back");
+        assertEquals(blocker, shownFor[0], "a pointer over the blocker describes the blocker");
+
+        // And past it, over bare floor: no tooltip at all.
+        moveBy(300, 0);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals(null, shownFor[0], "a pointer over bare floor shows no tooltip");
+
+        release(MouseButton.PRIMARY);
+        WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    @Test
     @DisplayName("turning Layer Collision off does not lift a low box above one it is under")
     void collisionOffKeepsALowBoxUnderneath() {
-        // The state the user reached in the M3 jar, with all boxes 12 in tall and 12 in square:
+        // The state the user reached in an early desktop build, with all boxes 12 in tall and 12 in
+        // square:
         //   A on the floor; B sitting half on top of A, so B is a layer up at base 12;
         //   C on the floor, dragged (with Layer Collision on, which is what freezes its height)
         //   into the part of B that overhangs A -- so C is UNDERNEATH B while still at base 0.

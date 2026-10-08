@@ -44,14 +44,14 @@ package com.modcritic.invmgr.ui;
  *
  * <h2>Which way it leans</h2>
  *
- * <p><b>The way a real hanging card leans, which is not the way the original app leaned.</b> Push
- * something hanging to the right and its bottom trails to the <em>left</em>. The original tilts it
- * clockwise instead: see {@code docs/original/InvMgr_V1.3.0.html} line 2046, where a rightward
- * movement produces a positive {@code rotate()}. This class copied that at first, on the grounds
- * that it was the look the user had signed off without ever having seen the alternative. Having
- * seen both, they chose the physical one on 2026-08-01, so it is now a deliberate divergence:
- * {@code CLAUDE.md} §5.5, D-8. It is the minus sign on {@code acceleration} in {@link #step} and
- * nothing else.
+ * <p><b>The way a real hanging card leans, which is not the way the original app leaned.</b> (The
+ * original is the single-file HTML app this one rewrites.) Push something hanging to the right and
+ * its bottom trails to the <em>left</em>. The original tilts it clockwise instead: see line 2046
+ * of the original's {@code InvMgr_V1.3.0.html}, where a rightward movement produces a positive
+ * {@code rotate()}. This class copied that at first, on the grounds that it was the look the user
+ * had signed off without ever having seen the alternative. Having seen both, they chose the
+ * physical one on 2026-08-01, so it is now a deliberate divergence from the original. It is the
+ * minus sign on {@code acceleration} in {@link #step} and nothing else.
  *
  * <h2>One thing it deliberately cannot do</h2>
  *

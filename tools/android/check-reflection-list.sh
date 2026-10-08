@@ -17,8 +17,8 @@
 #         at com.sun.javafx.util.Utils.forceInit
 #         at com.sun.javafx.scene.shape.PolylineHelper.<clinit>
 #
-# On a phone that is a black screen. M6.1's first APK died exactly this way, on the
-# stepper arrows of the room-size fields, and finding it cost a full build cycle.
+# On a phone that is a black screen. The first APK this project built died exactly this way,
+# on the stepper arrows of the room-size fields, and finding it cost a full build cycle.
 #
 # Gluon pre-registers a curated list of JavaFX classes, and that list has holes:
 # Polygon is on it, Polyline is not, and they are siblings. So "Gluon handles JavaFX"
@@ -27,7 +27,8 @@
 # WHAT IT DOES
 #
 # Compares the javafx.* classes imported anywhere in src/main/java against the union of
-# (a) Gluon's own list, read out of the substrate jar, and (b) our <reflectionList>.
+# (a) Gluon's own list, from the snapshot in tools/android/gluon-registers.txt, and (b) our
+# <reflectionList>.
 # Anything in neither is reported and the script exits 1.
 #
 # Run it after adding any new JavaFX import. It takes about a second, where the
@@ -48,7 +49,7 @@
 # Established 2026-09-09, from the Android SDK jar rather than by reasoning: forceInit is
 # called on exactly 62 JavaFX classes, the whole javafx.scene.image family contributes
 # only Image and ImageView, and there is no PixelReaderHelper in any JavaFX jar on this
-# machine. CLAUDE.md §5.8 item 9 carries the working.
+# machine.
 
 set -euo pipefail
 
@@ -70,8 +71,8 @@ trap 'rm -rf "$work"' EXIT
 # trailing lowercase-initial segment is dropped.
 #
 # ⚠ AND the classes written out in full instead of imported. Reading import lines alone is
-# all this script did until M6.3, and it had been short by five names since M5.2 without
-# ever saying so: SequentialTransition, ObservableValue, ActionEvent, CornerRadii and Robot
+# all this script did until 2026-08-08, and it had been short by five names since 2026-08-05
+# without ever saying so: SequentialTransition, ObservableValue, ActionEvent, CornerRadii and Robot
 # are every one of them used fully qualified, and every one of them read as "not used at
 # all". A guard that cannot see part of the source is worse than no guard, because it
 # prints the same "OK" whether or not the thing it checks is true, the same shape as a

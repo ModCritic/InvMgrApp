@@ -8,6 +8,7 @@
 #include "invmgr_host.h"
 
 #include <android/log.h>
+#include <errno.h>
 #include <pthread.h>
 #include <string.h>
 #include <stdio.h>
@@ -191,4 +192,26 @@ Java_java_net_AbstractPlainDatagramSocketImpl_isReusePortAvailable0(JNIEnv *env,
 {
     (void) env; (void) cls;
     return JNI_FALSE;
+}
+
+/*
+ * Added 2026-09-25 with the About screen's Source code link. NOT a JNI function: a libc one,
+ * and Bionic only has it from API 28, where this app supports phones back to API 21.
+ *
+ * The desktop half of About's Source code link calls JavaFX's HostServices.showDocument, which
+ * starts xdg-open (or open, or rundll32) as a separate process. The native image compiles every
+ * line it can reach, whether or not it ever runs on a phone, so the JDK's process-starting code
+ * came into this library with it, and that code calls posix_spawn. On a phone, App.openLink
+ * always takes the Android route through InvMgrActivity instead, so this is never called.
+ *
+ * If it somehow were, "not supported" is the honest answer: the JDK turns it into an IOException,
+ * which HostServices catches and logs. Declared here with plain pointers rather than spawn.h's
+ * types, because the API 21 headers hide spawn.h's declaration; only the name has to match for
+ * the symbol to resolve. check-undefined-symbols.sh found it missing.
+ */
+int posix_spawn(pid_t *pid, const char *path, const void *file_actions, const void *attrp,
+                char *const argv[], char *const envp[])
+{
+    (void) pid; (void) path; (void) file_actions; (void) attrp; (void) argv; (void) envp;
+    return ENOSYS;
 }

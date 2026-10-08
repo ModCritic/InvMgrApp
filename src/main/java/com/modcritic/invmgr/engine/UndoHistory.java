@@ -14,7 +14,7 @@ import java.util.List;
  * <p><b>Capped at {@value #MAX_ENTRIES} actions</b>, oldest thrown away first. The original app has
  * no limit at all, which grows without bound for as long as it stays open; every entry holds a
  * snapshot of every item, so the entries are not free. 500 is far more than anyone reaches by hand
- * and exists purely so a long session cannot grow forever (OD-6, decided by the user).
+ * and exists purely so a long session cannot grow forever. The user chose the cap on 2026-07-27.
  *
  * <p><b>Deliberately not part of {@link AppState}.</b> Undo history is never written to a save
  * file, and the original clears it on load rather than restoring it. Keeping it out of the state
@@ -26,7 +26,7 @@ import java.util.List;
  */
 public final class UndoHistory {
 
-    /** OD-6: the user's chosen cap. */
+    /** The cap the user chose on 2026-07-27. */
     public static final int MAX_ENTRIES = 500;
 
     /** What the status bar says when there is nothing left to undo. */

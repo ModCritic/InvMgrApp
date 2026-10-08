@@ -21,9 +21,10 @@ package com.modcritic.invmgr.ui;
  *
  * <h2>Why hold-to-delete is a touch gesture and only a touch gesture</h2>
  *
- * <p>On the desktop a box is deleted by right-clicking it. That is a deliberate split (§5.5
- * <b>D-1</b>): <b>one deletion gesture per kind of input</b>, hold for fingers and right-click for
- * a mouse. Nothing should ever add a hold to the desktop.
+ * <p>On the desktop a box is deleted by right-clicking it. That is a deliberate split, decided by
+ * the user on 2026-07-27: <b>one deletion gesture per kind of input</b>, hold for fingers and
+ * right-click for a mouse. The original (the single-file HTML app this one rewrites) also accepts
+ * a hold on the desktop; this app does not, and nothing should add one.
  *
  * <h2>The gaps, which are the interesting part</h2>
  *

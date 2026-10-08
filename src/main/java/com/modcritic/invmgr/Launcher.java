@@ -7,7 +7,7 @@ import javafx.application.Application;
  * The program's entry point: the first code that runs when InvMgr starts.
  *
  * <p>This class exists only to start {@link App}, and it must stay that way. Two
- * separate reasons, both of which cost the OD-1 spike a build:
+ * separate reasons, both of which cost an early prototype of this app a build:
  *
  * <ol>
  *   <li>{@code Application.launch(args)} (the short form) figures out which class
@@ -55,7 +55,7 @@ public final class Launcher {
      *
      * <p><b>Why the app sets this for itself.</b> Prism refuses a graphics driver it does not
      * recognize as good enough and falls back to its software pipeline, which cannot draw 3D at
-     * all: {@code SCENE3D} comes back false, the 3D button is disabled (§5.5 D-10) and the startup
+     * all: {@code SCENE3D} comes back false, the 3D button is disabled and the startup
      * log says so. That is the right answer on a machine with no 3D. It was the WRONG answer on a
      * virtual machine the user tested, where the OpenGL driver is Mesa's {@code llvmpipe}: a real
      * OpenGL implementation that happens to run on the processor. Forcing it there gives a working
@@ -83,9 +83,9 @@ public final class Launcher {
      * <p>{@code -Dinvmgr.forcegpu=false} and nothing else; see {@link #shouldForceGpu}. It exists
      * because the check being bypassed is a real one: Prism rejects a driver it thinks is broken,
      * and a driver that starts and then misbehaves could take the whole program down rather than
-     * just the 3D button. §5.5 D-10 already decided which way that trade goes, in the same words:
-     * losing the whole program to save one button is the worse trade. So there has to be a way
-     * back that does not need a rebuild, and the startup log prints it.
+     * just the 3D button. The app's choice for a machine with no 3D is to gray out that button and
+     * keep running, because losing the whole program to save one button is the worse trade. So
+     * there has to be a way back that does not need a rebuild, and the startup log prints it.
      */
     public static final String FORCE_GPU_OVERRIDE = "invmgr.forcegpu";
 
@@ -112,7 +112,7 @@ public final class Launcher {
      *       argument.
      *   <li><b>This is a phone.</b> Android reaches its 3D through OpenJFX's own backend and has
      *       never needed this; bypassing a safety check on a platform that does not need it is
-     *       risk for nothing. M6.5b and M6.5c got 3D running on the phone without it.
+     *       risk for nothing. 3D runs on the phone without it.
      * </ul>
      *
      * @param override what {@link #FORCE_GPU_OVERRIDE} says, or null

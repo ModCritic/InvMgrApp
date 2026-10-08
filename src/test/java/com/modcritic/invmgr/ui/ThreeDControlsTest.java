@@ -141,7 +141,7 @@ class ThreeDControlsTest extends ApplicationTest {
         double afterC = app.view3d().camera().y;
         assertTrue(afterC < risen - 0.2, "C must descend");
 
-        // CLAUDE.md §5.5 D-13. The original uses C precisely because Ctrl+W closes a browser tab,
+        // The original binds only C, precisely because Ctrl+W closes a browser tab,
         // which is not a constraint here, so Ctrl works too, and C is kept.
         hold(KeyCode.SPACE, 250);
         double risenAgain = app.view3d().camera().y;
@@ -392,7 +392,7 @@ class ThreeDControlsTest extends ApplicationTest {
     @Test
     @DisplayName("the 3D tooltip and the hint grow with the interface zoom, and the picture does not")
     void theOverlayChromeFollowsTheZoom() {
-        // Reported by the user 2026-08-06 against the M5.3 jar: the 3D tooltip stayed its 100%
+        // Reported by the user 2026-08-06: the 3D tooltip stayed its 100%
         // size at every zoom. View3D sits OUTSIDE the one transform that scales the whole
         // interface (it has to, or the drawing surface would not be exactly as many pixels as
         // the window and the view would come out stretched) and the tooltip and hint had
@@ -438,6 +438,57 @@ class ThreeDControlsTest extends ApplicationTest {
                 "and it should still be over on the right-hand side");
 
         setZoomTo(100);
+    }
+
+    @Test
+    @DisplayName("a tooltip hanging off the bottom-right corner leaves the return button where it is")
+    void aTooltipOffTheEdgeDoesNotMoveTheReturnButton() {
+        // Reported by the user 2026-09-24: resting on a box near the right edge slid the return
+        // button left by exactly as far as the tooltip ran off the screen, and back again as the
+        // pointer moved away. The overlay's Group grew to take in the overhanging tooltip and
+        // View3D, a StackPane, centered the bigger Group. The corner covers both directions: off
+        // the bottom, the same thing pushes the button up.
+        openThreeD();
+        interact(() -> {
+            // Stood 4 ft back from the box's front face and 5 ft to the west of its middle, so the
+            // box fills the right-hand edge of the picture, and high enough that it also reaches
+            // the bottom edge. Worked from the 3D camera's 1080 px perspective distance at 1440 px
+            // high; the pick below checks the arithmetic rather than trusting it.
+            app.view3d().camera().x = 1;
+            app.view3d().camera().y = 3.5;
+            app.view3d().camera().z = 9;
+            app.view3d().camera().yaw = 0;
+            app.view3d().camera().pitch = 0;
+            app.view3d().render();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+
+        javafx.geometry.Point2D corner =
+                new javafx.geometry.Point2D(REFERENCE_WIDTH - 40, REFERENCE_HEIGHT - 10);
+        // Without this the test passes for the wrong reason: no box under the pointer means no
+        // tooltip, and no tooltip means nothing to push the button about.
+        assertEquals("box-1", WaitForAsyncUtils.waitForAsyncFx(5000,
+                () -> app.view3d().pickItemAtScene(corner.getX(), corner.getY())),
+                "the box has to be under the bottom-right corner for this to test anything");
+
+        javafx.scene.control.Button button = app.view3d().returnButton();
+        javafx.geometry.Bounds before = button.localToScene(button.getLayoutBounds());
+
+        moveTo(corner);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(app.tooltip3d().isShowing(), "the tooltip should be up");
+        javafx.geometry.Bounds tip = app.tooltip3d().node()
+                .localToScene(app.tooltip3d().node().getLayoutBounds());
+        assertTrue(tip.getMaxX() > REFERENCE_WIDTH && tip.getMaxY() > REFERENCE_HEIGHT,
+                "the tooltip has to run off both edges for this to test anything; it ends at "
+                        + tip.getMaxX() + ", " + tip.getMaxY());
+
+        javafx.geometry.Bounds after = button.localToScene(button.getLayoutBounds());
+        assertEquals(before.getMinX(), after.getMinX(), 0.5,
+                "the return button slid sideways when the tooltip ran off the right edge");
+        assertEquals(before.getMinY(), after.getMinY(), 0.5,
+                "the return button slid up when the tooltip ran off the bottom edge");
     }
 
     /** How wide a node is on the glass, after every transform between it and the scene. */

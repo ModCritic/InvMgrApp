@@ -142,8 +142,9 @@ class CameraRestTest {
     @Test
     @DisplayName("yaw 0 is north and a positive turn goes toward east")
     void theCompassFollowsTheSpecsAxes() {
-        // SPEC-3D-VIEW.md §1, restated in CameraPose's own class documentation. Getting this
-        // backwards would make every line actively misleading, which is worse than no line.
+        // The original's axes (yaw 0 faces north, east is +x), restated in CameraPose's own class
+        // documentation. Getting this backwards would make every line actively misleading, which
+        // is worse than no line.
         assertEquals("N", CameraRest.compass(0));
         assertEquals("E", CameraRest.compass(Math.toRadians(90)));
         assertEquals("S", CameraRest.compass(Math.toRadians(180)));

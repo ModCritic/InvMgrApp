@@ -21,6 +21,13 @@ import javafx.scene.layout.StackPane;
  *
  * <p>The ghost sitting above the tooltip is deliberate: you can be dragging a planned item
  * while a tooltip is still on screen, and the thing under your finger should be on top.
+ *
+ * <p><b>A tooltip never stays over a dialog, though</b> (the user's decision, 2026-10-01): opening
+ * a dialog calls {@link #setOnDialogShown}'s action, and App hides the tooltip with it. On a phone
+ * a tapped box's tooltip stays up for seconds, and a long name scrolls, so it was still sliding
+ * across the Menu after the Menu opened. The tooltip keeps its place above dialogs in the order
+ * all the same, because the order also decides what a tooltip shown later would cover, and none
+ * can be shown while a dialog is up: the dialog's overlay takes every touch and the mouse.
  */
 public final class Overlays extends StackPane {
 
@@ -29,6 +36,9 @@ public final class Overlays extends StackPane {
 
     /** Where the planned-item drag ghost puts itself. The very top. */
     private final Pane ghostLayer = new Pane();
+
+    /** Run each time a dialog goes on screen. */
+    private Runnable onDialogShown = () -> { };
 
     public Overlays(Node content) {
         // Both float layers position their contents by hand, so they must not eat clicks
@@ -53,6 +63,12 @@ public final class Overlays extends StackPane {
             return;
         }
         getChildren().add(getChildren().indexOf(tooltipLayer), overlay);
+        onDialogShown.run();
+    }
+
+    /** What to do whenever a dialog opens. App hides the tooltip with it. */
+    public void setOnDialogShown(Runnable action) {
+        onDialogShown = action == null ? () -> { } : action;
     }
 
     public void hideDialog(Node overlay) {

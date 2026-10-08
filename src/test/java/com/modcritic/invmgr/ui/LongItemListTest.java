@@ -28,18 +28,29 @@ import org.testfx.util.WaitForAsyncUtils;
  * The item list with more rows in it than fit on the screen.
  *
  * <p><b>Why this exists.</b> Every other test of the list uses a handful of items, and a handful
- * of items is the case where nothing interesting can go wrong. M6.7b measured a 200 row list on the
- * phone at half the frame rate of a 12 row one, and the fix for that is to stop keeping a node per
- * item, which means <b>the node under your finger can stop being the row it was</b>. That is the
- * exact situation {@code ItemListPanel}'s class documentation says destroys double-click.
+ * of items is the case where nothing interesting can go wrong. A measurement on the phone found a
+ * 200 row list at half the frame rate of a 12 row one. The fix was to stop keeping a node per item:
+ * {@code ItemListPanel} builds nodes only for the rows on screen and points them at whatever item
+ * is there, which means <b>the node under your finger can stop being the row it was</b>. That is
+ * the exact situation {@code ItemListPanel}'s class documentation says destroys double-click.
  *
- * <p>So these are the behaviors that a long list has to keep whatever the panel does underneath,
- * and <b>every one of them passes against the version that keeps a node per item</b>. That is the
- * point: they describe the app, not the implementation, and they were confirmed green before the
- * implementation changed so that a later failure means a regression rather than a wrong test.
+ * <p>The tests are of three kinds:
  *
- * <p>The one exception is {@link #theListDoesNotKeepANodePerItem}, which is the new requirement and
- * is expected to fail until the panel is virtualized. It is marked as such.
+ * <ul>
+ *   <li><b>Behaviors a long list has to keep whatever the panel does underneath</b>: scrolling,
+ *       clicking, double-clicking, selecting, {@code scrollTo}, the scrollable height and dragging
+ *       a planned row. They describe the app, not the implementation. They were written before the
+ *       panel changed and run against the version that kept a node per item, where they passed, so
+ *       a later failure means a regression rather than a wrong test.
+ *   <li><b>Rules the recycling has to obey</b>: {@link #aRowMidGestureKeepsItsNode} and
+ *       {@link #aRowJustClickedKeepsItsNodeIfTheListScrolls}, which a list that never reuses a
+ *       node passes without trying, and {@link #theMeasuredHeightsMatchTheRealOnes}, which reads
+ *       {@code ItemListPanel.measuredHeightOf}, a method only the recycling panel has.
+ *   <li><b>Checks that need fewer nodes than rows</b>: {@link #theListDoesNotKeepANodePerItem},
+ *       the requirement itself, and {@link #rowCountCountsRowsNotNodes}, which asserts the same
+ *       bound so that it only passes while rows and nodes really differ. Both fail against a list
+ *       that keeps a node per item, on purpose.
+ * </ul>
  */
 class LongItemListTest extends ApplicationTest {
 

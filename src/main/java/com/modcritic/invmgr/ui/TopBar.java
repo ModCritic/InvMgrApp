@@ -28,13 +28,13 @@ import javafx.util.Duration;
 /**
  * The bar across the top: the room's dimensions, and the buttons that change modes.
  *
- * <p><b>Each mode button has its own color</b>: Fit blue, Plan purple, Units green, Layer
- * Collision amber, so a glance tells you which modes are on without reading any labels. That is
- * a stated design principle, not decoration, and the four must stay distinct.
+ * <p><b>Each mode button has its own color</b>: Fit blue, Plan purple, Layer Collision amber, so a
+ * glance tells you which modes are on without reading any labels. That is a stated design
+ * principle, not decoration, and they must stay distinct. The fourth, Units green, moved into the
+ * Menu window as its Metric entry and kept its green there.
  *
  * <p>Buttons appear here as the features behind them are built. An inert button is worse than a
- * missing one: it looks like something that should work. The <b>3D button is deliberately
- * absent</b> until M5 gives it a 3D view to open (your call, 2026-07-27).
+ * missing one: it looks like something that should work.
  */
 public final class TopBar extends FlowPane {
 
@@ -57,7 +57,7 @@ public final class TopBar extends FlowPane {
     private final Button undo = button("Undo", Tokens.BUTTON_UNDO_BG);
     private final Button fit = button("Fit", Tokens.BUTTON_TOGGLE_BG);
     private final Button plan = button("Plan", Tokens.BUTTON_TOGGLE_BG);
-    private final Button units = button("Units", Tokens.BUTTON_TOGGLE_BG);
+    private final Button menu = buildMenuButton();
 
     /** Called when the room's size changes, so the canvas can redraw and the slider rebuild. */
     private Runnable onRoomChanged = () -> { };
@@ -67,7 +67,8 @@ public final class TopBar extends FlowPane {
 
     private Runnable onLayerCollisionChanged = () -> { };
     private Runnable onFitChanged = () -> { };
-    private Runnable onUnitsChanged = () -> { };
+    private Runnable onMetricChanged = () -> { };
+    private Runnable onMenu = () -> { };
     private Runnable onPlanChanged = () -> { };
     private Runnable onAdd = () -> { };
     private Runnable onSave = () -> { };
@@ -97,8 +98,8 @@ public final class TopBar extends FlowPane {
                             field(heightLabel, heightField)),
                     row(setRoom, layerCollision),
                     row(save, load, threeD));
-            // Add, Undo, Fit, Plan and Units are deliberately absent: they are the island's, and
-            // the island borrows these very objects rather than building five more.
+            // Add, Undo, Fit, Plan and the Menu are deliberately absent: they are the island's,
+            // and the island borrows these very objects rather than building five more.
             // The content box, not the border box: this bar carries 12 px of padding each side on
             // touch, and a cqi is one percent of what is inside it. See Fluid.queryWidth.
             widthProperty().addListener(
@@ -109,7 +110,7 @@ public final class TopBar extends FlowPane {
                     field(widthLabel, widthField),
                     field(lengthLabel, lengthField),
                     field(heightLabel, heightField),
-                    setRoom, layerCollision, save, load, threeD, add, undo, fit, plan, units);
+                    setRoom, layerCollision, save, load, threeD, add, undo, fit, plan, menu);
         }
 
         // Folding is set up on every platform, not only on touch. Only a phone ever asks for it,
@@ -392,9 +393,6 @@ public final class TopBar extends FlowPane {
 
     /**
      * Hooks every control in the bar up to what it does, and attaches the hover hints.
-     *
-     * <p>Split out of the constructor at M6.1b only so that {@link #reserveTop} could sit between
-     * the two without a hundred lines of wiring in the way. Nothing about it changed.
      */
     private void wireControls() {
         setRoom.setOnAction(event -> applyRoomFromFields());
@@ -403,21 +401,22 @@ public final class TopBar extends FlowPane {
         undo.setOnAction(event -> onUndo.run());
         fit.setOnAction(event -> toggleFit());
         plan.setOnAction(event -> togglePlan());
-        units.setOnAction(event -> toggleUnits());
+        menu.setOnAction(event -> onMenu.run());
         save.setOnAction(event -> onSave.run());
         load.setOnAction(event -> onLoad.run());
         threeD.setOnAction(event -> onThreeD.run());
 
         // The hints the original writes as HTML title attributes. Only the buttons whose name
         // does not already say what they do carry one. Four of these five are the original's
-        // wording exactly; Layer Collision's is the user's own (see §5.5 D-7).
+        // wording exactly; Layer Collision's is the user's own, a deliberate change from the
+        // original (the single-file HTML app this one rewrites).
         Hints.attach(layerCollision,
                 "Disable gravity, items collide based on height-range, not stack");
         Hints.attach(threeD, "3D View");
         Hints.attach(add, "Add Item");
         Hints.attach(fit, "Fit to Screen");
         Hints.attach(plan, "Planning Mode");
-        Hints.attach(units, "Toggle Metric Units");
+        Hints.attach(menu, "Menu");
 
         // Enter in any of the three fields applies the room, which is what anyone typing a
         // number expects; reaching for the button every time would be tedious.
@@ -446,8 +445,13 @@ public final class TopBar extends FlowPane {
         this.onFitChanged = or(handler);
     }
 
-    public void setOnUnitsChanged(Runnable handler) {
-        this.onUnitsChanged = or(handler);
+    public void setOnMetricChanged(Runnable handler) {
+        this.onMetricChanged = or(handler);
+    }
+
+    /** What the Menu button opens. See {@code MenuWindow}. */
+    public void setOnMenu(Runnable handler) {
+        this.onMenu = or(handler);
     }
 
     public void setOnPlanChanged(Runnable handler) {
@@ -486,8 +490,7 @@ public final class TopBar extends FlowPane {
      * would be a far worse answer than losing one button.
      *
      * <p><b>This is a state the original never had.</b> It was a web page and simply assumed the
-     * browser could manage; there was nothing to check and nowhere to report it. See CLAUDE.md
-     * §5.5 for the divergence entry.
+     * browser could manage; there was nothing to check and nowhere to report it.
      */
     public void setThreeDUnavailable(String reason) {
         threeD.setDisable(true);
@@ -523,8 +526,6 @@ public final class TopBar extends FlowPane {
                 Tokens.TOGGLE_LAYER_BORDER, Tokens.TOGGLE_LAYER_TEXT);
         style(plan, state.planMode, Tokens.BUTTON_TOGGLE_BG, Tokens.TOGGLE_PLAN_BG,
                 Tokens.TOGGLE_PLAN_BORDER, Tokens.TOGGLE_PLAN_TEXT);
-        style(units, state.metricMode, Tokens.BUTTON_TOGGLE_BG, Tokens.TOGGLE_UNITS_BG,
-                Tokens.TOGGLE_UNITS_BORDER, Tokens.TOGGLE_UNITS_TEXT);
     }
 
     /**
@@ -612,10 +613,17 @@ public final class TopBar extends FlowPane {
                 : "Planning Mode OFF.");
     }
 
-    private void toggleUnits() {
+    /**
+     * Switches between feet and inches and meters and centimeters.
+     *
+     * <p>Public because the button that calls it is no longer in this bar: it is the Metric
+     * entry in the Menu window. It stays here because the three room fields are the first
+     * thing it changes, and {@link #refresh} is what relabels them.
+     */
+    public void toggleMetric() {
         state.metricMode = !state.metricMode;
         refresh();
-        onUnitsChanged.run();
+        onMetricChanged.run();
         onStatus.accept(state.metricMode
                 ? "Units: Metric (m / cm)." : "Units: Imperial (ft / in).");
     }
@@ -712,9 +720,9 @@ public final class TopBar extends FlowPane {
      * ground rules say to use the files.
      *
      * <p>Sized to match the Add button beside it, so the top bar's height is decided by the text
-     * buttons and not by whichever icon happens to be tallest. That mattered at M3.4, where the Add
-     * button being three pixels too big pushed the whole bar (and everything under it) down the
-     * window.
+     * buttons and not by whichever icon happens to be tallest. That mattered once, when the Add
+     * button came out three pixels too big and pushed the whole bar (and everything under it)
+     * down the window.
      */
     private static Button threeDButton() {
         Button button = new Button();
@@ -731,12 +739,44 @@ public final class TopBar extends FlowPane {
     }
 
     /**
-     * A plain bar button: the app's own square-cornered style, with the hover that leaves an
-     * active toggle's color alone.
+     * The square button that opens the Menu window, drawn from {@code assets/icons/btn-menu.svg}.
      *
-     * <p>Package-private so the island's {@code ▼} is built by the same line as the ten beside it
-     * rather than restating the border, the radius and the two hover handlers a second time.
+     * <p>In the place the Units button had: last in the desktop bar, and between Plan and
+     * {@code ▼} on the island. Plain gray, the user's choice on 2026-09-24, which they may
+     * revisit. Built like the 3D button beside it and pinned the same way, so it cannot make the
+     * bar any taller.
      */
+    private static Button buildMenuButton() {
+        Button button = new Button();
+        button.setGraphic(Icons.menu(Tokens.ICON_MENU_SIZE));
+        button.setPadding(Insets.EMPTY);
+        pin(button, Tokens.MENU_BUTTON_SIDE, Tokens.MENU_BUTTON_SIDE);
+        applyButtonStyle(button, Tokens.BUTTON_BG, Tokens.CONTROL_BORDER, Tokens.TEXT_PRIMARY);
+        onHover(button, () -> applyButtonStyle(button, Tokens.BUTTON_BG_HOVER,
+                Tokens.CONTROL_BORDER, Tokens.TEXT_PRIMARY),
+                () -> applyButtonStyle(button, Tokens.BUTTON_BG,
+                        Tokens.CONTROL_BORDER, Tokens.TEXT_PRIMARY));
+        return button;
+    }
+
+    /**
+     * Sizes the Menu button for the island: a square as tall as the {@code ▼} beside it, with the
+     * icon drawn at the island's own type.
+     *
+     * <p>Package-private for {@code TouchIsland}, the one caller. The icon is re-read from its file
+     * on every call, which the island makes on each width change; that is one small file parsed on
+     * a rotation, and it keeps the node from being a stale drawing sized for a width that has gone.
+     *
+     * @param side     the square's edge, border included
+     * @param iconSize the icon's artboard, which the ink sits inside with its own margins
+     */
+    static void sizeIconForTouch(Button button, double side, double iconSize) {
+        button.setGraphic(Icons.menu(iconSize));
+        button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+        button.setPadding(Insets.EMPTY);
+        pin(button, side, side);
+    }
+
     /**
      * Wires a button's hover styling, <b>and does nothing at all on a phone, because a finger does
      * not hover.</b>
@@ -771,6 +811,13 @@ public final class TopBar extends FlowPane {
         });
     }
 
+    /**
+     * A plain bar button: the app's own square-cornered style, with the hover that leaves an
+     * active toggle's color alone.
+     *
+     * <p>Package-private so the island's {@code ▼} is built by the same line as the ten beside it
+     * rather than restating the border, the radius and the two hover handlers a second time.
+     */
     static Button button(String text, Color background) {
         Button button = new Button(text);
         size(button, Tokens.FONT_CONTROL, Tokens.BUTTON_PADDING_V, Tokens.BUTTON_PADDING_H);
@@ -842,9 +889,9 @@ public final class TopBar extends FlowPane {
      * The same, plus the height the <em>original</em> gave a touch button rather than the one this
      * app's typeface asks for.
      *
-     * <p>Touch only, and deliberately a separate method: the desktop has been signed off since
-     * M5.3a and its buttons are sized against desktop reference screenshots taken of this app, so
-     * nothing here may reach them. See {@link Tokens#TOUCH_TEXT_LINE_EM} for why the two differ and
+     * <p>Touch only, and deliberately a separate method: the desktop layout is finished and its
+     * buttons are sized against desktop reference screenshots taken of this app, so nothing here
+     * may reach them. See {@link Tokens#TOUCH_TEXT_LINE_EM} for why the two differ and
      * for the measurements.
      *
      * <p><b>The minimum has to come down with the preferred height, or nothing happens at all.</b>
@@ -923,10 +970,20 @@ public final class TopBar extends FlowPane {
         drawLabelAsInk(button,
                 Fonts.inkLabel(button.getText(), Fonts.mono(glyphSize), button));
 
-        pinHeight(button, boxFor(Tokens.TOUCH_GLYPH_LINE_EM, fontSize, paddingV));
+        pinHeight(button, touchGlyphHeight(fontSize, paddingV));
         // The width needs no such care: the glyph is narrower than the original's, so the preferred
         // width being asked for is larger than the computed minimum and simply wins.
         button.setPrefWidth(boxFor(Tokens.TOUCH_GLYPH_ADVANCE_EM, fontSize, paddingH));
+    }
+
+    /**
+     * How tall a glyph button comes out on touch: the island's {@code ■} and {@code ▼}.
+     *
+     * <p>Its own method so the island's Menu button, a square, can be made exactly as tall as the
+     * {@code ▼} beside it from the same arithmetic rather than a copy of it.
+     */
+    static double touchGlyphHeight(double fontSize, double paddingV) {
+        return boxFor(Tokens.TOUCH_GLYPH_LINE_EM, fontSize, paddingV);
     }
 
     /** One edge-to-edge measurement: the content, its padding on both sides, and its border. */
@@ -950,12 +1007,13 @@ public final class TopBar extends FlowPane {
      * these five stays true: one handler each, one active-state color each, one hint each, and no
      * possibility of the two copies drifting apart.
      *
-     * <p>Add comes back unpinned, because in the island it is sized by its own fluid type rather
-     * than held at the desktop's 30 × 28.
+     * <p>Add and the Menu come back unpinned, because in the island they are sized by the island's
+     * own fluid type rather than held at the desktop's 30 × 28 and 28 × 28.
      */
     List<Button> islandButtons() {
         unpin(add);
-        return List.of(add, undo, fit, plan, units);
+        unpin(menu);
+        return List.of(add, undo, fit, plan, menu);
     }
 
     // ------------------------------------------------------------ for tests
@@ -980,8 +1038,8 @@ public final class TopBar extends FlowPane {
         return add;
     }
 
-    public Button unitsButton() {
-        return units;
+    public Button menuButton() {
+        return menu;
     }
 
     public Button undoButton() {

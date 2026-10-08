@@ -9,7 +9,7 @@ import com.modcritic.invmgr.model.Item;
  * selected item.
  *
  * <p><b>Nothing here reads the Layer Collision toggle any more.</b> Paint order and dimming both
- * used to switch rule with it, and that was the cause of divergence D-5: see
+ * used to switch rule with it, and that was a bug the original has: see
  * {@link #comparePaint}. They now share one rule, so they cannot contradict each other, and the
  * only state either of them needs is the layer slider's height, for {@link #isVisible}.
  */
@@ -27,11 +27,11 @@ public final class Layers {
      * the same height, the one moved most recently wins, which is the familiar "I just put this
      * down, it is on top" behavior.
      *
-     * <p><b>This is divergence D-5, and it is a real fix, not a preference.</b> The original
-     * switches rule on the Layer Collision toggle: height while it is on, drag order while it is
-     * off (`zIndexFor`, original line 1043). With the toggle off, dragging a box at base 0 in
-     * underneath a box at base 12 in gives the dragged box the highest drag order, so it paints
-     * <em>over</em> the box it just went under. Reported by the user from the M3 jar.
+     * <p><b>This differs from the original on purpose, and it is a real fix, not a preference.</b>
+     * The original switches rule on the Layer Collision toggle: height while it is on, drag order
+     * while it is off (`zIndexFor`, original line 1043). With the toggle off, dragging a box at
+     * base 0 in underneath a box at base 12 in gives the dragged box the highest drag order, so it
+     * paints <em>over</em> the box it just went under. Reported by the user, 2026-07-29.
      *
      * <p>Note how narrow the divergence actually is. In a flat room every item is at base 0, the
      * heights tie, and this reduces to drag order, bit-for-bit the original's behavior. It only
@@ -84,8 +84,7 @@ public final class Layers {
      * <p>"Above" means exactly {@link #isAbove} (the same rule that decides what is painted on
      * top), because an item that fades to reveal the selection but is drawn behind it anyway is
      * just a box that went dim for no visible reason. The original kept two rules here and
-     * switched both on the Layer Collision toggle; part of divergence D-5 is that there is now
-     * one rule, used by both.
+     * switched both on the Layer Collision toggle; here there is one rule, used by both.
      *
      * @param selected the currently selected item, or {@code null} if nothing is selected
      */

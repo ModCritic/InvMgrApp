@@ -42,11 +42,11 @@ public final class FaceStrip {
     /**
      * The strip for an item of this color, as one picture of its own.
      *
-     * <p><b>Nothing in the app calls this any more.</b> It is how every box was painted until
-     * M6.7b put the whole room on one shared atlas, and it survives as the baseline arm of
+     * <p><b>Nothing in the app calls this any more.</b> It is how every box was painted until the
+     * whole room moved onto one shared atlas, and it survives as the baseline arm of
      * {@code FaceStripCostProbe}, which is the measurement that made the case for the atlas.
-     * Deleting it would delete the before half of a before-and-after. Checked at M6.7c;
-     * {@link #atlas} is what {@code JfxRenderer3D} calls.
+     * Deleting it would delete the before half of a before-and-after. Still the case at the
+     * 2026-09-19 code review; {@link #atlas} is what {@code JfxRenderer3D} calls.
      *
      * @param cssHsl the item's color as the save file stores it, e.g. {@code hsl(207,55%,42%)}
      */
@@ -61,7 +61,7 @@ public final class FaceStrip {
      * and on a machine with no graphics card Mesa charges about <b>1.55 ms for the first draw of
      * each distinct picture, whatever its size</b>. So a 200 item room stalled for 290 ms and a 500
      * item room for 780 ms on the single frame the 3D view first became visible, once per entry.
-     * Measured three ways before this was written (M6.7b's {@code FirstDrawProbe}): sharing the
+     * Measured three ways before this was written (with {@code FirstDrawProbe}): sharing the
      * material alone fixed nothing, sharing the picture alone fixed all of it, and one picture of
      * 40 x 4000 cost the same as one of 40 x 8. <b>The charge is per picture, not per pixel</b>, so
      * packing every color into one picture removes it however many colors a room has. A real room
@@ -70,9 +70,8 @@ public final class FaceStrip {
      *
      * <p>On a machine with a working graphics card there was never a cost to remove: the same probe
      * on the Radeon RX 6800 XT in this machine reads 10.6 ms for an empty room and 13.3 ms for one
- * with 500 boxes in it. This
-     * is not slower there either, so it is one picture everywhere rather than a decision at run
-     * time.
+     * with 500 boxes in it. This is not slower there either, so it is one picture everywhere
+     * rather than a decision at run time.
      *
      * <p>⚠ <b>Row order is the contract.</b> {@code BoxGeometry.texCoords(row, rowCount)} picks a
      * row by index, so whoever builds the atlas has to hand a box the index its color went in at.

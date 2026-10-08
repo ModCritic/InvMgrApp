@@ -142,7 +142,7 @@ public final class Autosave {
         }
         String text;
         try {
-            text = Files.readString(file, StandardCharsets.UTF_8);
+            text = SaveFormat.readFile(file);
         } catch (IOException e) {
             return Restored.broken("Could not read the autosave: " + e.getMessage());
         }

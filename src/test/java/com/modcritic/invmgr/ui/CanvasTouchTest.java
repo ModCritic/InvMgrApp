@@ -194,7 +194,7 @@ class CanvasTouchTest extends ApplicationTest {
     @Test
     @DisplayName("dragging a selected box to a wall does not change how much there is to scroll")
     void draggingABoxDoesNotResizeTheScrollableArea() {
-        // B2, reported three times before it was understood: "dragging an item to move it also
+        // Reported three times before it was understood: "dragging an item to move it also
         // moves the canvas". Not an event going astray; the selected box's white ring is drawn
         // OUTSIDE its box and dragTo re-positions it every frame, so a box against a wall pushes the
         // ring past the room, grows the unclipped content, and moves the scroll fractions under a
@@ -265,8 +265,9 @@ class CanvasTouchTest extends ApplicationTest {
 
         dragWithFinger(box, 408, 0);
 
-        // The touch path calls the same commit as the mouse path, so D-2 has to hold here too. If
-        // it ever grew its own copy, this is where that would show.
+        // The touch path calls the same commit as the mouse path, so the rule that a finished drag
+        // outranks every existing drag order has to hold here too. If it ever grew its own copy,
+        // this is where that would show.
         assertTrue(box.dragOrder > high.dragOrder,
                 "expected above drag order 8, got " + box.dragOrder);
     }

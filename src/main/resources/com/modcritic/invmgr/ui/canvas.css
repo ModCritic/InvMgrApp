@@ -7,8 +7,8 @@
  * as soon as the window is smaller than the room.
  *
  * Rather than invent a palette, this reuses the exact scrollbar tokens the original DID
- * define, for the one scrollbar it styled (the preset row inside the Add Item dialog,
- * SPEC-DESIGN-SYSTEM.md: #1a1a1a track, #888 thumb, 6px radius, #aaa on hover).
+ * define, for the one scrollbar it styled (the preset row inside the Add Item dialog:
+ * #1a1a1a track, #888 thumb, 6px radius, #aaa on hover).
  */
 
 .scroll-pane > .corner {
@@ -74,6 +74,18 @@
 }
 
 .name-field .content {
+    -fx-padding: 0;
+}
+
+/*
+ * The scroll pane inside the field gets no padding either.
+ *
+ * It comes with 1 px on every side, and the text is clipped to the inside of that, so those 2 px
+ * came straight off the height the line has to show in. Together with the border that was the
+ * bottom of every letter cut off: "Books, magazines" read as "Books. maqazines". See
+ * NameField's constructor for the other half.
+ */
+.name-field .scroll-pane {
     -fx-padding: 0;
 }
 

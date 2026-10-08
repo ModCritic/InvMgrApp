@@ -15,12 +15,12 @@ import com.modcritic.invmgr.model.Units;
  * walk up to a box and thinner as you back away, which is what a real border under a perspective
  * transform does.
  *
- * <p>That last point is the one that decides how to build it. §5.7 of the ground rules guessed the
- * answer would be to bake the outline into each face's texture; reading the original shows that
- * would be solving the wrong problem, because a baked line has to be redrawn per face at a real
- * pixels-per-foot resolution and costs roughly a megabyte per item. Making the frame out of
- * <em>geometry</em> instead costs sixty triangles, is exact at every distance for free, and cannot
- * shimmer, which matters on a phone, where antialiasing is refused outright.
+ * <p>That last point is the one that decides how to build it. The first guess was to bake the
+ * outline into each face's texture; reading the original shows that would be solving the wrong
+ * problem, because a baked line has to be redrawn per face at a real pixels-per-foot resolution
+ * and costs roughly a megabyte per item. Making the frame out of <em>geometry</em> instead costs
+ * sixty triangles, is exact at every distance for free, and cannot shimmer, which matters on a
+ * phone, where antialiasing is refused outright.
  *
  * <p>So every face is a 4×4 grid of points carved into five quads: a center in the face's own
  * shade, and four strips around it in the edge shade. They are coplanar and do not overlap, so
@@ -37,9 +37,9 @@ import com.modcritic.invmgr.model.Units;
  * the world. That reverses every triangle, which is visible and was duly corrected; what it also
  * does is reverse east and west, which is not visible at all in an empty room and cannot be
  * undone by pointing the camera somewhere else: no rigid movement of a camera un-mirrors a
- * mirrored world. The M5.1 build turned the camera half a turn to make it face north again, which
- * looked right and left the room reflected. The user found it in a minute by putting a box
- * against a wall and noticing it was on the wrong side.
+ * mirrored world. The first 3D build (2026-08-04) turned the camera half a turn to make it face
+ * north again, which looked right and left the room reflected. The user found it in a minute by
+ * putting a box against a wall and noticing it was on the wrong side.
  */
 public final class BoxGeometry {
 
@@ -163,7 +163,7 @@ public final class BoxGeometry {
     /**
      * The same coordinates, pointed at one row of a picture holding several items' colors.
      *
-     * <p>Added at M6.7b. Every box used to get a picture of its own, and a machine with no graphics
+     * <p>Every box used to get a picture of its own, and a machine with no graphics
      * card charges about 1.55 ms for the first draw of each one however small it is: a 500 item room
      * stalled for 780 ms on the frame it first became visible. One picture with a row per color
      * costs that once, so the row has to be selectable from here.

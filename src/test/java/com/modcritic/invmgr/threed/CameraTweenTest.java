@@ -15,8 +15,9 @@ import org.junit.jupiter.api.Test;
  * <p>The per-channel override is the failure mode this class exists to prevent, and it is a
  * <em>silent</em> one: a tween that ignores the override still animates, still starts and ends in
  * the right places, and still looks like a working camera move. Only the shape in between is
- * wrong. That is the M3.5 shape of bug: a mechanism that appears to work because everything
- * around it does.
+ * wrong. This project has made that mistake before: a tooltip-zoom fix (2026-08-01) appeared
+ * to work because everything around it did, and read a value that is always null in the running
+ * app.
  */
 class CameraTweenTest {
 
@@ -122,8 +123,8 @@ class CameraTweenTest {
     @Test
     @DisplayName("applyTo writes the same pose that at() returns")
     void applyToAgreesWithAt() {
-        // applyTo exists only to avoid allocating a pose per frame; if it ever disagreed with at()
-        // the tests would all be checking a path the render loop never takes -- the M3.5 mistake.
+        // applyTo is the path the render loop takes, and every other test here goes through at();
+        // if the two ever disagreed, those tests would be checking a path the app never uses.
         CameraTween tween = new CameraTween(
                 pose(1, 50, 2, 2.5, -1.4),
                 pose(6, 6, 9, -0.5, 0),

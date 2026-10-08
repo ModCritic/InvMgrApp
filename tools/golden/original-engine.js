@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 //
-// Differential test harness for M2's geometry: collision, sliding, stacking, placement and
-// layering.
+// Differential test harness for the 2D engine's geometry: collision, sliding, stacking,
+// placement and layering.
 //
 // WHY THIS EXISTS
 //
@@ -11,7 +11,7 @@
 // reading of the original would encode my misreadings as expectations.
 //
 // So, exactly as tools/golden/original-loadstate.js does for the save format: the block
-// marked VERBATIM below is copied unchanged out of docs/original/InvMgr_V1.3.0.html
+// marked VERBATIM below is copied unchanged out of the original app's InvMgr_V1.3.0.html
 // (itemRect/rectsOverlap 981-988, recomputeAllBaseHeights 992-1015, settleAllBaseHeights
 // 1027-1041, zIndexFor/isVisible 1043-1052, the dim rule 1067-1070, slideAxis 1179-1197,
 // clampItem 1198-1234, findOpenSpot 1417-1450). The browser-only parts (DOM updates,
@@ -20,7 +20,7 @@
 // per scenario.
 //
 // USAGE
-//   node tools/golden/original-engine.js --gen 200   # regenerate the scenario fixture
+//   node tools/golden/original-engine.js --gen 250   # regenerate the scenario fixture
 //   node tools/golden/original-engine.js --run       # regenerate the expected results
 //
 // The scenarios are produced by a SEEDED generator, so regenerating gives identical output.

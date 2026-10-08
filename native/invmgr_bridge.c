@@ -4,14 +4,14 @@
  * Every other file here carries events from Android INTO JavaFX. This one goes the other
  * way: the app asks Android a question and gets an answer back.
  *
- * There are two questions, and both are M6.5c's:
+ * There are three questions:
  *
  *   1. What has the phone taken of the screen, and how much is the keyboard using?
- *      That is OD-3. ui/SystemInsets shipped Android's published 24 dip status bar as a
- *      constant because the documented way to read the real one was a GPL-licensed library
- *      this app may not link. Owning the Activity makes it a plain framework call.
- *   2. Which keyboard should the next text field raise? That is B6; a number field is
- *      supposed to get the dial pad and was getting the full keyboard.
+ *      ui/SystemInsets used to ship Android's published 24 dip status bar as a constant,
+ *      because the documented way to read the real one was a GPL-licensed library this app
+ *      may not link. Owning the Activity makes it a plain framework call.
+ *   2. Which keyboard should the next text field raise? A number field is supposed to get
+ *      the dial pad and was getting the full keyboard.
  *   3. Where should this file be saved, or which one should be opened? JavaFX's FileChooser
  *      throws on this platform, so Save, Load and Export were all dead.
  *
@@ -39,7 +39,8 @@
  * native-image compiles a `native` method in application code into a call to the ordinary
  * JNI symbol for it, left undefined, and the linker resolves it against this file. Nothing
  * has to be added to jniconfig; the generated one does not mention OpenJFX's own
- * TextFieldSkinAndroid.showSoftwareKeyboard either, and that has worked since M6.5b.
+ * TextFieldSkinAndroid.showSoftwareKeyboard either, and that has worked since this project
+ * replaced Gluon's Android host code with its own.
  *
  * The consequence is that the Java name IS the contract. Renaming AndroidBridge, moving it
  * to another package, or changing a signature breaks the LINK, not the compile.
@@ -273,6 +274,93 @@ Java_com_modcritic_invmgr_ui_AndroidBridge_nativeRequestOpenFile(JNIEnv *image, 
     }
     if (dalvikMime != NULL) {
         (*dalvik)->DeleteLocalRef(dalvik, dalvikMime);
+    }
+}
+
+/* Hands a web address to InvMgrActivity.openLink, which gives it to Android as an
+ * ACTION_VIEW intent. The same one-string shape as nativeRequestOpenFile above. */
+JNIEXPORT void JNICALL
+Java_com_modcritic_invmgr_ui_AndroidBridge_nativeOpenLink(JNIEnv *image, jclass cls, jstring url)
+{
+    (void) cls;
+
+    JNIEnv *dalvik = invmgr_attach_current_thread();
+    if (dalvik == NULL) {
+        return;
+    }
+    jmethodID method = activity_static_method(dalvik, "openLink", "(Ljava/lang/String;)V");
+    if (method == NULL) {
+        return;
+    }
+
+    jstring dalvikUrl = to_dalvik(image, dalvik, url);
+    (*dalvik)->CallStaticVoidMethod(dalvik, invmgr_activity_class, method, dalvikUrl);
+    if ((*dalvik)->ExceptionCheck(dalvik)) {
+        (*dalvik)->ExceptionDescribe(dalvik);
+        (*dalvik)->ExceptionClear(dalvik);
+    }
+    if (dalvikUrl != NULL) {
+        (*dalvik)->DeleteLocalRef(dalvik, dalvikUrl);
+    }
+}
+
+/* Hands a feedback message to the phone's mail app, through InvMgrActivity.composeEmail.
+ * Three strings, the same shape as nativeRequestSaveFile. */
+JNIEXPORT void JNICALL
+Java_com_modcritic_invmgr_ui_AndroidBridge_nativeComposeEmail(JNIEnv *image, jclass cls,
+                                                              jstring to, jstring subject,
+                                                              jstring body)
+{
+    (void) cls;
+
+    JNIEnv *dalvik = invmgr_attach_current_thread();
+    if (dalvik == NULL) {
+        return;
+    }
+    jmethodID method = activity_static_method(dalvik, "composeEmail",
+            "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+    if (method == NULL) {
+        return;
+    }
+
+    jstring dalvikTo = to_dalvik(image, dalvik, to);
+    jstring dalvikSubject = to_dalvik(image, dalvik, subject);
+    jstring dalvikBody = to_dalvik(image, dalvik, body);
+
+    (*dalvik)->CallStaticVoidMethod(dalvik, invmgr_activity_class, method,
+                                    dalvikTo, dalvikSubject, dalvikBody);
+    if ((*dalvik)->ExceptionCheck(dalvik)) {
+        (*dalvik)->ExceptionDescribe(dalvik);
+        (*dalvik)->ExceptionClear(dalvik);
+    }
+
+    if (dalvikTo != NULL)      { (*dalvik)->DeleteLocalRef(dalvik, dalvikTo); }
+    if (dalvikSubject != NULL) { (*dalvik)->DeleteLocalRef(dalvik, dalvikSubject); }
+    if (dalvikBody != NULL)    { (*dalvik)->DeleteLocalRef(dalvik, dalvikBody); }
+}
+
+/* Hides or shows the phone's status and navigation bars, through
+ * InvMgrActivity.setSystemBarsHidden. A plain boolean, so nothing needs converting between the
+ * two VMs on the way. */
+JNIEXPORT void JNICALL
+Java_com_modcritic_invmgr_ui_AndroidBridge_nativeSetSystemBarsHidden(JNIEnv *image, jclass cls,
+                                                                    jboolean hidden)
+{
+    (void) image;
+    (void) cls;
+
+    JNIEnv *dalvik = invmgr_attach_current_thread();
+    if (dalvik == NULL) {
+        return;
+    }
+    jmethodID method = activity_static_method(dalvik, "setSystemBarsHidden", "(Z)V");
+    if (method == NULL) {
+        return;
+    }
+    (*dalvik)->CallStaticVoidMethod(dalvik, invmgr_activity_class, method, hidden);
+    if ((*dalvik)->ExceptionCheck(dalvik)) {
+        (*dalvik)->ExceptionDescribe(dalvik);
+        (*dalvik)->ExceptionClear(dalvik);
     }
 }
 

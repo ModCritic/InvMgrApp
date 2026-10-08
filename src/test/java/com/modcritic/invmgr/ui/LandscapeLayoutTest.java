@@ -1,5 +1,6 @@
 package com.modcritic.invmgr.ui;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.modcritic.invmgr.App;
@@ -46,7 +47,8 @@ class LandscapeLayoutTest extends ApplicationTest {
      *
      * <p>Written into this class on 2026-09-05, after a full suite went 0 failures, then 1, then
      * 43 over four runs of identical code. {@code TouchLayoutTest} has had the same guard since
-     * M6.4 and its comment says the same thing; this class was written without it.
+     * the day it was written, and its comment says the same thing; this class was written
+     * without it.
      */
     private static final int SHARED_STAGE_WIDTH = 2560;
     private static final int SHARED_STAGE_HEIGHT = 1440;
@@ -129,6 +131,41 @@ class LandscapeLayoutTest extends ApplicationTest {
         assertTrue(bar.getMinY() >= -1,
                 "the top bar starts at y=" + bar.getMinY() + ", so its first row, the room's"
                         + " W, L and H boxes, is drawn off the top of the window");
+    }
+
+    @Test
+    @DisplayName("on its side the open bar is still three rows, one group to a row")
+    void theBarKeepsItsThreeRowsOnItsSide() {
+        // Found by a surviving mutation on 2026-09-24. Each touch row is as wide as the bar, which
+        // is what gives it a line to itself (TopBar.row says why). Narrow the rows and a portrait
+        // phone still shows three lines, because every row is pushed back out to its own minimum
+        // width and no two of those fit side by side in 320 to 480 px. At 740 two of them do: W/L/H
+        // and Set Room shared a line and Save sat alone on the next. TouchLayoutTest checks only
+        // portrait widths, so this is the case that can see it.
+        openTheTopBar();
+        assertEquals(WIDTH, app.topBar().getScene().getWidth(), 1,
+                "the window really is a phone on its side, or the rows below prove nothing");
+
+        double widthRow = rowOf(app.topBar().widthField());
+        double heightRow = rowOf(app.topBar().heightField());
+        double setRoomRow = rowOf(app.topBar().setRoomButton());
+        double saveRow = rowOf(app.topBar().saveButton());
+
+        assertEquals(widthRow, heightRow, 1.0, "W and H share a row");
+        // A margin rather than a bare "greater than": two rows sharing one line can still have
+        // centers a few pixels apart when one is taller than the other.
+        assertTrue(setRoomRow > widthRow + 10,
+                "Set Room is on the row below W/L/H, but sits at " + setRoomRow + " against "
+                        + widthRow);
+        assertTrue(saveRow > setRoomRow + 10,
+                "and Save is on the row below that, but sits at " + saveRow + " against "
+                        + setRoomRow);
+    }
+
+    /** The vertical middle of a node in the window: its row, in other words. */
+    private double rowOf(Node node) {
+        Bounds bounds = inScene(node);
+        return (bounds.getMinY() + bounds.getMaxY()) / 2;
     }
 
     @Test

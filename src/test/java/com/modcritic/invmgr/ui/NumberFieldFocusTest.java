@@ -15,12 +15,13 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * What happens to a number box's contents when focus lands on it.
  *
- * <p><b>Why this is four cases and not one.</b> The original does three different things, and
- * until M6.7c this app did the same thing in all three situations and so got two of them wrong.
- * The user found it on the phone: the keypad appends, so typing 24 into a box already holding
- * 12 gives 1224, which clamps to {@code MAX_DIMENSION_IN} and silently makes a 1000 inch box.
+ * <p><b>Why this is four cases and not one.</b> The original (the single-file HTML app this one
+ * rewrites) does three different things, and until 2026-09-19 this app did the same thing in
+ * all three situations and so got two of them wrong. The user found it on the phone: the keypad
+ * appends, so typing 24 into a box already holding 12 gives 1224, which clamps to
+ * {@code MAX_DIMENSION_IN} and silently makes a 1000 inch box.
  *
- * <p>The rules, and where each comes from in {@code docs/original/InvMgr_V1.3.0.html}:
+ * <p>The rules, and where each comes from in the original's {@code InvMgr_V1.3.0.html}:
  *
  * <ul>
  *   <li><b>A tap on a phone, on a dialog box, selects everything.</b> Original 1760-1764, a
@@ -37,7 +38,7 @@ import org.testfx.util.WaitForAsyncUtils;
  * {@code requestFocus} selected the contents, a click selected nothing, and a click on an
  * already-focused box selected nothing. So the last two tests below pin a <em>dependency's</em>
  * behavior, not ours. They are worth keeping for that: the app now relies on JavaFX doing this,
- * where before M6.7c it overrode it, and a future toolkit that stops would break the app
+ * where before 2026-09-19 it overrode it, and a future toolkit that stops would break the app
  * silently. A mutation of this project's own code cannot make them fail, and that is expected
  * rather than a blind spot.
  *
@@ -166,7 +167,7 @@ class NumberFieldFocusTest extends ApplicationTest {
         onADesktop();
         tabInto(dialogBox);
         assertEquals("12", selectionIn(dialogBox),
-                "a browser selects on tab-to-focus and JavaFX agrees; until M6.7c this app's "
+                "a browser selects on tab-to-focus and JavaFX agrees; until M6.7.3 this app's "
                         + "own blanket deselect threw that answer away");
     }
 

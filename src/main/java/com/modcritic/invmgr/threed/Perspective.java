@@ -16,8 +16,8 @@ import com.modcritic.invmgr.model.Room;
  * a fixed 0.75, {@code tan(fov/2)} is exactly <b>2/3</b>, and the vertical field of view is
  * <b>2·atan(2/3) ≈ 67.380°</b>.
  *
- * <p>The spec rounds that to "about 67°" and the OD-1 spike used 67 flat. Both are close enough
- * to look right and neither is the number the original had. Using the exact value costs nothing
+ * <p>Rounding that to "about 67°", or using 67 flat as an early 3D prototype did, is close enough
+ * to look right, but neither is the number the original had. Using the exact value costs nothing
  * and makes {@link #overheadHeightFt} agree with the original's own arithmetic to the last
  * decimal place instead of carrying a 0.6% error into every entry animation.
  *

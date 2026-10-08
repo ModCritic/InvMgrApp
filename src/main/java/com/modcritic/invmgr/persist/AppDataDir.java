@@ -71,8 +71,7 @@ public final class AppDataDir {
         }
         // Android lands here, and it is correct there too: on device user.home is the app's own
         // private directory, so this becomes <private>/.local/share/InvMgr, writable, private,
-        // and removed when the app is uninstalled. M6 may want to shorten it, but nothing about
-        // it is wrong.
+        // and removed when the app is uninstalled.
         return userHome.resolve(".local").resolve("share").resolve(APP_FOLDER);
     }
 

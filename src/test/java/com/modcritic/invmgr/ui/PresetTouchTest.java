@@ -27,12 +27,12 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * Deleting a preset by holding a finger on it: the touch half of §5.5 <b>D-1</b>.
+ * Deleting a preset by holding a finger on it, which is how a preset is deleted on a phone.
  *
  * <p>A preset is the one thing in the app that undo cannot bring back, which is why the hold asks
  * before it does anything, unlike a box in the room. The desktop keeps right-click and gains no
- * hold; that half is pinned here too, because the point of D-1 is the split rather than either
- * gesture on its own.
+ * hold, though the original also accepts a 1.5 s left-button hold there; that half is pinned here
+ * too, because the point is the split rather than either gesture on its own.
  */
 class PresetTouchTest extends ApplicationTest {
 

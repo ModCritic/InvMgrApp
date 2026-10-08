@@ -70,6 +70,60 @@ class JsonTest {
                 "exception should carry a message explaining the problem");
     }
 
+    @Test
+    @DisplayName("nesting up to MAX_DEPTH parses, one level more is refused")
+    void depthLimitIsExact() {
+        // Objects and arrays alternate so both readers count. Bounded on both sides: the limit
+        // itself must pass, or a real file near it would be refused for nothing.
+        assertInstanceOf(List.class, Json.parse(nested(Json.MAX_DEPTH)));
+        Json.JsonException thrown = assertThrows(Json.JsonException.class,
+                () -> Json.parse(nested(Json.MAX_DEPTH + 1)));
+        assertTrue(thrown.getMessage().contains("levels deep"), thrown.getMessage());
+    }
+
+    @Test
+    @DisplayName("200,000 opening brackets are refused with a message, not a stack overflow")
+    void deepNestingIsRefusedNotOverflowed() {
+        // 5,000 was enough to overflow the desktop's stack before the limit existed.
+        String deep = "[".repeat(200_000) + "]".repeat(200_000);
+        assertThrows(Json.JsonException.class, () -> Json.parse(deep));
+    }
+
+    @Test
+    @DisplayName("sibling containers do not add up toward the depth limit")
+    void siblingsDoNotCountAsDepth() {
+        // 160 containers side by side are two levels deep, not 160. This is what fails if a
+        // container forgets to count itself back out. All four shapes, because an empty container
+        // and a filled one leave through different returns, and each return has to count out.
+        List<String> shapes = List.of("[]", "[1]", "{}", "{\"a\":1}");
+        StringBuilder siblings = new StringBuilder("[");
+        for (String shape : shapes) {
+            for (int i = 0; i < 40; i++) {
+                siblings.append(siblings.length() > 1 ? "," : "").append(shape);
+            }
+        }
+        siblings.append(']');
+        assertEquals(160, ((List<?>) Json.parse(siblings.toString())).size());
+    }
+
+    /** {@code depth} containers inside each other, alternating arrays and objects. */
+    private static String nested(int depth) {
+        StringBuilder open = new StringBuilder();
+        StringBuilder close = new StringBuilder();
+        for (int level = 0; level < depth; level++) {
+            if (level % 2 == 0) {
+                open.append('[');
+                close.insert(0, ']');
+            } else {
+                open.append("{\"k\":");
+                close.insert(0, '}');
+            }
+        }
+        // An object needs a value where the innermost container ends.
+        String middle = depth % 2 == 0 ? "1" : "";
+        return open + middle + close;
+    }
+
     // ------------------------------------------------------------- writing
 
     @Test

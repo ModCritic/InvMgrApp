@@ -4,8 +4,13 @@ package com.modcritic.invmgr.ui;
  * The app's door into Android, for the two things only Android can answer.
  *
  * <p>Everything else about running on a phone is handled below this app; JavaFX draws into a
- * surface the host layer gives it, and fingers arrive as ordinary JavaFX touch events. Two
- * questions have no answer inside JavaFX at all, and this class is how they get asked:
+ * surface the host layer gives it, and fingers arrive as ordinary JavaFX touch events. (The host
+ * layer is the C code in {@code native/} that starts the Java VM on the phone and hands JavaFX the
+ * screen and the touches.) This class is the app's end of what this project calls the bridge, the
+ * JNI calls between the app and Android's own Java; the other end is {@code InvMgrActivity}, which
+ * the comments below call the Activity.
+ *
+ * <p>Two questions have no answer inside JavaFX at all, and this class is how they get asked:
  *
  * <ul>
  *   <li><b>How much of the screen belongs to the phone</b>, and how much of it the keyboard is
@@ -18,7 +23,7 @@ package com.modcritic.invmgr.ui;
  *
  * <p>{@link Device#isAndroid()} answers "should this look like a phone", and it can be forced true
  * on a desktop with {@code -Dinvmgr.platform=android} so the touch layout can be run and
- * screenshotted here. That override is documented in {@code CLAUDE.md} §10 and is used constantly.
+ * screenshotted here. That override is used constantly.
  *
  * <p>This class must ask a different question: <b>is there really an Android underneath</b>. The
  * methods below reach native code that only exists inside the phone build, so calling one on a
@@ -48,9 +53,6 @@ public final class AndroidBridge {
      * Only the two this app has a use for are named.
      */
     public static final int KEYBOARD_TEXT = 0;
-
-    /** A whole number: a quantity, or a count of items. Raises the dial pad. */
-    public static final int KEYBOARD_NUMBER = 1;
 
     /** A number that may have a decimal point: every measurement in this app. */
     public static final int KEYBOARD_DECIMAL = 2;
@@ -126,7 +128,7 @@ public final class AndroidBridge {
      * next field that raises the keyboard rather than immediately, which is why the app sets it
      * when a field gains focus rather than when the dialog is built.
      *
-     * @param type one of {@link #KEYBOARD_TEXT}, {@link #KEYBOARD_NUMBER}, {@link #KEYBOARD_DECIMAL}
+     * @param type {@link #KEYBOARD_TEXT} or {@link #KEYBOARD_DECIMAL}
      */
     public static void setKeyboardType(int type) {
         if (isAvailable()) {
@@ -158,8 +160,8 @@ public final class AndroidBridge {
     /**
      * Watches the whole window and asks for the right keyboard whenever focus moves.
      *
-     * <p><b>This is B6, and it replaces a per-field version that shipped broken.</b> The first
-     * one hung a listener on each field as it was built, from the two places that build fields.
+     * <p><b>This replaces a per-field version that shipped broken.</b> The first one hung a
+     * listener on each field as it was built, from the two places that build fields.
      * The Add dialog's Name box is built by neither (it is a {@code TextArea}, because the
      * original's is a {@code <textarea>}), so it was never wired, and tapping it after a size
      * box left the keypad up with no letters on it. That is exactly the bug the user reported.
@@ -250,16 +252,21 @@ public final class AndroidBridge {
      * appear, which is the order somebody filling the dialog in expects. It wraps, so Next on
      * the last box returns to the first rather than escaping into the buttons.
      *
+     * <p><b>⚠ And only the boxes inside the same dialog</b> (see {@link #keepsNextInside}). This
+     * used to search the whole window, so with the top bar open, Next on the Add dialog's Height
+     * wrapped to the room's W box behind the dialog, and whatever was typed next went into the
+     * room's width. Found on the phone 2026-10-01.
+     *
      * <p>Returns false when the focus is not on a number box at all, leaving Tab to mean what
-     * it has always meant everywhere else.
+     * it has always meant everywhere else. Package-private for {@code DialogsTest}.
      */
-    private static boolean stepToTheNextNumberField(javafx.scene.Scene scene) {
+    static boolean stepToTheNextNumberField(javafx.scene.Scene scene) {
         javafx.scene.Node focused = scene.getFocusOwner();
         if (!isANumberField(focused)) {
             return false;
         }
         java.util.List<javafx.scene.control.TextInputControl> boxes = new java.util.ArrayList<>();
-        collectNumberFields(scene.getRoot(), boxes);
+        collectNumberFields(nextFieldScope(focused, scene), boxes);
         int at = boxes.indexOf(focused);
         if (at < 0 || boxes.size() < 2) {
             return false;
@@ -277,10 +284,49 @@ public final class AndroidBridge {
         // behind it, so this is the show that overtakes it; see InvMgrActivity's
         // HIDE_SETTLE_MS. It is still needed, and it is still queued rather than called
         // straight away, so that it lands after both skins have had their turn and inside
-        // that window. Safe because this is the only place that asks: it runs for the
-        // keypad's Next key alone and cannot raise a keyboard nobody wanted.
-        javafx.application.Platform.runLater(AndroidBridge::showKeyboard);
+        // that window. Safe because it runs only for a key that asks to move on, the keypad's
+        // Next here and the Add dialog's Enter in its Name box, and cannot raise a keyboard
+        // nobody wanted.
+        keepTheKeyboardUp();
         return true;
+    }
+
+    /**
+     * Asks for the keyboard again after the code has moved the focus between boxes, so it stays
+     * up. The reason is the comment at the end of {@link #stepToTheNextNumberField}; this is the
+     * show that overtakes the hide. Queued, so it lands after both skins have had their turn.
+     * Does nothing off the phone.
+     */
+    public static void keepTheKeyboardUp() {
+        if (isAvailable()) {
+            javafx.application.Platform.runLater(AndroidBridge::showKeyboard);
+        }
+    }
+
+    /**
+     * The mark on a node whose number boxes the Next key stays among. A dialog puts it on its
+     * overlay; see {@link #keepsNextInside}.
+     */
+    private static final String NEXT_STAYS_INSIDE = "invmgr.nextStaysInside";
+
+    /**
+     * Says that the Next key, pressed in a number box somewhere under {@code node}, moves only
+     * among the number boxes under {@code node}. Every dialog puts this on its overlay, so Next
+     * can never land on a box the dialog is covering.
+     */
+    public static void keepsNextInside(javafx.scene.Node node) {
+        node.getProperties().put(NEXT_STAYS_INSIDE, Boolean.TRUE);
+    }
+
+    /** The nearest marked node holding {@code focused}, or the whole window if none is. */
+    private static javafx.scene.Node nextFieldScope(javafx.scene.Node focused,
+                                                    javafx.scene.Scene scene) {
+        for (javafx.scene.Node node = focused; node != null; node = node.getParent()) {
+            if (Boolean.TRUE.equals(node.getProperties().get(NEXT_STAYS_INSIDE))) {
+                return node;
+            }
+        }
+        return scene.getRoot();
     }
 
     /** Every visible number box under {@code node}, in the order they are laid out. */
@@ -376,6 +422,21 @@ public final class AndroidBridge {
      */
     public static void awaitFile(java.util.function.Consumer<String> onDone,
                                  java.util.function.Consumer<String> onFailed) {
+        awaitFile(onDone, onFailed, () -> { });
+    }
+
+    /**
+     * The same, told when the user backs out of the picker.
+     *
+     * <p>Added for Reset Room, whose first window asks whether to save first. Backing out of the
+     * picker there has to put that window back, and the two-handler version above cannot say it
+     * happened. Saving from the top bar still says nothing, through the one above.
+     *
+     * @param onBackedOut run when the user leaves the picker without choosing anything
+     */
+    public static void awaitFile(java.util.function.Consumer<String> onDone,
+                                 java.util.function.Consumer<String> onFailed,
+                                 Runnable onBackedOut) {
         if (!isAvailable()) {
             return;
         }
@@ -409,6 +470,7 @@ public final class AndroidBridge {
                     case FILE_CANCELED:
                         stop();
                         takeFileText();          // clears the state back to idle
+                        onBackedOut.run();
                         return;
                     default:
                         if (++idleFrames > IDLE_FRAMES_BEFORE_GIVING_UP) {
@@ -419,6 +481,42 @@ public final class AndroidBridge {
                 }
             }
         }.start();
+    }
+
+    /**
+     * Opens a web address in the phone's browser (About's Source code link).
+     *
+     * <p>The Activity hands it to Android as an ACTION_VIEW intent and that is all: the browser
+     * makes the connection, and this app still asks for no permission and opens none of its own.
+     * If no browser can take it, the Activity logs that and nothing else happens; see its
+     * {@code openLink}.
+     */
+    public static void openLink(String url) {
+        if (isAvailable()) {
+            nativeOpenLink(url);
+        }
+    }
+
+    /**
+     * Hands a feedback message to the phone's mail app, addressed and ready to send (the Menu's
+     * Feedback entry). The Activity does it; see its {@code composeEmail}. Does nothing off the
+     * phone.
+     */
+    public static void composeEmail(String to, String subject, String body) {
+        if (isAvailable()) {
+            nativeComposeEmail(to, subject, body);
+        }
+    }
+
+    /**
+     * Hides the phone's status and navigation bars until a swipe brings them back for a moment,
+     * or shows them again: the Menu's Hide system bars setting. The Activity does the work; see
+     * its {@code setSystemBarsHidden}. Does nothing off the phone.
+     */
+    public static void setSystemBarsHidden(boolean hidden) {
+        if (isAvailable()) {
+            nativeSetSystemBarsHidden(hidden);
+        }
     }
 
     /** What was read, handed over once. Null if there is nothing waiting. */
@@ -448,6 +546,12 @@ public final class AndroidBridge {
                                                      String content);
 
     private static native void nativeRequestOpenFile(String mimeType);
+
+    private static native void nativeOpenLink(String url);
+
+    private static native void nativeSetSystemBarsHidden(boolean hidden);
+
+    private static native void nativeComposeEmail(String to, String subject, String body);
 
     private static native int nativeFileState();
 

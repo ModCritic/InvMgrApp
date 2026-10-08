@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 //
-// Differential test harness for M5's 3D view.
+// Differential test harness for the 3D view.
 //
 // WHY THIS EXISTS
 //
@@ -10,12 +10,13 @@
 //
 // The 3D view has one place where that risk is unusually sharp. The per-face shading
 // multiplies the item's HSL *lightness*, rounds to a whole percent, then clamps; the
-// OD-1 spike used JavaFX's Color.hsb instead, which multiplies a different quantity. Both
-// produce a plausible-looking box. Only a diff against the original's own arithmetic tells
-// them apart, and it can demand exact equality because the intermediate value is an integer.
+// early research prototype of the 3D view used JavaFX's Color.hsb instead, which multiplies a
+// different quantity. Both produce a plausible-looking box. Only a diff against the
+// original's own arithmetic tells them apart, and it can demand exact equality because the
+// intermediate value is an integer.
 //
-// So the block marked VERBATIM below is copied unchanged out of
-// docs/original/InvMgr_V1.3.0.html (itemShades 2853-2857, and the sizing arithmetic out of
+// So the block marked VERBATIM below is copied unchanged out of the original app's
+// InvMgr_V1.3.0.html (itemShades 2853-2857, and the sizing arithmetic out of
 // drawSurfaceCanvas 2830-2841). The browser-only parts (the canvas element, the 2D context,
 // the actual stroking and the gradient fill) are dropped, because node has no canvas; what
 // is kept is every number that decides what those calls would have drawn. The Java side's

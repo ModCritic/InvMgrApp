@@ -138,7 +138,8 @@ public final class JoystickView extends Pane {
      * pixels across the glass has moved eighty across the stick; eighty is the number the knob
      * is drawn with and the number the thirty-pixel radius is measured in. Doing the subtraction in
      * scene coordinates would make the stick more sensitive the further you zoomed in, which is the
-     * shape of the M3.2 bug where a coordinate from one space was used in another.
+     * same mistake that once made the item tooltip and drag ghost drift from the cursor: a
+     * coordinate from one space used in another.
      *
      * @param sceneX where the finger is, as a touch event reports it
      * @return how far right and below the middle of the base that is, in the stick's own pixels

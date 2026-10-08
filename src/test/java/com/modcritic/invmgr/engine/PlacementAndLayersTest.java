@@ -112,7 +112,7 @@ class PlacementAndLayersTest {
         @DisplayName("at equal height the most recently moved box paints on top")
         void paintOrderBreaksTiesByDragOrder() {
             // Both at base 0, which is every box in a flat room, so this is also the case that
-            // proves D-5 leaves the original's ordinary behavior untouched.
+            // proves the height-first rule leaves the original's ordinary behavior untouched.
             Item older = box("older", 3, 12, 12, 0, 0);
             Item newer = box("newer", 7, 12, 12, 0, 0);
 
@@ -122,10 +122,11 @@ class PlacementAndLayersTest {
         @Test
         @DisplayName("physical height beats drag order, whatever the Layer Collision toggle says")
         void paintOrderPutsHeightFirst() {
-            // Divergence D-5, and the bug the user reported: the lower box was dragged more
-            // recently, so the original would paint it OVER the box it had just been pushed
-            // underneath. Height decides instead, and it decides in BOTH toggle states, which
-            // is why neither this test nor the rule mentions layerCollision at all.
+            // This app differs from the original here on purpose, after a bug the user reported:
+            // the lower box was dragged more recently, so the original would paint it OVER the
+            // box it had just been pushed underneath. Height decides instead, and it decides in
+            // BOTH toggle states, which is why neither this test nor the rule mentions
+            // layerCollision at all.
             Item low = box("low", 9, 12, 12, 0, 0);
             low.baseHeight_in = 0;
             Item high = box("high", 1, 12, 12, 0, 0);
@@ -168,7 +169,6 @@ class PlacementAndLayersTest {
         @Test
         @DisplayName("only boxes actually in the way dim for the selection")
         void dimmingNeedsBothHeightAndOverlap() {
-            AppState state = room(20, 20);
             Item selected = box("sel", 1, 24, 24, 96, 96);
             Item aboveAndOver = box("over", 2, 24, 24, 96, 96);
             Item aboveElsewhere = box("elsewhere", 3, 24, 24, 900, 900);
@@ -184,7 +184,6 @@ class PlacementAndLayersTest {
         @Test
         @DisplayName("nothing dims when nothing is selected, and ghosts never dim")
         void noSelectionAndGhosts() {
-            AppState state = room(20, 20);
             Item selected = box("sel", 1, 24, 24, 96, 96);
             Item ghost = box("ghost", 5, 24, 24, 96, 96);
             ghost.planned = true;
@@ -205,7 +204,7 @@ class PlacementAndLayersTest {
             // decides, because dimming has to agree with what is actually painted on top; a box
             // that fades to reveal the selection while being drawn behind it anyway just looks
             // like it went dim at random. Note there is no layerCollision setup here any more:
-            // under D-5 one rule covers both toggle states.
+            // one rule covers both toggle states.
             assertTrue(Layers.shouldDim(higherButOlder, selected));
         }
     }

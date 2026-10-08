@@ -28,10 +28,10 @@ import org.testfx.util.WaitForAsyncUtils;
  *
  * <h2>Why anyone would want to</h2>
  *
- * <p>M6.7 item 3 measured the 3D room as short of fill rate and nothing else: five hundred boxes,
- * the save format's own cap, cost under a millisecond to draw. Drawing the room smaller than the
- * window and letting it stretch back up is the standard answer to that, and the user asked for it
- * after a virtual machine running software OpenGL came back at ten frames a second.
+ * <p>An optimization pass measured the 3D room as short of fill rate and nothing else: five hundred
+ * boxes, the save format's own cap, cost under a millisecond to draw. Drawing the room smaller
+ * than the window and letting it stretch back up is the standard answer to that, and the user
+ * asked for it after a virtual machine running software OpenGL came back at ten frames a second.
  *
  * <p>The obvious way is to give the {@code SubScene} a smaller width and height and put a
  * {@code Scale} on it. <b>It does not work, and the reason it is worth a probe is that it LOOKS
@@ -159,7 +159,7 @@ class SubSceneResolutionProbe extends ApplicationTest {
         List<Long> sixteenth = new ArrayList<>();
 
         // Round robin, because this machine drifts more than several of the differences this
-        // milestone has had to resolve.
+        // probe has had to resolve.
         for (int slice = 0; slice < SLICES; slice++) {
             spinAt(1.0, full);
             spinAt(0.5, half);

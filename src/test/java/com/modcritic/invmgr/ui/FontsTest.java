@@ -34,7 +34,7 @@ class FontsTest {
         '■',    // TopBar, the Add button
         '×',    // ItemListPanel, the clear-search button
         '·',    // LayerSliderDrawer, a half-foot tick
-        '\u2014',  // no longer app text (§5.5 D-22), but a name can be pasted with one in it
+        '\u2014',  // no longer app text (messages use a colon now), but a name can hold one
         '°',    // used in text
         'é',    // not ours, but names are user text and Latin-1 must survive
     };

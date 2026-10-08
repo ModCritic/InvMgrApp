@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.modcritic.invmgr.App;
 import com.modcritic.invmgr.threed.CameraPose;
 import com.modcritic.invmgr.threed.Transitions;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,17 +18,18 @@ import org.testfx.util.WaitForAsyncUtils;
  * Pressing the 3D button, and pressing the one that comes back: <b>through the real controls, in
  * a real window, with the real animations running</b>.
  *
- * <p>This class exists because every other M5.2 test is arithmetic. Those check that the numbers
- * describing the journey are right; this checks that pressing the button actually starts it, that
- * the 2D interface gets out of the way and comes back, and that the room you return to is the room
- * you left. Nothing about the *shape* of the movement is asserted here (a test that watches
- * frames go by cannot see an ease), and nothing about it needs to be, because
- * {@code TransitionsTest} owns that and can ask far sharper questions in a thousandth of the time.
+ * <p>This class exists because every other test of the 3D transitions is arithmetic. Those check
+ * that the numbers describing the journey are right; this checks that pressing the button
+ * actually starts it, that the 2D interface gets out of the way and comes back, and that the room
+ * you return to is the room you left. Nothing about the *shape* of the movement is asserted here
+ * (a test that watches frames go by cannot see an ease), and nothing about it needs to be,
+ * because {@code TransitionsTest} owns that and can ask far sharper questions in a thousandth of
+ * the time.
  *
- * <p><b>It drives the button rather than the method behind it.</b> M3.5 shipped a hint fix that
- * could never have worked, green for a week, because its tests called a method the running app
- * never called. So the entry point here is {@code fire()} on the actual button, and the return is
- * a press on the actual overlay button.
+ * <p><b>It drives the button rather than the method behind it.</b> An earlier fix for the button
+ * hints ignoring the interface zoom shipped and could never have worked, green for a week,
+ * because its tests called a method the running app never called. So the entry point here is
+ * {@code fire()} on the actual button, and the return is a press on the actual overlay button.
  */
 class ThreeDEntryTest extends ApplicationTest {
 
@@ -47,7 +47,6 @@ class ThreeDEntryTest extends ApplicationTest {
     private static final long EXIT_MS = (long) Transitions.ASCENT_MS + 1000;
 
     private App app;
-    private Scene scene;
 
     @Override
     public void start(Stage stage) {
@@ -58,7 +57,6 @@ class ThreeDEntryTest extends ApplicationTest {
         stage.setHeight(REFERENCE_HEIGHT);
         stage.setX(0);
         stage.setY(0);
-        scene = stage.getScene();
     }
 
     /** Waits for real time to pass while the JavaFX thread keeps animating. */
@@ -191,7 +189,7 @@ class ThreeDEntryTest extends ApplicationTest {
     @Test
     @DisplayName("the view can be opened, left, and opened again")
     void theViewCanBeUsedMoreThanOnce() {
-        // M5.1's bug 3 was that the 3D view worked exactly once per run, and the second press
+        // An early bug was that the 3D view worked exactly once per run, and the second press
         // threw an exception inside the button handler -- which prints to the console and is
         // otherwise ignored, so it looked like a button that simply did nothing. The re-entrancy
         // guard added for the transitions is the obvious way to reintroduce it, so this drives
@@ -211,9 +209,9 @@ class ThreeDEntryTest extends ApplicationTest {
 
     private javafx.scene.Node[] chrome() {
         return new javafx.scene.Node[] {
-            // topWrap, not topBar: since M6.4 the frame is what slides and what leaves the layout,
-            // because the bar inside it has its own fold and the two must not fight over the
-            // same translate.
+            // topWrap, not topBar: since the phone layout was added the frame is what slides and
+            // what leaves the layout, because the bar inside it has its own fold and the two must
+            // not fight over the same translate.
             app.topWrap(), app.statusBar(), app.sliderDrawer(), app.listPanel(),
         };
     }

@@ -7,11 +7,11 @@ import com.modcritic.invmgr.model.Room;
  * radians. Mutable on purpose: there is one of these per 3D session and the render loop moves it
  * sixty times a second, so allocating a new one per frame would be churn for no gain.
  *
- * <p>Axes follow {@code SPEC-3D-VIEW.md} §1: x east, z south, y up, and <b>yaw 0 faces north</b>,
- * i.e. toward −z. Pitch 0 is level, negative is looking down, so straight down is −π/2.
+ * <p>Axes follow the original: x east, z south, y up, and <b>yaw 0 faces north</b>, i.e. toward
+ * −z. Pitch 0 is level, negative is looking down, so straight down is −π/2.
  *
  * <p>No JavaFX. The camera is the same camera whatever draws it, and keeping it that way is what
- * OD-1's binding consequence 1 asks for: the renderer decision stays reversible only while the
+ * the renderer adapter's design asks for: choosing JavaFX 3D stays reversible only while the
  * things in front of the adapter know nothing about the renderer behind it. It also means every
  * rule here can be tested with no window at all.
  */

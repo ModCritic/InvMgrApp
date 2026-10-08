@@ -51,7 +51,7 @@ class ConfirmDialogTest extends ApplicationTest {
         scene = new Scene(new Pane(), PHONE_WIDTH, PHONE_HEIGHT);
         stage.setScene(scene);
         // Pinned, because TestFX reuses one stage for the whole run and an earlier class may have
-        // left it maximized: the trap M6.2 documented.
+        // left it maximized.
         stage.setMaximized(false);
         stage.setX(OWNER_X);
         stage.setY(OWNER_Y);
@@ -89,9 +89,9 @@ class ConfirmDialogTest extends ApplicationTest {
     void itLeavesADesktopAlone() {
         double capped = shownWidth("Delete preset \"Bin\"?", 2560);
 
-        // Bounded on both sides, per the lesson from M4's autosave test that was satisfied by the
-        // broken code as well as the working one. "Small enough" would pass at 100 px, which would
-        // mean the fix had quietly shrunk every desktop dialog to nothing.
+        // Bounded on both sides, per the lesson from an earlier autosave test that was satisfied
+        // by the broken code as well as the working one. "Small enough" would pass at 100 px,
+        // which would mean the fix had quietly shrunk every desktop dialog to nothing.
         assertEquals(419, capped, 1,
                 "a wide screen must leave the dialog at the size JavaFX chose");
         assertTrue(capped < 2560 - 2 * Hints.SCREEN_MARGIN,
@@ -160,9 +160,10 @@ class ConfirmDialogTest extends ApplicationTest {
     void itIsCenteredOnAPhone() {
         double[] placed = shownPlacement("Delete preset \"Big Blue Storage Bin\"?", PHONE_WIDTH);
 
-        // The M6.3 regression, pinned. Setting only a maximum width leaves the dialog the right
-        // size and placed as though it were still the size it wanted, which put it (419 - 344) / 2
-        // = 37.5 px to the left, and on the phone, 29.5 px off the edge of the glass.
+        // The placement bug the phone showed, pinned. Setting only a maximum width leaves the
+        // dialog the right size and placed as though it were still the size it wanted, which put
+        // it (419 - 344) / 2 = 37.5 px to the left, and on the phone, 29.5 px off the edge of the
+        // glass.
         assertEquals(centeredOnOwner(placed[1]), placed[0], 1,
                 "the dialog must be centered on its owner window");
         assertTrue(placed[0] >= OWNER_X, "and nothing of it may hang off the left of the screen");

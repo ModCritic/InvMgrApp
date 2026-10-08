@@ -49,22 +49,18 @@ package com.modcritic.invmgr.ui;
  * {@code display: flex !important} on their toggles precisely because the base rule follows them.
  * In this block they did not, and fourteen rules went quietly nowhere.
  *
- * <p><b>What this app does about it: the user's decision, 2026-08-13.</b> Only the two the phone
- * actually complained about are put back to what the original renders: the <b>dialog buttons</b>
- * ({@link #dialogButtonFont()}) and the <b>status bar</b> ({@link #statusFont()}). <b>The other
- * twelve keep the larger touch sizes on purpose</b>; they are plainly what the original's author
- * intended, they are easier to hit with a thumb, and reverting them would shrink an item list and a
- * dialog nobody complained about. That makes them a deliberate departure rather than an error, and
- * it is <b>CLAUDE.md §5.5 D-27</b>; MANUAL.md's "The fourteen rules that were never in force" is
- * the long version.
- *
- * <p>⚠ This line claimed a §5.5 entry from M6.4a onward and <b>there was none</b> until the user
- * wrote D-27 on 2026-09-19. The behavior had shipped; only the entry was missing, which is the
- * failure CLAUDE.md §3 describes: a pointer nobody follows stays wrong indefinitely.
+ * <p><b>What this app does about it: the user's decision, 2026-08-13.</b> The two places the phone
+ * actually complained about are put back to what the original renders: the <b>whole dialog</b>
+ * (its buttons were truncated, and at the intended sizes it was wider than a 360 px screen; see the
+ * dialogs group below) and the <b>status bar</b> ({@link #statusFont()}). <b>The other six, the
+ * item list and the search box, keep the larger touch sizes on purpose</b>; they are plainly what
+ * the original's author intended, they are easier to hit with a thumb, and reverting them would
+ * shrink an item list nobody complained about. That makes them a deliberate departure from the
+ * original rather than an error.
  *
  * <p><b>The lesson worth keeping:</b> transcribing a stylesheet proves what it <em>says</em>, never
- * what it <em>does</em>. Only a measurement tells the two apart, and this one hid behind a whole
- * milestone of green tests.
+ * what it <em>does</em>. Only a measurement tells the two apart, and this one hid behind a test
+ * suite that stayed green.
  */
 public final class TouchType {
 
@@ -264,9 +260,9 @@ public final class TouchType {
      * render this bar at 11 px on 3 × 10, measured off the reference screenshot, whose character
      * advance is 6.59 CSS px, which is 11 × 0.6 and not 13 × 0.6.
      *
-     * <p>See {@link #DEAD_TOUCH_RULES} for the full list and for why only this one and the dialog
-     * buttons were put back: those two were reported from the phone, where the oversized type is
-     * what pushed the tip past the edge of the screen.
+     * <p>See the class documentation for the full list and for why this one was put back: it was
+     * reported from the phone, where the oversized type is what pushed the tip past the edge of the
+     * screen.
      */
     public static double statusFont() {
         return Tokens.FONT_STATUS;
@@ -294,5 +290,41 @@ public final class TouchType {
 
     public static double presetAddFont() {
         return pick(Tokens.FONT_PRESET_ADD, Tokens.FONT_PRESET_ADD_TOUCH);
+    }
+
+    // ---------------------------------------------------------------- the Menu
+    //
+    // These come from this app's own Menu, not from the original, which never had one. They DO
+    // grow on a phone where the dialogs above do not; Tokens.FONT_MENU_TOUCH says why.
+
+    public static double menuFont() {
+        return pick(Tokens.FONT_CONTROL, Tokens.FONT_MENU_TOUCH);
+    }
+
+    public static double menuTitleFont() {
+        return pick(Tokens.FONT_DIALOG_TITLE, Tokens.FONT_MENU_TITLE_TOUCH);
+    }
+
+    public static double menuPadding() {
+        return pick(Tokens.DIALOG_PADDING, Tokens.MENU_PADDING_TOUCH);
+    }
+
+    public static double menuEntryHeight() {
+        return pick(Tokens.MENU_ENTRY_HEIGHT, Tokens.MENU_ENTRY_HEIGHT_TOUCH);
+    }
+
+    /** The sentences in the Menu's windows, like the Reset Room question. */
+    public static double menuProseFont() {
+        return pick(Tokens.FONT_MENU_PROSE, Tokens.FONT_MENU_PROSE_TOUCH);
+    }
+
+    /** The sentences on the About pages, a size smaller on a phone; see the token. */
+    public static double menuPageProseFont() {
+        return pick(Tokens.FONT_MENU_PAGE_PROSE, Tokens.FONT_MENU_PAGE_PROSE_TOUCH);
+    }
+
+    /** A button in one of the Menu's windows. */
+    public static double menuButtonHeight() {
+        return pick(Tokens.DIALOG_BUTTON_HEIGHT, Tokens.MENU_DIALOG_BUTTON_HEIGHT_TOUCH);
     }
 }

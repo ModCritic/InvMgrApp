@@ -18,15 +18,15 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * B11: a room too big for a texture still draws its floor.
+ * A room too big for a texture still draws its floor.
  *
  * <p><b>The bug this pins.</b> The floor, its grid and its vignette used to be painted onto a
  * single {@code Canvas} sized to the room in room pixels, with nothing capping it. A canvas is a
  * raster, so that asked the renderer for a texture of the room's size times the screen's scale.
- * At 180 ft it passes the 16384 limit a phone reported at M6.1 and the floor renders <b>blank</b>,
- * measured on this machine at scale 1. On a phone at scale 3 the same wall arrives three times
- * sooner: a 30 ft x 40 ft room wanted 380 MB, took the graphics pool, and the 3D wall textures
- * then failed to allocate and drew black. That is what the user reported.
+ * At 180 ft it passes the 16384 limit a phone reported when the app first ran on one and the floor
+ * renders <b>blank</b>, measured on this machine at scale 1. On a phone at scale 3 the same wall
+ * arrives three times sooner: a 30 ft x 40 ft room wanted 380 MB, took the graphics pool, and the
+ * 3D wall textures then failed to allocate and drew black. That is what the user reported.
  *
  * <p><b>Why a size test rather than a memory test.</b> How much graphics memory a device has is
  * not knowable from here and differs per phone. The texture <em>limit</em> is not: past it the

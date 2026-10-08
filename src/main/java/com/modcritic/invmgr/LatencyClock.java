@@ -15,10 +15,10 @@ import javafx.scene.input.ZoomEvent;
 /**
  * Times how long the app takes to put a frame on the screen after an input event.
  *
- * <p><b>What this is for.</b> M6.7b needs one number that means the same thing on a desktop, on a
- * virtual machine and on the phone, because the phone is where the app actually feels slow and
- * nothing in {@code src/test} can reach it. TestFX can drive the two desktops; nothing can drive
- * the phone from inside. So the app measures itself, the same way {@link
+ * <p><b>What this is for.</b> The timing suite needs one number that means the same thing on a
+ * desktop, on a virtual machine and on the phone, because the phone is where the app actually feels
+ * slow and nothing in {@code src/test} can reach it. TestFX can drive the two desktops; nothing can
+ * drive the phone from inside. So the app measures itself, the same way {@link
  * com.modcritic.invmgr.threed.FlightClock} already does for a flight into the 3D view, and the
  * harness in {@code tools/perf} reads the lines back off stdout or logcat.
  *
@@ -149,7 +149,7 @@ public final class LatencyClock {
         // that did. Everything here is an event a scenario in tools/perf actually sends.
         //
         // ⚠ A finger on the phone arrives TWICE, as a touch event and as a synthesized mouse
-        // event (CLAUDE.md §5.8 item 5). Both are recorded and the type is on every line, so the
+        // event. Both are recorded and the type is on every line, so the
         // harness can count one of them rather than both. Filtering here would be guessing which
         // one the caller wanted.
         scene.addEventFilter(MouseEvent.MOUSE_PRESSED, e -> arrived("mouse-press"));

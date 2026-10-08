@@ -110,7 +110,7 @@ public final class SurfaceTexture {
      *
      * <p>A circle, not an oval. The radius is in pixels and is measured from the surface's longer
      * side, so a long wall gets a round pool of light in the middle rather than a stretched one,
-     * which is what the original does, and is where the OD-1 spike went wrong.
+     * which is what the original does, and is where an early prototype of the 3D view went wrong.
      */
     public static Image vignette(double widthFt, double heightFt) {
         return vignette(widthFt, heightFt, SurfaceMetrics.MAX_TEXTURE_PX);
@@ -136,7 +136,7 @@ public final class SurfaceTexture {
     /**
      * Says so, loudly, when the snapshot above did not actually draw.
      *
-     * <p><b>Why this exists (B11).</b> {@code snapshot} hands its work to the render thread and
+     * <p><b>Why this exists.</b> {@code snapshot} hands its work to the render thread and
      * waits. If the renderer cannot allocate a buffer for it, the failure is thrown and logged
      * <em>there</em> and this method still gets an {@code Image} back, so the 3D room is built
      * from a blank texture and the floor comes out dark with nothing anywhere saying why. That is
@@ -150,14 +150,15 @@ public final class SurfaceTexture {
      * {@link Tokens#ROOM_FILL} before anything else is drawn and the snapshot's own fill is
      * transparent, so a transparent center there still means the fill never happened.
      *
-     * <p>M6.7 made the thing it guards somewhat less likely and did not remove it: the grid no
-     * longer needs a picture of the whole wall, but the vignette still takes one, and that is
-     * still up to 2048 x 2048 five times over. See OI-4 for the reduction that is sitting there
-     * unclaimed. The check stays because a dark floor with no explanation cost a day once already.
+     * <p>Moving the grid to a repeating tile made the thing this guards against somewhat less
+     * likely and did not remove it: the grid no longer needs a picture of the whole wall, but the
+     * vignette still takes one, sized by {@link SurfaceMetrics#MAX_TEXTURE_PX}. The check stays
+     * because a dark floor with no explanation cost a day once already.
      *
      * <p>It reports rather than throws, deliberately. A dark floor is bad; a 3D view that refuses
-     * to open at all is worse, and D-10 already decided which way that trade goes for the 3D
-     * button. The line is written so a logcat can be searched for it.
+     * to open at all is worse, and the app already makes that choice for the 3D button (it is
+     * grayed out when there is no 3D pipeline, and the program carries on). The line is written so
+     * a logcat can be searched for it.
      */
     private static void reportIfBlank(Image image, int widthPx, int heightPx, String what) {
         if (image == null) {
@@ -179,6 +180,6 @@ public final class SurfaceTexture {
                 + " DID NOT RENDER: " + widthPx + "x" + heightPx
                 + " came back transparent, so every surface will draw black.");
         System.out.println("InvMgr:   Almost certainly out of graphics memory rather than a "
-                + "drawing fault. A big room's 2D floor takes the pool first; see B11.");
+                + "drawing fault. A big room's 2D floor takes that memory first.");
     }
 }

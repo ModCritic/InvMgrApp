@@ -29,7 +29,9 @@ class MetricProbe extends ApplicationTest {
 
     @Test
     void probe() throws Exception {
-        clickOn(app.topBar().unitsButton());
+        clickOn(app.topBar().menuButton());
+        clickOn(app.menuWindow().metricEntry());
+        clickOn(app.menuWindow().closeButton());
         WaitForAsyncUtils.waitForFxEvents();
         System.out.println("PROBE metricMode=" + app.canvas().state().metricMode);
         WritableImage img = WaitForAsyncUtils.waitForAsyncFx(5000, () -> scene.snapshot(null));

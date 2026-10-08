@@ -10,7 +10,7 @@ import com.modcritic.invmgr.model.Units;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** The search box's rules, from SPEC-2D-ENGINE.md §8. */
+/** The search box's rules, as the original app implements them. */
 class SearchTest {
 
     private static Item item(String name, double w, double l, double h) {

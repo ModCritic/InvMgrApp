@@ -5,10 +5,11 @@
 # WHY THIS EXISTS
 #
 # A passing test suite proves the tests pass, not that they would notice if the code broke.
-# During M2 that distinction was not academic: the 250-scenario differential suite was green,
-# and deliberately reintroducing the original app's known "the Y slide uses the pre-slide X"
-# bug ALSO left it green: random scenarios essentially never line up so that the difference
-# is observable. The same was true of relaxing the strict `<` in rectsOverlap.
+# That distinction was not academic while the 2D engine was being written: the 250-scenario
+# differential suite was green, and deliberately reintroducing the known "the Y slide uses the
+# pre-slide X" bug from the original app (the single-file HTML app this one rewrites) ALSO left
+# it green: random scenarios essentially never line up so that the difference is observable.
+# The same was true of relaxing the strict `<` in rectsOverlap.
 #
 # So this script breaks one documented rule at a time and checks that the suite fails. A
 # mutation that SURVIVES is a blind spot: the rule it breaks is not actually being tested.
@@ -16,7 +17,7 @@
 # USAGE
 #   bash tools/golden/mutation-sweep.sh          # from the project root
 #
-# ⚠ RUN IT ON A TREE NOBODY IS TOUCHING. Not in the background while the milestone is still being
+# ⚠ RUN IT ON A TREE NOBODY IS TOUCHING. Not in the background while the code is still being
 # written. Two reasons, and both turn the whole run into a lie rather than into an error:
 #   1. A source file that does not compile makes `mvn test` fail, and this script cannot tell a
 #      failure caused by its own mutation from a failure caused by somebody's half-finished edit.
@@ -25,19 +26,20 @@
 #      guard and the md5 guard already exist to catch. There is no guard for this one.
 #   2. It compiles into target/, and so does the editor's own build. Two Maven runs in one tree
 #      race each other's class files.
-# Started once during M6.4 and killed for exactly this. Finish the milestone, then sweep.
+# Started once in the middle of the touch layout work and killed for exactly this. Finish the
+# edit, then sweep.
 #
 # ⚠ AND IF YOU DO KILL IT, CHECK THE TREE. The EXIT trap restores every file, but a `pkill` that
-# lands between the mutation and the restore leaves that one mutation sitting in the source. M6.4
-# lost half an hour to `double spread = lastSeparation - separation;` left behind by an interrupted
-# run: a real test failed with a real number, and the code it named was not the code that had been
+# lands between the mutation and the restore leaves that one mutation sitting in the source. One
+# interrupted run lost half an hour to `double spread = lastSeparation - separation;` left behind:
+# a real test failed with a real number, and the code it named was not the code that had been
 # written. `git diff` the mutated packages after any interrupted run.
 #
 # Runs in about two minutes. It deliberately runs only the headless tests; see the comment
 # on SUITE below for why, and for the two guards that stop that shortcut turning into a lie.
 #
-# Expected result as of M6.7: 210 mutations, 209 caught, 1 survivor, 0 broken patterns. RUN AND
-# RECORDED 2026-09-16, not predicted, which is a habit this line has needed more than once: it
+# Expected result as of 2026-09-16: 210 mutations, 209 caught, 1 survivor, 0 broken patterns. RUN
+# AND RECORDED that day, not predicted, which is a habit this line has needed more than once: it
 # once said 171/170 and had never been executed since the run that produced it was killed.
 #
 # ⚠ AND THE RUN BEFORE THIS ONE REPORTED 208/2/1, WHICH WAS A LIE IN BOTH DIRECTIONS. A case
@@ -51,13 +53,13 @@
 # survivor ("recompute skips zeroing heights first") is NOT a gap: that pass is provably
 # redundant, because stackInOrder assigns a height to every item anyway. See Stacking.java.
 #
-# M6.7 added eight cases for the repeating grid tile and the vignette, and the first run of them
-# reported SEVEN BROKEN PATTERNS: every one had an unescaped "(" or "?" and matched nothing, so
+# The eight cases for the repeating grid tile and the vignette reported SEVEN BROKEN PATTERNS on
+# their first run: every one had an unescaped "(" or "?" and matched nothing, so
 # each printed "SURVIVED <-- BLIND SPOT" while changing no code at all. The two look identical in
 # the output and only the md5 guard separates them. Test a new pattern against a copy of the file
 # before trusting a run that contains it.
 #
-# ⚠ THAT HAPPENED THREE TIMES IN ONE MILESTONE, so it is not a slip, it is the shape of the job:
+# ⚠ THAT HAPPENED THREE TIMES, so it is not a slip, it is the shape of the job:
 # these patterns are perl regexes but they are WRITTEN by copying a line of Java, and Java is full
 # of ( ) { } | . and /, every one of which means something else to perl. Do not hand-escape. Take
 # the line, and escape every one of \ ^ $ . | ? * + ( ) [ ] { } / in it. Then check it applies to
@@ -67,20 +69,20 @@
 #   perl -0pi -e 'YOUR PATTERN' /tmp/m.java
 #   [ "$before" = "$(md5sum /tmp/m.java)" ] && echo "matched nothing"
 #
-# M6.3 added the 3D touch cases and the run that added them reported TWO BROKEN PATTERNS, which
+# The run that added the 3D touch cases reported TWO BROKEN PATTERNS, which
 # is the md5 guard below doing exactly the job it exists for: `step`'s inline sin and cos had
-# moved into shared forwardX/rightX helpers, so two M5.3 cases naming the old expression
+# moved into shared forwardX/rightX helpers, so two walking cases naming the old expression
 # character for character matched nothing at all. Without the guard they would have reported
 # "caught" forever. **Re-derive a case when the code it names changes shape. Do not port the
 # old text across.**
 #
-# M4 added the autosave cases. One of them survived on its first run ("Windows ignores
+# One of the autosave cases survived on its first run ("Windows ignores
 # %APPDATA%") because the test asserted the result merely CONTAINED "AppData/Roaming", which
 # the fallback path also does. The test now asserts the whole path. That is what this script
 # is for, and it earned its keep the day it was extended.
 #
 # The autosave rules that live in App.java are NOT here: they need a window, and this script
-# runs headless on purpose. They are mutated by hand against AutosaveAppTest; see CLAUDE.md §5.
+# runs headless on purpose. They are mutated by hand against AutosaveAppTest.
 #
 # Extend this whenever the engine grows. A rule that is written down but not mutated here is a
 # rule nothing is checking.
@@ -109,13 +111,13 @@ BK=$(mktemp -d)
 # passes, the commit still succeeds, and the only trace is that the change you thought you
 # made is not in the diff.
 #
-# Learned at M6.7c on 2026-09-19: a one-paragraph comment fix to ui/TouchType.java went in
+# Learned on 2026-09-19: a one-paragraph comment fix to ui/TouchType.java went in
 # while the sweep was running and vanished, and the commit message claiming it went out
 # anyway. The header above already says "NEVER run this while still editing the tree"; it
 # said so about a DIFFERENT hazard, a momentarily uncompilable file making every case a
 # false "caught". This is the second reason, and it is the quieter one.
 #
-# Edit docs/, tools/ or native/ while it runs if you must. Not these four packages.
+# Edit tools/ or native/ while it runs if you must. Not these four packages.
 restore_all() {
   cp "$BK"/engine/*.java "$ENG"/ 2>/dev/null
   cp "$BK"/persist/*.java "$PER"/ 2>/dev/null
@@ -133,7 +135,7 @@ cp $PER/*.java "$BK"/persist/
 cp $THREED/*.java "$BK"/threed/
 # Launcher.java sits at the top of the source tree rather than in one of the packages above, and
 # ⚠ THE WARNING BELOW IS WHY THIS LINE EXISTS: a file with a case but no backup line is never put
-# back. M6.7 shipped exactly that once already, one directory down in threed/jfx/.
+# back. That has already happened once, one directory down in threed/jfx/.
 mkdir -p "$BK"/root
 cp src/main/java/com/modcritic/invmgr/Launcher.java "$BK"/root/
 cp src/main/java/com/modcritic/invmgr/Verbose.java "$BK"/root/
@@ -146,7 +148,7 @@ cp src/main/java/com/modcritic/invmgr/Verbose.java "$BK"/root/
 # ⚠ ADD A FILE HERE THE MOMENT YOU ADD A CASE FOR IT. `restore_all` copies back only what was
 # backed up, so a file mutated but not listed above is never put back, and then every later case
 # runs against broken code and reports "caught" while testing nothing, which is the false-success
-# shape this script exists to avoid. M6.4 shipped exactly that: Fluid and TouchType had cases but
+# shape this script exists to avoid. It has happened: Fluid and TouchType had cases but
 # no backup line, so their first mutation stayed in the source for the rest of the run, the next
 # pattern found nothing to match, and two mutations were still sitting in the tree when it
 # finished. The md5 guard is what surfaced it, by reporting the follow-on patterns as broken.
@@ -164,7 +166,7 @@ broken=0
 # running those 32 times took over an hour. A sweep that slow is a sweep nobody runs, which
 # is the same as not having one.
 #
-# The danger with narrowing a -Dtest= pattern is the one CLAUDE.md §2 names: a pattern that
+# The danger with narrowing a -Dtest= pattern is this one: a pattern that
 # matches nothing makes Surefire error, which looks exactly like "the mutation was caught",
 # and every case then reports a false success. Two guards below: the baseline must pass, and
 # it must report at least MIN_TESTS of them.
@@ -173,10 +175,10 @@ broken=0
 SUITE='com.modcritic.invmgr.LauncherTest,com.modcritic.invmgr.VerboseTest,com.modcritic.invmgr.engine.*Test,com.modcritic.invmgr.model.*Test,com.modcritic.invmgr.persist.*Test,com.modcritic.invmgr.threed.*Test,com.modcritic.invmgr.ui.SystemInsetsTest,com.modcritic.invmgr.ui.DeviceTest,com.modcritic.invmgr.ui.TouchGestureTest,com.modcritic.invmgr.ui.FluidTest,com.modcritic.invmgr.ui.TouchTypeTest'
 
 # A floor, not an exact count, so adding tests does not break the script. Raise it when the
-# headless suite grows substantially. 140 at M3; M4's persistence tests took the baseline to
-# 185, so the floor moves up with it: a floor far below the real count stops catching the
-# thing it exists to catch. M5.1's arithmetic added 45 more, and M5.3's walking and picking
-# another 42; the headless baseline is 296 as of M5.3, so this floor sits just under it.
+# headless suite grows substantially: a floor far below the real count stops catching the thing it
+# exists to catch. The headless baseline was 140 tests once, 185 after the persistence tests, and
+# then grew by 45 for the 3D arithmetic and 42 for walking and picking; keep the floor just under
+# the current count.
 MIN_TESTS=330
 
 run_suite() {
@@ -215,13 +217,13 @@ run_case() {
 }
 
 # A mutation that does not APPLY looks exactly like a mutation that survived: the file is
-# unchanged, the suite passes, and the line reads "SURVIVED <-- BLIND SPOT". Five of the M5.2
-# cases did this on their first run, because perl treats `(` as a capture group and the patterns
-# had unescaped parens; one of them was not even valid perl and printed its error into the
-# scroll-back where it was easy to miss. So the file is now compared before and after, and a
-# no-op is reported as the broken TEST it is rather than as a finding about the code.
+# unchanged, the suite passes, and the line reads "SURVIVED <-- BLIND SPOT". Five of the
+# 3D transition cases did this on their first run, because perl treats `(` as a capture group
+# and the patterns had unescaped parens; one of them was not even valid perl and printed its
+# error into the scroll-back where it was easy to miss. So the file is now compared before and
+# after, and a no-op is reported as the broken TEST it is rather than as a finding about the code.
 #
-# This is the same trap CLAUDE.md §2 records for `-Dtest=` patterns that match nothing: check
+# This is the same trap as a `-Dtest=` pattern that matches nothing: check
 # that the check can fail.
 mutate() {
   local before after
@@ -261,10 +263,11 @@ run_case "the Y slide uses the pre-slide X (the original's known bug)"
 # --- layering ----------------------------------------------------------------------
 mutate 's/return item\.baseHeight_in < state\.layerFeet \* 12;/return item.baseHeight_in <= state.layerFeet * 12;/' $ENG/Layers.java
 run_case "layer slider visibility uses <= instead of <"
-# These two replaced the old "ignores Layer Collision" cases on 2026-07-29, when divergence D-5
-# removed that branch entirely. The old patterns matched nothing and so reported a false
-# SURVIVED, exactly the trap this script's own header warns about. Both replacements were
-# checked to actually apply, and to fail the suite.
+# These two replaced the old "ignores Layer Collision" cases on 2026-07-29, when this app stopped
+# following the original in switching its paint-order rule on that toggle and removed the branch
+# entirely. The old patterns matched nothing and so reported a false SURVIVED, exactly the trap
+# this script's own header warns about. Both replacements were checked to actually apply, and to
+# fail the suite.
 mutate 's/int byHeight = Double\.compare\(a\.baseHeight_in, b\.baseHeight_in\);/int byHeight = 0;/' $ENG/Layers.java
 run_case "paint order ignores height and falls back to dragOrder (the D-5 bug)"
 mutate 's/return comparePaint\(item, other\) > 0;/return item.dragOrder > other.dragOrder;/' $ENG/Layers.java
@@ -276,7 +279,7 @@ run_case "findOpenSpot does not sort candidates by distance"
 mutate 's/double step = Math\.max\(MIN_STEP_PX, Math\.min\(widthPx, lengthPx\)\);/double step = MIN_STEP_PX;/' $ENG/Placement.java
 run_case "findOpenSpot step size ignores item size"
 
-# --- text formats (M3) --------------------------------------------------------------
+# --- text formats -------------------------------------------------------------------
 mutate 's/\+ "  " \+ dimension\(metric, item\.w_in\)/+ " " + dimension(metric, item.w_in)/' $ENG/TextFormat.java
 run_case "tooltip uses one space after the name instead of two"
 mutate 's/" - Base: "/" - base: "/' $ENG/TextFormat.java
@@ -288,7 +291,7 @@ run_case "name ordering becomes case-sensitive"
 mutate 's/return new java\.math\.BigInteger\(left\)\.compareTo\(new java\.math\.BigInteger\(right\)\);/return BASE_LETTERS.compare(left, right);/' $ENG/TextFormat.java
 run_case "numbers in names sort as text, so item #10 comes before item #2"
 
-# --- the separator rule, D-24 and the bug it fixed --------------------------------
+# --- ignoring a leading space when names are ordered, and the bug it fixed --------
 # Added 2026-09-11 with the rule itself. The case above had to be rewritten in the same
 # change: it named the local variables `l` and `r`, which this work renamed, so it quietly
 # started matching nothing and reported a blind spot that was not there. That is the trap
@@ -304,7 +307,7 @@ run_case "letters compare by code point, which puts ~ and { on the wrong side of
 mutate 's/text\.append\(exportLine\(state, item\)\)\.append\(.\\n.\);/text.append(exportLine(state, item));/' $ENG/TextFormat.java
 run_case "export runs every line together with no newline"
 
-# --- search (M3) ---------------------------------------------------------------------
+# --- search --------------------------------------------------------------------------
 mutate 's/private static final double EPSILON_IN = 0\.01;/private static final double EPSILON_IN = 0;/' $ENG/Search.java
 run_case "measurement search demands an exact match, breaking metric"
 mutate 's/String trimmed = query\.trim\(\)\.toLowerCase\(Locale\.ROOT\);/String trimmed = query.trim();/' $ENG/Search.java
@@ -317,7 +320,7 @@ run_case "a measurement word is read as inches even in metric"
 mutate 's/Pattern\.compile\("\^/Pattern.compile("/; s/\?\)\$"\)/?)")/; s/if \(measurement\.matches\(\)\) \{/if (measurement.find()) {/' $ENG/Search.java
 run_case "measurement matching is no longer anchored, so a name like w20x becomes a filter"
 
-# --- item operations (M3) ------------------------------------------------------------
+# --- item operations -----------------------------------------------------------------
 mutate 's/COLOR_SATURATION_PERCENT = 55;/COLOR_SATURATION_PERCENT = RANDOM.nextInt(100);/' $ENG/Items.java
 run_case "box colors randomize saturation as well as hue"
 mutate 's/if \(item\.planned\) \{\n            item\.x_px = centered/if (false) {\n            item.x_px = centered/' $ENG/Items.java
@@ -329,7 +332,7 @@ run_case "a resized box keeps its corner instead of its middle"
 mutate 's/item\.w_in = Units\.clampDimension\(w_in\);/item.w_in = w_in;/' $ENG/Items.java
 run_case "a new box's width is not held to the legal range"
 
-# --- where the autosave lives (M4) ---------------------------------------------------
+# --- where the autosave lives --------------------------------------------------------
 mutate 's/String appData = env\.apply\("APPDATA"\);/String appData = null;/' $PER/AppDataDir.java
 run_case "Windows ignores %APPDATA% and always uses the default location"
 mutate 's/if \(candidate\.isAbsolute\(\)\) \{/if (true) {/' $PER/AppDataDir.java
@@ -339,7 +342,7 @@ run_case "macOS falls through to the Linux layout"
 mutate 's/return notBlank\(appData\)/return (appData != null)/' $PER/AppDataDir.java
 run_case "a blank %APPDATA% is treated as set, resolving to the working directory"
 
-# --- the autosave file itself (M4) ---------------------------------------------------
+# --- the autosave file itself --------------------------------------------------------
 #
 # The temporary file's DIRECTORY is the rule being broken here, not its existence. A rename is
 # atomic only within one filesystem, so putting the temporary file in the system temp directory
@@ -360,7 +363,7 @@ run_case "a corrupt autosave is reported as a successful restore"
 mutate 's/public static final int BACKUP_COUNT = 5;/public static final int BACKUP_COUNT = 3;/' $PER/Autosave.java
 run_case "only three backups are kept instead of the five asked for"
 
-# --- when the autosave writes (M4) ---------------------------------------------------
+# --- when the autosave writes --------------------------------------------------------
 mutate 's/return nowMillis - lastChangeAt >= QUIET_MILLIS\n                \|\| nowMillis - firstChangeAt >= MAX_WAIT_MILLIS;/return nowMillis - lastChangeAt >= QUIET_MILLIS;/' $PER/AutosavePolicy.java
 run_case "the ceiling is dropped, so a long unbroken drag is never written"
 mutate 's/return nowMillis - lastChangeAt >= QUIET_MILLIS\n                \|\| nowMillis - firstChangeAt >= MAX_WAIT_MILLIS;/return nowMillis - firstChangeAt >= MAX_WAIT_MILLIS;/' $PER/AutosavePolicy.java
@@ -374,14 +377,14 @@ run_case "the ceiling is five minutes instead of the sixty seconds asked for"
 mutate 's/return nowMillis - lastChangeAt >= QUIET_MILLIS/return nowMillis - lastChangeAt > QUIET_MILLIS/' $PER/AutosavePolicy.java
 run_case "the quiet period boundary is exclusive, so a write lands one tick late"
 
-# --- the 3D view's axes, winding and textures (M5.1) ---------------------------------
+# --- the 3D view's axes, winding and textures ----------------------------------------
 #
 # Every case here is arithmetic with no JavaFX in it, which is the whole reason threed/ was
 # split from threed/jfx/. The three rules that live in threed/jfx/ (releasing the SubScene's
 # root and camera, and the camera's own angles) need a window and are mutated by hand
 # against Room3dAppearanceTest, the same way App.java's autosave rules are.
 #
-# The first four exist because the shipped M5.1 build had the room reflected east-to-west and
+# The first four exist because the first 3D build shipped with the room reflected east-to-west and
 # every test in the project agreed with it. Negating y alone is a MIRROR; negating y and z
 # together is a rotation. Nothing here could tell the difference, because every test aimed the
 # camera straight at the thing it was checking, and a mirror leaves the center of the screen
@@ -402,7 +405,7 @@ run_case "the room's corners are reversed, so every wall faces outward"
 mutate 's/surface\("room-floor", w, l, false,\n                    0, 0, l,\n                    w, 0, l,\n                    w, 0, 0,\n                    0, 0, 0\)/surface("room-floor", w, l, false,\n                    0, 0, 0,\n                    0, 0, l,\n                    w, 0, l,\n                    w, 0, 0)/' $THREED/RoomGeometry.java
 run_case "the floor's texture is laid on sideways, so its squares are not square"
 
-# --- the face shading (M5.1) ---------------------------------------------------------
+# --- the face shading ----------------------------------------------------------------
 mutate 's/TOP = 1\.22;/TOP = 1.25;/'             $THREED/Shades.java; run_case "the top face's multiplier drifts"
 mutate 's/EAST_WEST = 0\.80;/EAST_WEST = 0.85;/' $THREED/Shades.java; run_case "the side faces' multiplier drifts"
 mutate 's/BOTTOM = 0\.55;/BOTTOM = 0.50;/'       $THREED/Shades.java; run_case "the bottom face's multiplier drifts"
@@ -410,7 +413,7 @@ mutate 's/EDGE = 0\.45;/EDGE = 0.40;/'           $THREED/Shades.java; run_case "
 mutate 's/long rounded = Math\.round\(lightness \* multiplier\);/long rounded = (long) (lightness * multiplier);/' $THREED/Shades.java
 run_case "lightness is truncated instead of rounded"
 
-# --- the wall and floor vignette (M5.1, and what M6.7 left of it) ----------------------
+# --- the wall and floor vignette ---------------------------------------------------------
 mutate 's/MAX_TEXTURE_PX = 512;/MAX_TEXTURE_PX = 2048;/' $THREED/SurfaceMetrics.java
 run_case "the vignette cap goes back to the original's 2048"
 mutate 's/VIGNETTE_RADIUS_FRACTION = 0\.7;/VIGNETTE_RADIUS_FRACTION = 0.5;/' $THREED/SurfaceMetrics.java
@@ -418,11 +421,12 @@ run_case "the surface vignette closes in"
 mutate 's/int h = \(int\) Math\.max\(2, Math\.round\(heightFt \* s\)\);/int h = (int) Math.max(2, Math.round(widthFt * s));/' $THREED/SurfaceMetrics.java
 run_case "the vignette picture stops keeping the wall's proportions, so its circle goes oval"
 
-# --- the grid tile that replaced the painted-on grid (M6.7) ---------------------------
+# --- the grid tile that replaced the painted-on grid ------------------------------------
 #
 # The blur these fix was the user's own report: a 200 ft room's floor read as a soft smear while
 # the boxes on it stayed sharp. Every case here is invisible in a small room, which is the same
-# trap the M5.2b cases below sit in, so they use big rooms and fractional ones on purpose.
+# trap the fractional-room grid cases below sit in, so they use big rooms and fractional ones on
+# purpose.
 mutate 's/LINE_WIDTH_PX = 2;/LINE_WIDTH_PX = 3;/' $THREED/GridTile.java
 run_case "a grid line is half as heavy again as the flat view draws it"
 mutate 's/double stepFt = metric \? 1 \/ Units\.M_PER_FT : 1;/double stepFt = 1;/' $THREED/GridTile.java
@@ -434,23 +438,23 @@ run_case "the mirrored walls count their grid from their own edge, so it lands o
 mutate 's/        return lengthFt \/ stepFt;/        return lengthFt;/' $THREED/GridTile.java
 run_case "the tile is laid down once per foot regardless of the grid spacing"
 
-# --- the lens (M5.1) -------------------------------------------------------------------
+# --- the lens --------------------------------------------------------------------------
 mutate 's/OVERHEAD_MARGIN = 1\.06;/OVERHEAD_MARGIN = 1.0;/' $THREED/Perspective.java
 run_case "the overhead view stops backing off by 6%"
 mutate 's/return Math\.round\(Math\.max\(MIN_PERSPECTIVE_PX, viewportHeightPx \* PERSPECTIVE_RATIO\)\);/return Math.max(MIN_PERSPECTIVE_PX, viewportHeightPx * PERSPECTIVE_RATIO);/' $THREED/Perspective.java
 run_case "the perspective distance is not rounded to a whole pixel"
 
-# --- where you may stand (M5.1) --------------------------------------------------------
+# --- where you may stand ---------------------------------------------------------------
 mutate 's/PITCH_LIMIT_RAD = 1\.55;/PITCH_LIMIT_RAD = 1.5707963267948966;/' $THREED/CameraPose.java
 run_case "the pitch limit reaches straight up, where yaw stops meaning anything"
 mutate 's/ROOM_SLACK_FT = 60;/ROOM_SLACK_FT = 0;/' $THREED/CameraPose.java
 run_case "you can no longer walk out through a wall and look back"
 
-# --- the way in and the way out (M5.2) --------------------------------------------------
+# --- the way in and the way out ---------------------------------------------------------
 #
-# The first case here is the one that matters most in the whole 3D milestone. Giving pitch the
-# same curve as height is the mistake SPEC-3D-VIEW.md §3 says the original made and had to
-# unlearn, it is invisible in a screenshot, and every other 3D test stays green through it.
+# The first case here is the one that matters most in the whole 3D view. Giving pitch the
+# same curve as height is the mistake the original app made and had to unlearn, it is invisible
+# in a screenshot, and every other 3D test stays green through it.
 mutate 's/return new CameraTween\(overhead, landed, Map\.of\(CameraTween\.Channel\.PITCH, Easing\.IN_CUBIC\)\);/return new CameraTween(overhead, landed);/' $THREED/Transitions.java
 run_case "the descent gives pitch the same curve as height, so it reads front-loaded"
 mutate 's/CameraTween\.Channel\.PITCH, Easing\.OUT_CUBIC,/CameraTween.Channel.PITCH, Easing.IN_CUBIC,/' $THREED/Transitions.java
@@ -480,7 +484,7 @@ run_case "the in-cubic curve becomes a square"
 mutate 's/return -\(Math\.cos\(Math\.PI \* u\) - 1\) \/ 2;/return u;/' $THREED/Easing.java
 run_case "the default curve becomes a straight line, so nothing eases at all"
 
-# --- the grid on a room that is not a whole number of feet across (M5.2b) ----------------
+# --- the grid on a room that is not a whole number of feet across ------------------------
 #
 # Reported by the user 2026-08-05, and the same bug the original HTML app had and fixed with
 # `flipGridX`. A whole-foot room is unaffected by every one of these, which is exactly why it
@@ -492,7 +496,7 @@ run_case "the south wall is not marked as mirrored"
 mutate 's/surface\("room-east", l, h, true,/surface("room-east", l, h, false,/' $THREED/RoomGeometry.java
 run_case "the east wall is not marked as mirrored"
 
-# --- the verbose logging flag, and the flight clock it prints (M6.7 follow-up) ---------
+# --- the verbose logging flag, and the flight clock it prints ----------------------------
 #
 # This exists so that a bug report from somebody else's machine arrives with numbers in it. Every
 # case here is a way for that to fail QUIETLY, which is the only way it can fail: a log that says
@@ -518,14 +522,14 @@ run_case "the median becomes a mean, so one 150 ms hitch describes the whole fli
 mutate 's/        if \(previousNs != 0 && count < ROOM\) \{/        if (previousNs != 0) {/' src/main/java/com/modcritic/invmgr/threed/FlightClock.java
 run_case "the flight clock will grow without limit on a slow enough machine"
 
-# --- drawing the room at fewer pixels (M6.7 item 6) -----------------------------------
+# --- drawing the room at fewer pixels ---------------------------------------------------
 #
 # RenderScale is the decision and has no JavaFX in it, so it sweeps here. ScaledSurface, which
 # does the drawing, needs a window and is mutated by hand against ScaledSurfaceTest, the same
 # arrangement threed/jfx/ already uses.
 #
 # Every pattern below was tested against a copy before this block was committed, which the
-# header demands in capitals and which this milestone has now needed four times.
+# header demands in capitals and which has now been needed four times.
 
 mutate 's/HALVE_ABOVE_MS = 1000\.0 \/ 30;/HALVE_ABOVE_MS = 1000.0 \/ 10;/' $THREED/RenderScale.java
 run_case "the halve threshold drifts to 100 ms, so a machine at 60 a second reads as struggling"
@@ -553,7 +557,7 @@ run_case "the run of slow flights is counted and then never looked at"
 mutate 's/            slowFlightsInARow = 0;\n            return inUse;/            return inUse;/' $THREED/RenderScale.java
 run_case "a healthy flight does not break the run, so two slow ones an hour apart still count"
 
-# --- asking for the graphics card, and the way out of it (M6.7 follow-up) --------------
+# --- asking for the graphics card, and the way out of it ---------------------------------
 #
 # One line in Launcher decides whether `java -jar` gets a 3D view at all on a machine whose
 # driver Prism refuses. Every case here is invisible on a machine with a graphics card Prism
@@ -570,7 +574,7 @@ run_case "a phone gets the graphics card forced on it too"
 mutate 's/PRISM_FORCE_GPU = "prism\.forceGPU";/PRISM_FORCE_GPU = "prism.forcegpu";/' src/main/java/com/modcritic/invmgr/Launcher.java
 run_case "the Prism property is misspelled, which nothing at runtime would report"
 
-# --- the vignette floating off the grid it darkens (M6.7) ------------------------------
+# --- the vignette floating off the grid it darkens ---------------------------------------
 #
 # Two quads in exactly the same plane fight over the depth buffer; a vignette lifted the WRONG
 # way ends up behind its own wall, where the room simply stops being darkened at the edges and
@@ -582,7 +586,7 @@ run_case "the vignette is lifted out through the wall instead of into the room"
 # one run, which is how this warning got written. threed/jfx/ is not backed up above, so the
 # mutation was never put back: it sat in the source for the rest of the run and was still there
 # when the run finished. The md5 guard surfaced it on the NEXT run, as the same pattern suddenly
-# matching nothing. Same trap as M6.4's Fluid and TouchType, one directory further down.
+# matching nothing. Same trap as the Fluid and TouchType one above, one directory further down.
 #
 # It belongs with the by-hand rules (see SUITE below): setting LAYER_LIFT_FT to 0 fails
 # Room3dAppearanceTest.everythingThatShouldBeThereIs, which needs a window.
@@ -595,20 +599,21 @@ run_case "the vignette is lifted out through the wall instead of into the room"
 mutate 's/surface\("room-north", w, h, false,/surface("room-north", w, h, true,/' $THREED/RoomGeometry.java
 run_case "the WRONG wall is mirrored, moving the mismatch to the opposite corner"
 
-# --- walking and looking (M5.3) ---------------------------------------------------------
+# --- walking and looking ----------------------------------------------------------------
 #
-# Every case here is about DIRECTION as much as distance. A test that walks nine feet and finds
-# it walked nine feet cannot see a sign error: §5.7 item 2's lesson in an M5.3 costume. Two of
-# these were genuine blind spots when first run: reversing WalkInput's strafe and vertical axes
-# changed nothing any test could see, because the only cases touching them held both keys at
-# once, and a canceled pair cancels whichever way round the axis is.
-# ⚠ These two were rewritten at M6.3 and the rewrite is the lesson. `step` used to compute
-# sin and cos of the yaw inline; M6.3 moved them into forwardX/forwardZ/rightX/rightZ so that
-# `pan` and `dolly` could read the same copy, and the two patterns below (which named the old
-# expression character for character) silently stopped matching anything. The sweep reported
-# them as BROKEN PATTERN, which is exactly what that guard exists for: without it they would
-# have read "caught" forever while testing nothing at all. Re-derive a case when the code it
-# names changes shape; do not port the old text across.
+# Every case here is about DIRECTION as much as distance. A test that walks nine feet and finds it
+# walked nine feet cannot see a sign error: the lesson of the axis cases above, that a test has to
+# ask which side something ended up on. Two of these were genuine blind spots when first run:
+# reversing WalkInput's strafe and vertical axes changed nothing any test could see, because the
+# only cases touching them held both keys at once, and a canceled pair cancels whichever way round
+# the axis is.
+# ⚠ These two were rewritten when the 3D touch controls were added, and the rewrite is the lesson.
+# `step` used to compute sin and cos of the yaw inline; that work moved them into
+# forwardX/forwardZ/rightX/rightZ so that `pan` and `dolly` could read the same copy, and the
+# two patterns below (which named the old expression character for character) silently stopped
+# matching anything. The sweep reported them as BROKEN PATTERN, which is exactly what that guard
+# exists for: without it they would have read "caught" forever while testing nothing at all.
+# Re-derive a case when the code it names changes shape; do not port the old text across.
 mutate 's/cam\.z \+= forwardZ\(cam\.yaw\) \* fwd \* sp/cam.z += -forwardZ(cam.yaw) * fwd * sp/' $THREED/Walk.java
 run_case "forward walks backward"
 mutate 's/cam\.x \+= forwardX\(cam\.yaw\) \* fwd \* sp \+ rightX\(cam\.yaw\) \* str \* sp;/cam.x += rightX(cam.yaw) * fwd * sp + forwardX(cam.yaw) * str * sp;/' $THREED/Walk.java
@@ -652,7 +657,7 @@ run_case "every auto-repeat reports as a fresh press"
 mutate 's/    public void clear\(\) \{\n        held\.clear\(\);/    public void clear() {/' $THREED/WalkInput.java
 run_case "forgetting the held keys forgets nothing, so a lost window walks on forever"
 
-# --- what is under the pointer (M5.3) -----------------------------------------------------
+# --- what is under the pointer ------------------------------------------------------------
 #
 # The mirror cases are the ones that matter, and the aspect-ratio pair is worth its own note:
 # inverting the aspect and dropping it entirely BOTH left every box test green at first, because
@@ -683,7 +688,7 @@ run_case "a ray running exactly along an axis becomes a phantom hit"
 mutate 's/return new double\[\] \{dx \/ length, dy \/ length, dz \/ length\};/return new double[] {dx, dy, dz};/' $THREED/Picking.java
 run_case "rays are not unit vectors, so a hit distance is not in feet"
 
-# ---- how much of the screen the phone keeps (M6.1b) ----
+# ---- how much of the screen the phone keeps ----
 mutate 's/return new SystemInsets\(ANDROID_STATUS_BAR, 0, navBar, 0\);/return new SystemInsets(navBar, 0, navBar, 0);/' $UI/SystemInsets.java
 run_case "the status bar is derived from the same subtraction as the navigation bar"
 mutate 's/return new SystemInsets\(ANDROID_STATUS_BAR, 0, navBar, 0\);/return new SystemInsets(navBar, 0, ANDROID_STATUS_BAR, 0);/' $UI/SystemInsets.java
@@ -699,10 +704,11 @@ run_case "any override at all forces the phone layout, so a typo switches it on"
 mutate 's/return "android"\.equalsIgnoreCase\(javafxPlatform\);/return javafxPlatform != null;/' $UI/Device.java
 run_case "every platform reports as a phone"
 
-# ---- what one finger means (M6.2) ----
-# TouchGesture landed at M6.2 with 18 tests and no mutations at all, so none of its four rules had
-# ever been broken on purpose. These are that debt cleared. It is the only M6.2 file that can be in
-# the automated sweep: everything else needs a window, and those are mutated by hand.
+# ---- what one finger means ----
+# TouchGesture landed with 18 tests and no mutations at all, so none of its four rules had
+# ever been broken on purpose. These are that debt cleared. It is the only file of the 2D touch
+# gestures that can be in the automated sweep: everything else there needs a window, and those
+# are mutated by hand.
 mutate 's/if \(Math\.abs\(x - startX\) > DRAG_THRESHOLD_PX \|\| Math\.abs\(y - startY\) > DRAG_THRESHOLD_PX\) \{\n            moved = true;\n        \}/moved = Math.abs(x - startX) > DRAG_THRESHOLD_PX || Math.abs(y - startY) > DRAG_THRESHOLD_PX;/' $UI/TouchGesture.java
 run_case "becoming a drag stops being permanent, so a box dragged back opens a dialog"
 mutate 's/if \(!down \|\| moved \|\| deleted \|\| nowMs - startMs < HOLD_TO_DELETE_MS\)/if (!down || moved || nowMs - startMs < HOLD_TO_DELETE_MS)/' $UI/TouchGesture.java
@@ -720,11 +726,11 @@ run_case "the ring fills in 600 ms and then sits full for nearly a second"
 mutate 's/        if \(!isHolding\(\)\) \{\n            return 0;\n        \}\n        return Math\.min/        return Math.min/' $UI/TouchGesture.java
 run_case "the ring goes on filling after the finger has moved or lifted"
 
-# ---- fingers in the 3D room (M6.3) ----
+# ---- fingers in the 3D room ----
 #
 # The pure half only. The wiring (which finger is the joystick's, whether Android's synthesized
 # mouse gets past the guards, where the stick sits above the navigation bar) needs a window and
-# is mutated by hand against ThreeDTouchTest, the same arrangement M6.2 used for the flat room.
+# is mutated by hand against ThreeDTouchTest, the same arrangement the flat room's gestures use.
 
 # -- panning and dollying (Walk) --
 mutate 's/        cam\.x \+= rightX\(cam\.yaw\) \* rightFt;\n        cam\.z \+= rightZ\(cam\.yaw\) \* rightFt;/        cam.x += forwardX(cam.yaw) * rightFt;\n        cam.z += forwardZ(cam.yaw) * rightFt;/' $THREED/Walk.java
@@ -778,10 +784,11 @@ run_case "dragging two fingers up the screen lowers the camera"
 mutate 's/                Walk\.dolly\(cam, spread \* PINCH_SENS_FT_PER_PX, room\);//' $THREED/WalkGesture.java
 run_case "the pinch does nothing, which is what the original does (D-15)"
 
-# The 2026-08-11 amendment to D-15: two fingers do one job at a time. Note the two cases above
+# The 2026-08-11 amendment to the pinch rule (spreading two fingers moves the camera forward, which
+# the original never did): two fingers do one job at a time. Note the two cases above
 # were RE-DERIVED here rather than ported; both calls moved inside an if/else and gained four
 # spaces of indentation, which would have made the old patterns match nothing and report
-# "caught" while testing nothing. Same lesson as the M5.3 pair M6.3 had to re-derive.
+# "caught" while testing nothing. Same lesson as the walking pair that had to be re-derived.
 mutate 's/public static final double TWO_FINGER_DECIDE_PX = 12;/public static final double TWO_FINGER_DECIDE_PX = 0;/' $THREED/WalkGesture.java
 run_case "two resting fingers decide what they are for by trembling"
 mutate 's/                if \(Math\.max\(slid, separated\) < TWO_FINGER_DECIDE_PX\) \{/                if (Math.min(slid, separated) < TWO_FINGER_DECIDE_PX) {/' $THREED/WalkGesture.java
@@ -810,19 +817,19 @@ mutate 's/        int fingers = xy\.length \/ 2;\n        if \(fingers == 0\) \{
 run_case "a thumb landing on the stick restarts the look somebody else is in the middle of"
 mutate 's/        \} else \{\n            mode = Mode\.TWO_FINGERS;\n            followTwo\(xy\);\n        \}\n        return tap;/        } else {\n            mode = Mode.TWO_FINGERS;\n        }\n        return tap;/' $THREED/WalkGesture.java
 run_case "lifting one of three fingers keeps a midpoint that no longer exists"
-# RE-DERIVED at M6.4, not ported. The M6.3 text named three consecutive lines, and the pinch
-# amendment (§5.5 D-15) inserted `job = Job.UNDECIDED;` between the first two, so the old pattern
-# matched nothing and its case reported SURVIVED, a false finding about working code. Naming the
-# one line the rule is actually about is also what stops it going stale the next time a line lands
-# in that method.
+# RE-DERIVED, not ported. The first version named three consecutive lines, and the pinch amendment
+# (two fingers do one job at a time) inserted `job = Job.UNDECIDED;` between the first two, so the
+# old pattern matched nothing and its case reported SURVIVED, a false finding about working code.
+# Naming the one line the rule is actually about is also what stops it going stale the next time a
+# line lands in that method.
 mutate 's/    public void canceled\(\) \{\n        mode = Mode\.NONE;/    public void canceled() {\n        mode = Mode.NONE;\n        if (true) {\n            return;\n        }/' $THREED/WalkGesture.java
 run_case "a canceled gesture can still become a tap on the way out"
 
-# --- M6.4: fluid type, and the touch override table --------------------------------
+# --- fluid type (sizes that scale with the width), and the touch override table -----
 #
 # Both are pure and headless, which is exactly why they were pulled out of the width listener
 # and out of the six files that used to hold these numbers. A rule that needs a window is
-# mutated by hand instead; those are recorded in CLAUDE.md's M6.4 row.
+# mutated by hand instead.
 mutate 's/return Math\.max\(floorPx, Math\.min\(wanted, ceilingPx\)\);/return Math.min(wanted, ceilingPx);/' $UI/Fluid.java
 run_case "fluid type has no floor, so a narrow phone gets unreadable buttons"
 mutate 's/return Math\.max\(floorPx, Math\.min\(wanted, ceilingPx\)\);/return Math.max(floorPx, wanted);/' $UI/Fluid.java
@@ -839,9 +846,10 @@ run_case "the touch override table is the wrong way round"
 mutate 's/return pick\(Tokens\.FONT_LIST_ROW, Tokens\.FONT_LIST_ROW_TOUCH\);/return pick(Tokens.FONT_LIST_ROW, Tokens.FONT_LIST_ROW);/' $UI/TouchType.java
 run_case "one entry in the table forgets to change on a phone"
 # ⚠ RE-DERIVED 2026-09-04, not ported. The old pattern matched a ternary that returned
-# Region.USE_COMPUTED_SIZE on touch; M6.4 replaced it with an if and a worked-out height, so the
-# pattern silently matched nothing and the case reported SURVIVED for years. The intent is
-# unchanged: make a phone take the desktop pin instead of the height computed for it.
+# Region.USE_COMPUTED_SIZE on touch; the touch layout work replaced it with an if and a
+# worked-out height, so the pattern silently matched nothing and the case reported SURVIVED for
+# years. The intent is unchanged: make a phone take the desktop pin instead of the height
+# computed for it.
 mutate 's/return Tokens\.TOUCH_TEXT_LINE_EM \* dialogButtonFont\(\)\n                \+ 2 \* dialogButtonPaddingV\(\) \+ 2 \* Tokens\.TOUCH_BUTTON_BORDER;/return Tokens.DIALOG_BUTTON_HEIGHT;/' $UI/TouchType.java
 run_case "a dialog button takes the desktop pin on a phone instead of its own height"
 

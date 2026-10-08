@@ -18,11 +18,12 @@ import org.junit.jupiter.api.Test;
  * Checks that the repeating grid puts its lines exactly where the original's painted-once grid put
  * them, and that the one place it does not is the one place we chose.
  *
- * <p>This is the test that has to carry the M6.7 change. The grid used to be painted into a
- * per-surface picture whose size was capped, which is what made a large room blurry; it is now one
- * square foot repeated across the surface. Sharper is easy to claim. <b>Landing in the same places
- * is the part worth proving</b>, and the golden here is the original app's own
- * {@code drawSurfaceCanvas} output, so agreement with it is agreement with the thing being ported.
+ * <p>This is the test that has to carry the switch to a repeating tile. The grid used to be
+ * painted into a per-surface picture whose size was capped, which is what made a large room
+ * blurry; it is now one square foot repeated across the surface. Sharper is easy to claim.
+ * <b>Landing in the same places is the part worth proving</b>, and the golden here is the
+ * original app's own {@code drawSurfaceCanvas} output, so agreement with it is agreement with the
+ * thing being ported.
  *
  * <p>Regenerate the golden with {@code node tools/golden/original-3d.js --run}.
  */
@@ -71,11 +72,13 @@ class GridTileTest {
     @Test
     @DisplayName("the only lines the original does not have are on the room's own boundary")
     void theOnlyExtraLinesAreOnTheBoundary() {
-        // This is D-25 stated as an assertion rather than as prose. A repeating tile draws a line
-        // wherever its count crosses a whole number, and the room's near edge is where the count
-        // starts, so there is no starting point that gives a line to every whole foot except the
-        // first. The extra lines are therefore always at 0, and at the far edge when the room is a
-        // whole number of steps across.
+        // This is a deliberate difference from the original, stated as an assertion rather than
+        // as prose: every surface carries one grid line on the room's own boundary that the
+        // original lacks. A repeating tile draws a line wherever its count crosses a whole
+        // number, and the room's near edge is where the count starts, so there is no starting
+        // point that gives a line to every whole foot except the first. The extra lines are
+        // therefore always at 0, and at the far edge when the room is a whole number of steps
+        // across.
         //
         // Asserted as "nothing else is extra" rather than "0 is extra", because the second would
         // pass while the grid quietly gained lines everywhere.
@@ -104,9 +107,10 @@ class GridTileTest {
         // do, and would have been perfectly happy with the bug: the south wall's lines sat at tidy
         // positions all along, just tidy positions measured from the WRONG END.
         //
-        // Reported by the user 2026-08-05 against the M5.2 jar. It is the same bug the original
-        // HTML app had and fixed with `flipGridX`, original lines 2554-2566, and the tiled version
-        // gets it from the geometry rather than from a special case.
+        // Reported by the user 2026-08-05 against the first build of the 3D view's entry and exit.
+        // It is the same bug the original app had and fixed with `flipGridX`, original lines
+        // 2554-2566, and the tiled version gets it from the geometry rather than from a special
+        // case.
         GridTile tile = GridTile.forGrid(false);
         for (double side : AWKWARD_FEET) {
             for (boolean mirrored : new boolean[] {false, true}) {

@@ -17,8 +17,8 @@ import org.testfx.util.WaitForAsyncUtils;
  * a test, and it asserts nothing.
  *
  * <p>It times the 3D transitions frame by frame and prints the distribution, because the user
- * reported the movement as laggy on weaker hardware and CLAUDE.md §2 says an optimization needs a
- * measurement behind it rather than an argument. This container has no GPU; Prism runs on Mesa's
+ * reported the movement as laggy on weaker hardware, and this project does not optimize without a
+ * measurement. This container has no GPU; Prism runs on Mesa's
  * software OpenGL, which makes it a reasonable stand-in for exactly the machines in question.
  *
  * <p>Run it deliberately: {@code mvn -B test -Dtest=TransitionCostProbe}.
@@ -80,10 +80,10 @@ class TransitionCostProbe extends ApplicationTest {
         // the two call for completely different answers.
         whereIsTheWorst("DESCENT", frames);
 
-        // STANDING IN THE ROOM, WHICH IS WHAT M6.7 ITEM 3 IS ACTUALLY ABOUT.
+        // STANDING IN THE ROOM, WHICH IS WHAT THE LAG REPORT IS ACTUALLY ABOUT.
         //
-        // The descent above is M5.2b's measurement and is a 2.2 second animation with the whole
-        // 2D interface sliding away underneath it. What the user reported at M6.7 is the view
+        // The descent above is the earlier measurement and is a 2.2 second animation with the whole
+        // 2D interface sliding away underneath it. What the user reported is the view
         // being laggy, which is this: landed, walking about, nothing animating but the camera.
         //
         // Both numbers are taken because they answer different questions. The frame gap is what a
@@ -136,7 +136,8 @@ class TransitionCostProbe extends ApplicationTest {
             long t0 = System.nanoTime();
             var textures = new java.util.ArrayList<javafx.scene.image.Image>();
             // The grid tile is painted once for the whole room and then shared, so it is timed
-            // once rather than five times. Since M6.7 the per-surface cost is the vignette alone.
+            // once rather than five times. Now that the grid tile is shared, the per-surface cost
+            // is the vignette alone.
             long tileStart = System.nanoTime();
             textures.add(com.modcritic.invmgr.threed.jfx.SurfaceTexture.gridTile(false));
             System.out.printf("PROBE   grid tile (shared by every surface) -> %5.1f ms%n",

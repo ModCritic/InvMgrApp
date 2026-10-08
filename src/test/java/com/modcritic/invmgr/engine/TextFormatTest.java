@@ -11,7 +11,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The two text formats and the name ordering, pinned against the strings in
- * SPEC-2D-ENGINE.md §9, which were read out of the original app.
+ * the strings the original app (the single-file HTML app this one rewrites) produces, read out of
+ * its source.
  */
 class TextFormatTest {
 
@@ -159,8 +160,8 @@ class TextFormatTest {
 
     @Test
     void onlyLeadingSpacesAreIgnored() {
-        // The one deliberate departure from the original, decided by the user 2026-09-11,
-        // and D-24. The original answers -1 to all three: a name typed with a leading space
+        // The one deliberate departure from the original, decided by the user 2026-09-11.
+        // The original answers -1 to all three: a name typed with a leading space
         // sorts above every other name in the list.
         assertTrue(TextFormat.compareNames(" z", "a") > 0,
                 "' z' sorts under z, not above everything");

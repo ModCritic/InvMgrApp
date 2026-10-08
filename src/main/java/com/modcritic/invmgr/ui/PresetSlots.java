@@ -31,9 +31,9 @@ import javafx.scene.text.Font;
  * <p><b>Deleting is right-click on a desktop and a 1.5-second hold on a phone.</b> The original
  * accepts both on desktop, so a preset can be deleted two ways there; this port drops the desktop
  * hold (your call, 2026-07-27) so there is one deletion gesture per input type. Room items already
- * work exactly this way. See {@code CLAUDE.md} §5.5, divergence D-1. The consequence is that the
- * red warning ring that builds up during a hold is a <b>touch-only</b> thing: on a desktop nothing
- * here ever builds up to a delete, so there is nothing to warn about.
+ * work exactly this way. The consequence is that the red warning ring that builds up during a
+ * hold is a <b>touch-only</b> thing: on a desktop nothing here ever builds up to a delete, so
+ * there is nothing to warn about.
  *
  * <p>Either way the deletion is confirmed first, unlike a box in the room; a box can be brought
  * back with undo and a preset cannot.
@@ -49,11 +49,10 @@ public final class PresetSlots extends HBox {
     /**
      * How the "are you sure?" question gets asked.
      *
-     * <p>Held as a replaceable function rather than calling {@link Hints#confirm} directly, for
-     * two reasons. It lets the deletion rule be tested without a real dialog box to click; a
-     * modal window that blocks waiting for an answer is not something an automated test can get
-     * past. And M6's touch build asks the same question at the end of a 1.5-second hold, which
-     * will want its own way of asking.
+     * <p>Held as a replaceable function rather than calling {@link Hints#confirm} directly, so the
+     * deletion rule can be tested without a real dialog box to click; a modal window that blocks
+     * waiting for an answer is not something an automated test can get past. The touch hold asks
+     * through this same function.
      */
     private Predicate<String> confirm = question -> Hints.confirm(getScene(), question);
 
@@ -162,7 +161,7 @@ public final class PresetSlots extends HBox {
 
     /**
      * What a finger on a slot means: a tap uses the preset, and a second and a half deletes it.
-     * The touch half of §5.5 <b>D-1</b>.
+     * The touch half of the deletion rule in the class comment.
      *
      * <p>Wired on every platform rather than behind a check, because a mouse never produces a
      * touch event; on a desktop none of this can fire, and nothing here adds a desktop hold.

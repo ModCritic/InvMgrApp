@@ -6,7 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * How far a dialog moves up to stay out from under the on-screen keyboard (bug B7).
+ * How far a dialog moves up to stay out from under the on-screen keyboard.
  *
  * <p>The panel is centered in whatever is left below the lift, so lifting by the keyboard's own
  * height centers it in the space above the keyboard. Only the arithmetic is here: whether the

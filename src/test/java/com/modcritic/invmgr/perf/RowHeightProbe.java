@@ -17,10 +17,11 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * Why does an unparented row report the wrong height for a name that wraps?
  *
- * <p>M6.7b's virtualized item list builds its spacers from the height of rows that do not exist,
- * and the first version asked an off-scene copy of the row for {@code prefHeight(width)}. It came
- * back 20 px for a row that renders at 79. This asks the same question four ways to find out which
- * part is lying, because the answer decides how the real thing measures.
+ * <p>The virtualized item list (it builds only about twenty rows) makes its spacers from the height
+ * of rows that do not exist, and the first version asked an off-scene copy of the row for
+ * {@code prefHeight(width)}. It came back 20 px for a row that renders at 79. This asks the same
+ * question four ways to find out which part is lying, because the answer decides how the real
+ * thing measures.
  *
  * <p>Not a test. Run it deliberately: {@code mvn -B test -Dtest=RowHeightProbe}.
  */

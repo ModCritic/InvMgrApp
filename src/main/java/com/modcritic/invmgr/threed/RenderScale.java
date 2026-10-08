@@ -11,7 +11,7 @@ import java.util.function.Consumer;
  *
  * <h2>What this is for</h2>
  *
- * <p>M6.7 item 3 measured the 3D room and found it short of fill rate and nothing else: five
+ * <p>A measurement of the 3D room found it short of fill rate and nothing else: five
  * hundred boxes, the save format's own cap, cost under a millisecond to draw. Drawing the room
  * smaller than the window and letting it stretch back up is the standard answer to that, and the
  * user asked for it after a virtual machine running Mesa's software OpenGL came back at ten frames

@@ -21,7 +21,7 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * Where does every row of the item list actually start?
  *
- * <p>M6.7b's virtualized list holds its rows up on two spacers whose heights come from measuring
+ * <p>The virtualized item list holds its rows up on two spacers whose heights come from measuring
  * rows that do not exist. If those measurements disagree with what the layout does, rows land a
  * pixel off and nothing in the suite notices: the list is the right total height, the right rows
  * are on screen, and the text is a pixel out. That is what the picture comparison caught, at 4.3%

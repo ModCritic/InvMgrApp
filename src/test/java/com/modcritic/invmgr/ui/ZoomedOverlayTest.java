@@ -203,13 +203,13 @@ class ZoomedOverlayTest extends ApplicationTest {
     void hintsGrowWithTheInterfaceZoom() {
         WaitForAsyncUtils.waitForFxEvents();
 
-        Button units = app.topBar().unitsButton();
-        Tooltip hint = units.getTooltip();
+        Button plan = app.topBar().planButton();
+        Tooltip hint = plan.getTooltip();
 
         // Measured at 100% rather than written down, because the size depends on the text and on
         // the typeface, and hard-coding it would turn a font change into a failure here.
         setZoomTo(100);
-        showHint(hint, units);
+        showHint(hint, plan);
         double width100 = hint.getWidth();
         double height100 = hint.getHeight();
         hideHint(hint);
@@ -217,7 +217,7 @@ class ZoomedOverlayTest extends ApplicationTest {
         for (int percent : UiScale.STEPS_PERCENT) {
             setZoomTo(percent);
             double factor = percent / 100.0;
-            showHint(hint, units);
+            showHint(hint, plan);
             String at = " at " + percent + "%";
 
             // The font is the one property that reaches a shown popup, so it is the knob the
@@ -274,26 +274,26 @@ class ZoomedOverlayTest extends ApplicationTest {
         // that records which node a popup belongs to, and JavaFX's own hover timer does not use
         // it: all four of its show calls take a Window instead. So the first fix read the owner
         // back off the tooltip, passed every assertion above, and did nothing whatsoever in the
-        // app, where the owner is always null. Reported by the user against the M3.2.5 jar.
+        // app, where the owner is always null. Reported by the user on 2026-08-01.
         //
         // Hence one test that pays the 500 ms and drives a real pointer. It only needs one rung:
         // what it is holding shut is the wiring, and the arithmetic is covered seven times over.
         WaitForAsyncUtils.waitForFxEvents();
-        Button units = app.topBar().unitsButton();
-        Tooltip hint = units.getTooltip();
+        Button plan = app.topBar().planButton();
+        Tooltip hint = plan.getTooltip();
 
         setZoomTo(200);
         // Away first, so the pointer genuinely enters the button and starts the hover timer;
         // TestFX leaves it wherever the last test put it, which may already be here.
         moveTo(app.listPanel().searchField());
-        moveTo(units);
+        moveTo(plan);
         try {
             WaitForAsyncUtils.waitFor(3, java.util.concurrent.TimeUnit.SECONDS, hint::isShowing);
         } catch (java.util.concurrent.TimeoutException e) {
             // Fall through: the assertions below say what went wrong in English.
         }
 
-        assertTrue(hint.isShowing(), "resting on the Units button should bring its hint up");
+        assertTrue(hint.isShowing(), "resting on the Plan button should bring its hint up");
         assertEquals(Tokens.FONT_TOOLTIP * 2, hint.getFont().getSize(), 0.001,
                 "a hint the pointer brought up at 200% should be drawn at twice its size");
         interact(hint::hide);

@@ -24,10 +24,11 @@ import org.testfx.util.WaitForAsyncUtils;
  * A throwaway readout of every touch-layout box the user reported as the wrong size, printed beside
  * the number measured off the original's own screenshots.
  *
- * <p><b>Why this exists.</b> M6.4 verified the touch layout by reading constants out of the
- * original and checking they had been transcribed. That cannot see a constant applied to no node,
- * and it cannot see JavaFX laying out text at a different size from a browser told the same number,
- * which is between them the cause of four of the ten bugs the phone found. This prints what the
+ * <p><b>Why this exists.</b> The first touch layout was verified by reading constants out of the
+ * original (the single-file HTML app this one rewrites) and checking they had been transcribed.
+ * That cannot see a constant applied to no node, and it cannot see JavaFX laying out text at a
+ * different size from a browser told the same number, which is between them the cause of four of
+ * the ten bugs the phone found. This prints what the
  * scene graph actually built, because on this project the numbers have never once been what
  * reasoning said they would be.
  *
@@ -104,8 +105,8 @@ class TouchBoxProbe extends ApplicationTest {
         row("island undo", island.undoButton(), 57.0, 29.3);
         row("island fit", island.fitButton(), 39.0, 23.7);
         row("island plan", island.planButton(), 46.0, 23.7);
-        row("island units", island.unitsButton(), 53.3, 23.7);
-        row("island menu ▼", island.menuButton(), 35.0, 33.3);
+        row("island Menu", island.menuButton(), 33.3, 33.3);
+        row("island dropdown ▼", island.dropdownButton(), 35.0, 33.3);
         System.out.println("   island spacing = " + island.getSpacing() + "   (original 8.0)");
 
         // The bar's third row. Save and Load grow on touch; the 3D button is the one left behind.

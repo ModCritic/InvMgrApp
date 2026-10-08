@@ -213,6 +213,10 @@ public final class ItemListPanel extends VBox {
                 + "-fx-background-color: " + Tokens.hex(Tokens.LIST_PANEL_BG) + ";");
         rowBox.setStyle("-fx-background-color: " + Tokens.hex(Tokens.LIST_PANEL_BG) + ";");
         VBox.setVgrow(scroller, Priority.ALWAYS);
+        // On a phone the list stops at its ends, rather than stretching past them and springing
+        // back (the user, 2026-09-26; see ScrollEnds). It moves only the skin's own bar, which
+        // refill never reads: the list's vvalue is clamped either way.
+        ScrollEnds.install(scroller);
 
         // The two things that change which rows are on screen. Both fire synchronously, so a
         // caller that sets the scroll position can read the rows back on the next line.
@@ -580,10 +584,6 @@ public final class ItemListPanel extends VBox {
         }
     }
 
-    public String selectedId() {
-        return selectedId;
-    }
-
     /** Scrolls a row into view, for when the room selects something the list has scrolled past. */
     public void scrollTo(String id) {
         int at = indexOf(id);
@@ -839,10 +839,10 @@ public final class ItemListPanel extends VBox {
             //
             // Every row in this list rendered PURE WHITE from the day it was written, where the
             // original gives white to the selected row alone and #ccc to the rest. Three things
-            // agree on that: SPEC-DESIGN-SYSTEM.md ("#ccc primary text" and "#fff selected list
-            // row text"), the original's own stylesheet (`.list-entry.selected { color: #fff }`
-            // and nothing else), and the brightest pixel anywhere in the list panel of the
-            // original's reference screenshot, which is 204.
+            // agree on that: the design notes taken from the original (#ccc primary text, #fff
+            // selected list row text), the original's own stylesheet
+            // (`.list-entry.selected { color: #fff }` and nothing else), and the brightest pixel
+            // anywhere in the list panel of the original's reference screenshot, which is 204.
             //
             // The cause is the one AddItemDialog.titleRow already found and wrote down. The line
             // above sets -fx-background-color inline; JavaFX's default stylesheet then says a

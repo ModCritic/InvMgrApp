@@ -21,7 +21,7 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * Photographs the item list at fixed scroll positions, so two builds can be held side by side.
  *
- * <p>Written for M6.7b's virtualized list. Behavior tests say the right item is acted on; they say
+ * <p>Written for the virtualized list. Behavior tests say the right item is acted on; they say
  * nothing about whether the panel <em>looks</em> the same, and a virtualized list is held up by two
  * spacers whose heights are computed rather than laid out. A spacer a pixel out would move every
  * row below it and no assertion in the suite would notice.

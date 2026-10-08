@@ -13,11 +13,11 @@ import java.util.List;
 /**
  * Collects what one bench run measured and writes it where {@code tools/perf} can read it.
  *
- * <p><b>It does no statistics, deliberately.</b> Every lane of M6.7b writes this same shape and one
- * Python file works all three out: raw samples here, raw samples off the phone's log, and one
- * implementation of median, spread and outlier-hunting in {@code tools/perf/perfstat.py}. Two
- * implementations of a percentile is how a before-and-after comparison ends up comparing two
- * different questions.
+ * <p><b>It does no statistics, deliberately.</b> Every lane of the optimization suite writes this
+ * same shape and one Python file works all three out: raw samples here, raw samples off the
+ * phone's log, and one implementation of median, spread and outlier-hunting in
+ * {@code tools/perf/perfstat.py}. Two implementations of a percentile is how a before-and-after
+ * comparison ends up comparing two different questions.
  *
  * <p>It also writes no summary of its own for the same reason, and prints only enough to show that
  * a scenario ran.
@@ -25,7 +25,7 @@ import java.util.List;
  * <p>Files land in {@code perf-runs/<label>/<screen>-<arm>/<scenario>.json}.
  *
  * <p>⚠ <b>NOT under {@code target/}, and that is a repair.</b> They were, and {@code mvn clean}
- * deleted every baseline this milestone had taken, which is exactly the failure the directory
+ * deleted every baseline taken so far, which is exactly the failure the directory
  * invites: {@code target/} holds what a build produces and is meant to be thrown away, while a
  * baseline exists precisely to be compared against a <em>later</em> build. {@code perf-runs/} is
  * git-ignored, so the files stay out of the repository and survive a clean.
@@ -41,7 +41,7 @@ import java.util.List;
  * I see it". <b>It is also blind.</b> Measured on Xvfb, every scenario in a small room came back at
  * a median of 24 ms, from a one-key search to a 2,310-sample slider drag: half a frame of waiting
  * plus a whole frame of pulse, and the app's own work lost inside it. Work below the cap cannot
- * show up at all, which is M6.7a's ThreeDFrameProbe lesson arriving one level up.
+ * show up at all, which is the lesson of ThreeDFrameProbe arriving one level up.
  *
  * <p><b>work</b> is the same run with {@code -Djavafx.animation.fullspeed=true}, a property read
  * out of the shipped {@code javafx-graphics-21-linux.jar} rather than remembered. The cap goes and
@@ -124,9 +124,10 @@ final class PerfRun {
     /**
      * Writes what has been collected, as JSON, and says where it went.
      *
-     * <p>Hand-written rather than through a library: §8 and OD-3 make a JSON dependency a decision,
-     * the app already has its own codec for the save format, and nothing here needs escaping beyond
-     * numbers and a handful of fixed words.
+     * <p>Hand-written rather than through a library: this project treats a new dependency as a
+     * decision for the user and license-checks everything it ships, the app already has its own
+     * codec for the save format, and nothing here needs escaping beyond numbers and a handful of
+     * fixed words.
      *
      * @param scenario the name this run goes under, which is also the file name
      * @param notes one line saying what the scenario did, for whoever reads the file later

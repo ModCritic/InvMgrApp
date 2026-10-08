@@ -153,7 +153,6 @@ class StackingTest {
     private static AppState room() {
         AppState state = new AppState();
         state.room = new Room(20, 20, 12);
-        state.items.clear();
         return state;
     }
 

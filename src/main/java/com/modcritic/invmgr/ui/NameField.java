@@ -2,7 +2,6 @@ package com.modcritic.invmgr.ui;
 
 import javafx.geometry.Insets;
 import javafx.scene.Node;
-import javafx.scene.control.TextArea;
 import javafx.scene.layout.Region;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
@@ -23,9 +22,8 @@ import javafx.scene.text.Text;
  * <p>The limits come from the original's stylesheet: 160 px to start, no wider than 560 px or
  * 80% of the window (whichever is smaller), and no taller than 40% of the window.
  */
-public final class NameField extends TextArea {
+public final class NameField extends SkinnedTextArea {
 
-    /** Its width with nothing in it, and the narrowest it ever gets. */
     /**
      * The name box never gets narrower than a plain text input in the same dialog.
      *
@@ -68,10 +66,13 @@ public final class NameField extends TextArea {
     /**
      * What {@link #horizontalChrome()} uses before the control has been laid out once.
      *
-     * <p>Measured from a running dialog: a 306 px field gave its text 278 px. Only ever used for
+     * <p>Measured from a running dialog: a 160 px field gives its text 146 px. Only ever used for
      * the first pass, after which the real value is read off the control itself.
      */
-    private static final double FALLBACK_HORIZONTAL_CHROME = 28;
+    private static final double FALLBACK_HORIZONTAL_CHROME = 14;
+
+    /** The box's border, one pixel on each side, set in the constructor's style. */
+    private static final double BORDER = 1;
 
     private final Font font;
 
@@ -81,14 +82,22 @@ public final class NameField extends TextArea {
         setFont(font);
         setWrapText(true);
         getStyleClass().add("name-field");
+        // The bottom padding is 2 px short of the top, and that is what keeps the bottom of the
+        // letters on screen. A browser clips a textarea's text at the outside of its padding, so a
+        // line taller than the space inside can run into the padding and still show; JavaFX clips
+        // it at the inside. The box is the reference's 26 px with its 1 px border drawn inside
+        // that, which leaves 16 px for a line this font lays out 17.7 px tall, and the 2 px that
+        // were cut off were the bottoms of g, y and the comma. Taking the border's 2 px out of the
+        // bottom padding gives the line 18 px and leaves the text where the reference has it: its
+        // baseline 19 px below the top edge, measured off desktop-03-add-item-dialog.png.
         setPadding(new Insets(TouchType.dialogInputPaddingV(), TouchType.dialogInputPaddingH(),
-                TouchType.dialogInputPaddingV(), TouchType.dialogInputPaddingH()));
+                TouchType.dialogInputPaddingV() - 2 * BORDER, TouchType.dialogInputPaddingH()));
         setPromptText("Leave blank for default");
         setStyle("-fx-background-color: " + Tokens.hex(Tokens.DIALOG_INPUT_BG) + ";"
                 + "-fx-text-fill: " + Tokens.hex(Tokens.TEXT_INPUT) + ";"
                 + "-fx-prompt-text-fill: " + Tokens.hex(Tokens.placeholderOver(Tokens.DIALOG_INPUT_BG)) + ";"
                 + "-fx-border-color: " + Tokens.hex(Tokens.CONTROL_BORDER) + ";"
-                + "-fx-border-width: 1;"
+                + "-fx-border-width: " + (int) BORDER + ";"
                 + "-fx-background-radius: 0; -fx-border-radius: 0;");
 
         Dialogs.limitLength(this, com.modcritic.invmgr.model.Item.MAX_NAME_LENGTH);
@@ -106,8 +115,9 @@ public final class NameField extends TextArea {
      */
     public void resizeToFit() {
         double horizontalChrome = horizontalChrome() + CARET_SLACK;
-        // Padding only: the border is drawn inside the height JavaFX is given, so counting it
-        // again here would make every field two pixels too tall.
+        // The reference's 4 px above and below, which is what the box measures there. The border
+        // is drawn inside this, so it comes out of the bottom padding (see the constructor)
+        // rather than being added on top, which would make every field two pixels too tall.
         double verticalChrome = TouchType.dialogInputPaddingV() * 2;
 
         double widest = widestLine();
@@ -131,10 +141,13 @@ public final class NameField extends TextArea {
      *
      * <p><b>Measured from the live control, not calculated.</b> A {@code TextArea} is four nested
      * controls (the area, a scroll pane, a viewport, and a "content" region holding the text)
-     * and the scroll pane keeps insets of its own that no token knows about. Adding up the
-     * padding and border the way this used to gives <b>16 px</b>; the real figure is <b>28</b>.
+     * and any of them can take width that no token knows about. Today the padding and border
+     * are all of it, 14 px, but until 2026-10-01 the real figure was <b>28</b>: the scroll pane's
+     * own 1 px on each side, and 12 px it kept for a vertical scrollbar, because the line did
+     * not fit the box's height (the clipping the constructor's comment describes). Measured both
+     * times on a running dialog.
      *
-     * <p>Those missing 12 px are what caused the reported bug. The box was sized as though its
+     * <p>Those extra pixels are what caused the reported bug. The box was sized as though its
      * text had 290 px to live in when it actually had 278, so text that just fit by the
      * arithmetic really wrapped onto a second line, and because the height had been worked out
      * from the same wrong number, the box was left one line tall with two lines in it. The caret
@@ -182,11 +195,11 @@ public final class NameField extends TextArea {
      * its box loses a whole word to the next line. The estimate therefore says "one line" for
      * text that actually needs two.
      *
-     * <p>That was a real bug, reported from the M3 jar. When the count came out too low the box
-     * was made one line tall while holding two lines of text, and since the caret is on the last
-     * one, the field showed only the final word: "Winter clothes and spare blankets box"
-     * displayed as "box". It looked like the text was scrolling sideways; it was not, it was
-     * hidden below the bottom edge.
+     * <p>That was a real bug, reported by the user while testing an early desktop build. When the
+     * count came out too low the box was made one line tall while holding two lines of text, and
+     * since the caret is on the last one, the field showed only the final word: "Winter clothes
+     * and spare blankets box" displayed as "box". It looked like the text was scrolling sideways;
+     * it was not, it was hidden below the bottom edge.
      *
      * <p>Laying out a {@link Text} node with the same font and the same wrapping width uses the
      * same layout engine the {@code TextArea} itself uses, so the answer matches what will

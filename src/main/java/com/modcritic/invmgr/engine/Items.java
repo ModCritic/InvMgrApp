@@ -4,6 +4,7 @@ import com.modcritic.invmgr.model.AppState;
 import com.modcritic.invmgr.model.Item;
 import com.modcritic.invmgr.model.UndoEntry;
 import com.modcritic.invmgr.model.Units;
+import com.modcritic.invmgr.model.WholeCharacters;
 import java.util.Random;
 import java.util.UUID;
 
@@ -75,7 +76,7 @@ public final class Items {
         item.h_in = Units.clampDimension(h_in);
         item.color = randomColor();
         item.name = name == null ? "" : name.trim();
-        item.customId = truncate(customId == null ? "" : customId.trim(),
+        item.customId = WholeCharacters.cut(customId == null ? "" : customId.trim(),
                 Item.MAX_CUSTOM_ID_LENGTH);
         item.baseHeight_in = 0;
         item.planned = state.planMode;
@@ -145,7 +146,7 @@ public final class Items {
     public static boolean edit(AppState state, UndoHistory undo, Item item, String name,
             String customId, double w_in, double l_in, double h_in) {
         String newName = name == null ? "" : name.trim();
-        String newCustomId = truncate(customId == null ? "" : customId.trim(),
+        String newCustomId = WholeCharacters.cut(customId == null ? "" : customId.trim(),
                 Item.MAX_CUSTOM_ID_LENGTH);
         double newW = Units.clampDimension(w_in);
         double newL = Units.clampDimension(l_in);
@@ -185,6 +186,27 @@ public final class Items {
     }
 
     /**
+     * Empties the room: Reset Room's model half.
+     *
+     * <p>What goes, from the user's spec: every item, planned ones included, and the whole undo
+     * history. The numbering starts over too, so the next unnamed box is {@code item #1}: the
+     * counter goes to 0 and {@link #add} adds one before it numbers anything.
+     *
+     * <p>What stays, by the same request read literally: the room's size, the presets, where the
+     * layer slider is, and the Plan, Metric and Layer Collision switches. {@code dragOrderCounter}
+     * stays as well. It only ranks boxes against each other, there are none left to rank, and the
+     * request names only the item numbering.
+     *
+     * <p>⚠ Not undoable, on purpose: the undo history is part of what is being cleared. The save
+     * the Reset Room window offers first is the only way back.
+     */
+    public static void clearAll(AppState state, UndoHistory undo) {
+        state.items.clear();
+        state.itemCounter = 0;
+        undo.clear();
+    }
+
+    /**
      * Changes a box's size while keeping its middle where it was, then puts the result
      * somewhere legal.
      *
@@ -207,9 +229,5 @@ public final class Items {
                 centerY - Units.inchesToPx(item.l_in) / 2);
         item.x_px = placed.x();
         item.y_px = placed.y();
-    }
-
-    private static String truncate(String text, int limit) {
-        return text.length() <= limit ? text : text.substring(0, limit);
     }
 }

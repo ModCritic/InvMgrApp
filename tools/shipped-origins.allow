@@ -2,15 +2,23 @@
 #
 # Format:  <package or file prefix> | <license> | <why it is acceptable>
 #
-# The rule from CLAUDE.md §8: permissive (0BSD/MIT/BSD/Apache-2.0/EPL/MPL) or copyleft
+# The rule: permissive (0BSD/MIT/BSD/Apache-2.0/EPL/MPL) or copyleft
 # WITH a classpath/linking exception. Copyleft without one does not belong in a shipped
 # artifact and must not be added here to make the check pass.
 #
 # This file is deliberately short. If checking an APK produces a wall of NOT ALLOWED
-# lines, that is the current, real state of the Android build. See docs/LICENSE-AUDIT.md.
+# lines, that is the current, real state of the Android build.
 # Do not silence it by pasting the offenders in; that decision is the user's.
 
 com.modcritic          | 0BSD                        | Our own code. See LICENSE.
+
+# The Android application ID became com.asterkazika.invmgr on 2026-09-22, and the Android
+# build generates its R classes under it. Exactly two, R and R$mipmap, which are AGP's
+# table of resource IDs and hold the launcher icon's. They were com.modcritic.invmgr.R
+# before, where the row above covered them without anyone noticing. Checked with dexdump
+# rather than assumed: nothing else in the dex uses this namespace, and no hand-written
+# source does either. THE CHECK CAUGHT THIS, which is the check working.
+com.asterkazika        | 0BSD                        | Generated R classes under our own app ID. Our build output. See LICENSE.
 javafx                 | GPLv2 + Classpath Exception | OpenJFX. The CE is what permits shipping our own code under 0BSD.
 com.sun.javafx         | GPLv2 + Classpath Exception | OpenJFX internals, same artifact.
 com.sun.glass          | GPLv2 + Classpath Exception | OpenJFX internals, same artifact.
@@ -22,14 +30,14 @@ com.sun.openpisces     | GPLv2 + Classpath Exception | OpenJFX's older rasterize
 com.sun.util           | GPLv2 + Classpath Exception | Verified to come from javafx-graphics-21-<platform>.jar, not the JDK.
 
 # Fonts ship inside the jar and the APK. OFL-1.1 requires the license text to travel
-# with them, which is why OFL.txt is packaged beside them. See MANUAL.md's asset table.
+# with them, which is why OFL.txt is packaged beside them.
 NotoSansMono           | OFL-1.1                     | The interface typeface (D-6).
 NotoSansMath           | OFL-1.1                     | Two glyphs Noto Sans Mono lacks.
 
 # ---------------------------------------------------------------------------
 # Android only. None of these was chosen by anyone here; the Android build adds them.
-# They were unrecorded until the M6.5a audit found them. All Apache-2.0, each confirmed
-# from a <licenses> block on disk rather than assumed. See docs/LICENSE-AUDIT.md.
+# They were unrecorded until a license audit of the shipped APK found them. All Apache-2.0,
+# each confirmed from a <licenses> block on disk rather than assumed.
 
 androidx                | Apache-2.0 | Pulled in by the generated Android project.
 android.support         | Apache-2.0 | Legacy-named AIDL stubs living inside androidx core, not a separate library.
@@ -41,13 +49,15 @@ org.intellij            | Apache-2.0 | Same package family, same reason.
 org.jspecify            | Apache-2.0 | Nullness annotations, pulled in by androidx.
 com.google.common       | Apache-2.0 | Guava's listenablefuture stub only, pulled in transitively.
 
-# The one native library we produce. Since M6.5b it contains our own host layer (0BSD),
+# The one native library we produce. Since this project replaced Gluon's Android host code
+# (the C that starts the Java VM on the phone and hands JavaFX the screen and touches) with
+# its own, it contains our own host layer (0BSD),
 # OpenJFX (GPLv2 + Classpath Exception), the GraalVM CE runtime (GPLv2 + Classpath
 # Exception) and libc++ (Apache-2.0 with the LLVM exception), and nothing from Gluon.
 libsubstrate.so         | mixed, all cleared | Verified per-component in docs/LICENSE-AUDIT.md section 4.
 
 # ---------------------------------------------------------------------------
-# FreeType. Held off this list from the M6.5a audit until 2026-09-20, because nobody could
+# FreeType. Held off this list from the license audit until 2026-09-20, because nobody could
 # say WHICH FreeType it was: the library is stripped and there is no license file beside
 # it. The answer was inside the binary all along. It keeps its build paths:
 #

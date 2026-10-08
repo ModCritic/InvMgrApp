@@ -1,0 +1,121 @@
+From d0be8cc70ebb8d49e459000c42f91fe5a1093f99 Mon Sep 17 00:00:00 2001
+From: Asteroid <26846254+ModCritic@users.noreply.github.com>
+Date: Thu, 1 Oct 2026 09:43:16 -0500
+Subject: [PATCH] Leave Gluon's Android host code out of the build
+
+Three changes, so that an application can bring its own Android host
+layer (the code that starts the Java VM on the phone and passes JavaFX
+the screen, touches and log output) and keep Substrate's GPL-3.0 code
+out of its APK:
+
+- AndroidTargetConfiguration: the two lists of Substrate's own C sources
+  are empty, so none of it is compiled into the application's library.
+  The application supplies its own C in <projectRoot>/native.
+- AndroidTargetConfiguration: Gluon's MainActivity and
+  PermissionRequestActivity are deleted from the generated Android
+  project, and the application's src/android/java is copied in instead,
+  the way src/android/res already is.
+- AbstractTargetConfiguration: compileAdditionalSources no longer
+  returns early when Substrate has no C sources of its own but the
+  project has native code in <projectRoot>/native. Upstream skips that
+  compile, and the link then fails asking for the missing object files.
+
+Version 0.0.69-invmgr3, made for InvMgr:
+https://github.com/ModCritic/InvMgrApp
+---
+ gradle.properties                             |  2 +-
+ .../target/AbstractTargetConfiguration.java   | 10 ++++-
+ .../target/AndroidTargetConfiguration.java    | 38 +++++++++++++++++--
+ 3 files changed, 45 insertions(+), 5 deletions(-)
+
+diff --git a/gradle.properties b/gradle.properties
+index 9ca1d93..8eb60f3 100644
+--- a/gradle.properties
++++ b/gradle.properties
+@@ -1,5 +1,5 @@
+ # Substrate Version
+-version = 0.0.69
++version = 0.0.69-invmgr3
+ 
+ jUnitVersion = 5.3.1
+ 
+diff --git a/src/main/java/com/gluonhq/substrate/target/AbstractTargetConfiguration.java b/src/main/java/com/gluonhq/substrate/target/AbstractTargetConfiguration.java
+index 4490b04..02b0893 100644
+--- a/src/main/java/com/gluonhq/substrate/target/AbstractTargetConfiguration.java
++++ b/src/main/java/com/gluonhq/substrate/target/AbstractTargetConfiguration.java
+@@ -336,7 +336,15 @@ public abstract class AbstractTargetConfiguration implements TargetConfiguration
+         Path workDir = paths.getGvmPath().resolve(appName);
+         Files.createDirectories(workDir);
+ 
+-        if (getAdditionalSourceFiles().isEmpty()) {
++        // Upstream returns here when Substrate has no C sources of its own, which skips the
++        // copy of <projectRoot>/native and the compile below. The link step then asks for the
++        // .o files from getNativeCodeList() that were never produced, and fails with "no such
++        // file or directory" naming them.
++        //
++        // Any project that supplies its own native code and nothing else can reach that, and
++        // this patch reaches it every time, because AndroidTargetConfiguration empties
++        // Substrate's own list on purpose. The guard now accounts for both sources of work.
++        if (getAdditionalSourceFiles().isEmpty() && getNativeCodeList().isEmpty()) {
+             return true;
+         }
+ 
+diff --git a/src/main/java/com/gluonhq/substrate/target/AndroidTargetConfiguration.java b/src/main/java/com/gluonhq/substrate/target/AndroidTargetConfiguration.java
+index 2df77d1..3150b91 100644
+--- a/src/main/java/com/gluonhq/substrate/target/AndroidTargetConfiguration.java
++++ b/src/main/java/com/gluonhq/substrate/target/AndroidTargetConfiguration.java
+@@ -79,9 +79,17 @@ public class AndroidTargetConfiguration extends PosixTargetConfiguration {
+     private final Path objdump;
+     private final String hostPlatformFolder;
+ 
+-    private final List<String> androidAdditionalDummySourceFiles = List.of("dummy.c");
+-    private final List<String> androidAdditionalSourceFiles = Arrays.asList("launcher.c", "javafx_adapter.c",
+-            "touch_events.c", "glibc_shim.c", "attach_adapter.c", "logger.c");
++    // Both lists are empty, so none of Substrate's own C is compiled into the application's
++    // library. Those files are Gluon's Android host layer: the launcher that starts the Java VM,
++    // and the glue that hands JavaFX the screen, touches and log output. They are GPL-3.0, and
++    // an application built with this patch writes its own instead, as C files in
++    // <projectRoot>/native, which compileAdditionalSources() compiles and links.
++    // Upstream values, kept for reference:
++    //   dummy: "dummy.c"
++    //   main:  "launcher.c", "javafx_adapter.c", "touch_events.c", "glibc_shim.c",
++    //          "attach_adapter.c", "logger.c"
++    private final List<String> androidAdditionalDummySourceFiles = List.of();
++    private final List<String> androidAdditionalSourceFiles = List.of();
+     private final List<String> androidAdditionalWebSourceFiles = Collections.singletonList("bridge_webview.c");
+     private final List<String> androidAdditionalHeaderFiles = Arrays.asList("grandroid.h", "grandroid_ext.h");
+     private final List<String> androidAdditionalWebHeaderFiles = Collections.singletonList("bridge_webview.h");
+@@ -519,6 +527,30 @@ public class AndroidTargetConfiguration extends PosixTargetConfiguration {
+         if (!projectConfiguration.hasWeb()) {
+             Files.deleteIfExists(Path.of(androidProject.toString(), "app", "src", "main", "java", "com", "gluonhq", "helloandroid", "NativeWebView.java"));
+         }
++
++        // Gluon's Activity classes are dropped, and the application's own are copied in from
++        // src/android/java instead.
++        //
++        // The stock template dexes MainActivity and PermissionRequestActivity into the APK
++        // under GPL-3.0-or-later with no classpath exception, which is what this patch exists
++        // to keep out. They are deleted here rather than filtered at the copy so that the
++        // upstream resource tree stays untouched and this diff stays small. The application's
++        // own AndroidManifest.xml names its own Activity in their place.
++        //
++        // src/android/java is copied the same way src/android/res already is. Gradle compiles
++        // it against the Android SDK, so the application writes plain Android Java and needs
++        // no separate compile step against android.jar.
++        Path gluonActivities = Path.of(androidProject.toString(), "app", "src", "main", "java", "com", "gluonhq", "helloandroid");
++        Files.deleteIfExists(gluonActivities.resolve("MainActivity.java"));
++        Files.deleteIfExists(gluonActivities.resolve("PermissionRequestActivity.java"));
++
++        Path userJava = paths.getSourcePath().resolve(projectConfiguration.getTargetTriplet().getOs()).resolve("java");
++        if (Files.isDirectory(userJava)) {
++            Path targetJava = Path.of(androidProject.toString(), "app", "src", "main", "java");
++            Logger.logDebug("Copying application Android sources from " + userJava + " into " + targetJava);
++            FileOps.copyDirectory(userJava, targetJava);
++        }
++
+         androidProject.resolve("gradlew").toFile().setExecutable(true);
+        return androidProject;
+     }
+-- 
+2.55.0
+

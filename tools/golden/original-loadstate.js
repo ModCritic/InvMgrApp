@@ -4,14 +4,15 @@
 //
 // WHY THIS EXISTS
 //
-// M1's job is to read every room_inventory.json the HTML app has ever written, and the
-// HTML app's loader is 80 lines of very specific defensive behavior: out-of-range values
-// are *replaced* with defaults rather than pinned to the bound, a bad item ID silently
-// drops the whole item, dragOrder falls back to serial, and so on. Testing the Java port
-// against my own reading of that code would only prove the Java agrees with my reading.
+// This app has to read every room_inventory.json the original (the single-file HTML app,
+// InvMgr 1.3.0) has ever written, and the HTML app's loader is 80 lines of very specific
+// defensive behavior: out-of-range values are *replaced* with defaults rather than pinned to
+// the bound, a bad item ID silently drops the whole item, dragOrder falls back to serial, and
+// so on. Testing the Java port against my own reading of that code would only prove the Java
+// agrees with my reading.
 //
 // So instead: the validation block below is COPIED VERBATIM out of
-// docs/original/InvMgr_V1.3.0.html (safeNum/safeId at lines 2271-2284, the loadState
+// the original app's InvMgr_V1.3.0.html (safeNum/safeId at lines 2271-2284, the loadState
 // validation at 2286-2367), with the DOM calls that follow "All validation passed"
 // left out because they touch the browser and not the data. Run it on a fixture and it
 // emits what the original app would actually hold in memory after loading that file.
@@ -111,7 +112,7 @@ function validate(state) {
     //
     // That difference is real, and it is a genuine inconsistency in the original app:
     // a freshly added item and a loaded item serialize their keys in different orders,
-    // so the HTML app's own output is not self-consistent. See MANUAL.md's M1 notes.
+    // so the HTML app's own output is not self-consistent.
     // We normalize to the creation order here because it is the order the spec
     // documents as canonical and the order the Java writer produces, which lets the
     // Java tests compare this file as text. Reordering is safe: `validatedItems.length`

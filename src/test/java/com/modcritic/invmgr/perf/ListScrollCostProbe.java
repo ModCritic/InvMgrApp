@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javafx.scene.Node;
-import javafx.scene.Scene;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.Region;
 import javafx.stage.Stage;
@@ -47,7 +46,6 @@ class ListScrollCostProbe extends ApplicationTest {
     private static final int STEPS = 40;
 
     private App app;
-    private Scene scene;
 
     @Override
     public void start(Stage stage) {
@@ -58,7 +56,6 @@ class ListScrollCostProbe extends ApplicationTest {
         stage.setHeight(HEIGHT);
         stage.setX(0);
         stage.setY(0);
-        scene = stage.getScene();
     }
 
     /** What to do with the rows nobody can see. */

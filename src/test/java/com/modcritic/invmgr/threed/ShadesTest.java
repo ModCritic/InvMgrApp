@@ -17,11 +17,12 @@ import org.junit.jupiter.api.Test;
 /**
  * Runs the per-face shading against results produced by the original app's own JavaScript.
  *
- * <p>This is the one piece of M5's arithmetic where a wrong answer looks entirely plausible. The
- * OD-1 spike shaded with {@code Color.hsb}, which multiplies HSB brightness where the original
- * multiplies HSL lightness: two different quantities that both produce a believable box. A
- * screenshot cannot tell them apart, and neither can a test written from my reading of the
- * original.
+ * <p>This is the one piece of the 3D view's arithmetic where a wrong answer looks entirely
+ * plausible. The research spike that tried JavaFX 3D before the view was built shaded with
+ * {@code Color.hsb}, which multiplies HSB brightness where the original (the single-file HTML app
+ * this one rewrites) multiplies HSL lightness: two different quantities that both produce a
+ * believable box. A screenshot cannot tell them apart, and neither can a test written from my
+ * reading of the original.
  *
  * <p>So the expectations come from {@code tools/golden/original-3d.js}, which holds a verbatim
  * copy of the shipped {@code itemShades} and runs it over 497 colors: every hue in the app's own
@@ -86,6 +87,39 @@ class ShadesTest {
         assertEquals(0, Shades.of("hsl( 200,55%,42%)").hue, "leading space must be rejected");
         assertEquals(0, Shades.of("hsl(200,55.0%,42%)").hue, "a decimal must be rejected");
         assertEquals(200, Shades.of("hsl(200, 55%, 42%)").hue, "spaces after commas are legal");
+    }
+
+    @Test
+    @DisplayName("numbers too big for an int still give a color, the one the original would draw")
+    void hugeNumbersDoNotThrow() {
+        // The save file's color check accepts any number of digits, as the original's does.
+        // Integer.parseInt threw on all three of these, and the 3D view could not open.
+        Shades bigHue = Shades.of("hsl(99999999999,55%,42%)");
+        assertEquals(99999999999L % 360, bigHue.hue, "the hue wraps around the color wheel");
+        assertEquals(42, bigHue.northSouth, "and the rest of the color is untouched");
+
+        String fourHundredSevens = "7".repeat(400);
+        assertEquals(217, Shades.of("hsl(" + fourHundredSevens + ",55%,42%)").hue,
+                "worked out from every digit, where a double would have become infinity");
+        assertEquals(100, Shades.of("hsl(10," + fourHundredSevens + "%,42%)").saturation);
+
+        Shades bigLightness = Shades.of("hsl(10,55%," + fourHundredSevens + "%)");
+        assertEquals(Shades.MAX_LIGHTNESS, bigLightness.top);
+        assertEquals(Shades.MAX_LIGHTNESS, bigLightness.edge,
+                "even the darkest face is past the ceiling, as Math.min(92, ...) gives in JS");
+    }
+
+    @Test
+    @DisplayName("a hue past 359 wraps and a saturation past 100 caps, as CSS draws them")
+    void outOfRangeValuesDrawLikeCss() {
+        assertEquals(40, Shades.of("hsl(400,55%,42%)").hue);
+        assertEquals(0, Shades.of("hsl(360,55%,42%)").hue);
+        assertEquals(359, Shades.of("hsl(359,55%,42%)").hue, "the top of the range is kept");
+        assertEquals(100, Shades.of("hsl(10,150%,42%)").saturation);
+        assertEquals(100, Shades.of("hsl(10,100%,42%)").saturation, "100 itself is kept");
+        // Lightness is not capped at 100: the original multiplies it first, so 150 gives an edge
+        // of round(150 * 0.45) = 68, where a cap at 100 would give 45.
+        assertEquals(68, Shades.of("hsl(10,55%,150%)").edge);
     }
 
     @Test

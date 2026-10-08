@@ -19,7 +19,7 @@ import java.util.Locale;
  * it would be wrong: the export format is a user-facing file format the original app committed
  * to (pipe-delimited, capital {@code Base:}), while the tooltip is a compact on-screen label
  * (double spaces, lower-case {@code base:}). Changing either to match the other would break
- * something someone relies on. SPEC-2D-ENGINE.md §9 says the same thing.
+ * something someone relies on.
  */
 public final class TextFormat {
 
@@ -150,7 +150,7 @@ public final class TextFormat {
      * <p><b>One deliberate difference from the original, decided by the user 2026-09-11:</b>
      * leading spaces are ignored, so " z" sorts under z and not above every other name. The
      * original counts them, which puts anything typed with a leading space at the very top.
-     * Everything else here matches the original answer for answer. See §5.5 D-24.
+     * Everything else here matches the original answer for answer.
      */
     public static Comparator<Item> byDisplayName() {
         return (a, b) -> compareNames(a.displayName(), b.displayName());
@@ -238,8 +238,8 @@ public final class TextFormat {
      * ["box", " ", "2", "-", "a"].
      *
      * <p><b>Leading spaces are dropped first</b>, which is the one departure from the original
-     * (§5.5 D-24). Only leading ones: a trailing or interior space is a token like any other,
-     * so "a " still sorts after "a" the way the original has it.
+     * (see {@code byDisplayName}). Only leading ones: a trailing or interior space is a token
+     * like any other, so "a " still sorts after "a" the way the original has it.
      */
     private static List<String> tokens(String text) {
         int i = 0;

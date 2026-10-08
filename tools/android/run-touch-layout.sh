@@ -1,6 +1,7 @@
 #!/bin/bash
 # Runs the desktop build with the touch layout forced on, which is the only way to look at the
-# phone interface without a phone. See CLAUDE.md section 5 OD-5.
+# phone interface without a phone. The app picks the touch or desktop layout at runtime (see the
+# Device class), and -Dinvmgr.platform=android forces the touch one.
 #
 # NOT `mvn javafx:run -Dinvmgr.platform=android`: the javafx-maven-plugin forks a JVM carrying only
 # the <options> in the pom, so a -D on the maven command line never reaches the app. Verified by

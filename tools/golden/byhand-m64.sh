@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# The M6.4 rules that need a window, mutated by hand.
+# The touch layout's rules that need a window, mutated by hand.
 #
 # RUN AND RECORDED 2026-08-12: 17 cases, 17 caught, 0 broken patterns, over a baseline of 38.
 # The first run caught 16 and left one survivor, "the bar keeps its padding while folding",
@@ -8,6 +8,20 @@
 # directly, so a stuck padding does not change where the bar ends, only what the fold looks
 # like on the way. TouchLayoutTest.theFoldTakesThePaddingToo now pins it, and restoring the
 # mutation fails it with 10.0 against 0.0.
+#
+# RUN AGAIN 2026-09-24: 17 cases, 16 caught, 1 survived, 0 broken patterns, over a baseline of 46.
+# Two patterns had matched nothing since a later fix moved the code they named, a day or two after
+# the run above. The old fold pattern changed setPrefHeight alone, back when the minimum sat at
+# zero; today foldedHeight(showing) sets the preferred AND the minimum height, so that helper is the
+# one place where the height follows the fold. And Add is typed through typeGlyph now, not type.
+# Both were re-derived from the current source: the fold case fails four tests and the Add case two.
+# The survivor was the forced-rows case, a real hole that only a phone on its side shows; see the
+# note there. With LandscapeLayoutTest added to SUITE, the same day: 17 cases, 17 caught,
+# 0 broken patterns, over a baseline of 54.
+#
+# RUN AGAIN 2026-09-24, after the Menu button took the place of Units in the island: 17 cases,
+# 17 caught, 0 broken patterns, over a baseline of 55. The two patterns that named Units were
+# re-derived from the new source before the run, and both matched and were caught.
 #
 # The headless sweep cannot reach these: a folding bar, a re-parented button, a sliding drawer and
 # a reserved strip all need a real stage. Same discipline, smaller harness: break one rule, check
@@ -26,8 +40,9 @@ restore_all() { for f in $FILES; do cp "$BK/$(basename "$f")" "$f"; done; }
 trap 'restore_all; rm -rf "$BK"' EXIT
 for f in $FILES; do cp "$f" "$BK/"; done
 
-SUITE='com.modcritic.invmgr.ui.TouchLayoutTest,com.modcritic.invmgr.ui.ChromeAppearanceTest,com.modcritic.invmgr.ui.SafeAreaTest'
-MIN_TESTS=35
+SUITE='com.modcritic.invmgr.ui.TouchLayoutTest,com.modcritic.invmgr.ui.ChromeAppearanceTest,com.modcritic.invmgr.ui.SafeAreaTest,com.modcritic.invmgr.ui.LandscapeLayoutTest'
+# Below the baseline by less than the smallest class holds, so a class that stops running aborts.
+MIN_TESTS=51
 
 run_suite() { DISPLAY=${DISPLAY:-:99} mvn -B test -Dtest="$SUITE" -DfailIfNoSpecifiedTests=true "$@"; }
 
@@ -65,7 +80,7 @@ run_case() {
 # --- the folding bar --------------------------------------------------------------
 mutate 's/        if \(!touch\) \{\n            return super\.computeMinWidth\(height\);\n        \}/        if (true) {\n            return super.computeMinWidth(height);\n        }/' $UI/TopBar.java
 run_case "the bar takes FlowPane's minimum width, so it can never get narrower than it has been"
-mutate 's/            setPrefHeight\(showing \* naturalHeight\);/            setPrefHeight(naturalHeight);/' $UI/TopBar.java
+mutate 's/        return Math\.min\(naturalHeight, showing \* Tokens\.TOP_BAR_MAX_HEIGHT\);/        return naturalHeight;/' $UI/TopBar.java
 run_case "the fold does not actually change the bar's height"
 mutate 's/        setMouseTransparent\(showing <= 0\);\n//' $UI/TopBar.java
 run_case "a folded bar is invisible but still takes taps meant for the room"
@@ -75,17 +90,25 @@ mutate 's/        setPadding\(barPadding\(showing\)\);/        setPadding(barPad
 run_case "the bar keeps its padding while folding, so it stops short of nothing"
 
 # --- the three forced rows --------------------------------------------------------
+# Survived on 2026-09-24, and the reason was measured. An earlier fix pinned every touch
+# button's minimum width to its preferred width, so a narrowed row is pushed back out to its own
+# minimum, and at portrait widths no two rows fit on one line: TouchLayoutTest, which checks only
+# 360 and 320 px, saw three rows either way. From 600 px up they do fit. At 740 x 360, a phone
+# on its side, W/L/H and Set Room shared a line.
+# LandscapeLayoutTest.theBarKeepsItsThreeRowsOnItsSide now pins that, which is why that class is
+# in SUITE.
 mutate 's/        line\.prefWidthProperty\(\)\.bind\(\n                widthProperty\(\)\.subtract\(Tokens\.TOP_BAR_PADDING_H_TOUCH \* 2\)\);/        line.prefWidthProperty().bind(\n                widthProperty().subtract(Tokens.TOP_BAR_PADDING_H_TOUCH * 2).divide(4));/' $UI/TopBar.java
 run_case "the rows are not full width, so the bar wraps wherever it happens to fit"
 
 # --- the island -------------------------------------------------------------------
 mutate 's/        setBarOpen\(false, false\);/        setBarOpen(true, false);/' $UI/TouchIsland.java
 run_case "the bar starts open on a phone instead of folded"
-mutate 's/        type\(fitButton\(\), toggleSize\);\n        type\(planButton\(\), toggleSize\);\n        type\(unitsButton\(\), toggleSize\);/        type(fitButton(), base);\n        type(planButton(), base);\n        type(unitsButton(), base);/' $UI/TouchIsland.java
-run_case "Fit, Plan and Units are set in the base size, losing the island's hierarchy"
-mutate 's/        type\(addButton\(\), addSize\);/        type(addButton(), base);/' $UI/TouchIsland.java
+# Units left the island for the Menu button; Fit and Plan are the two toggles left.
+mutate 's/        type\(fitButton\(\), toggleSize\);\n        type\(planButton\(\), toggleSize\);/        type(fitButton(), base);\n        type(planButton(), base);/' $UI/TouchIsland.java
+run_case "Fit and Plan are set in the base size, losing the island's hierarchy"
+mutate 's/        typeGlyph\(addButton\(\), addSize\);/        typeGlyph(addButton(), base);/' $UI/TouchIsland.java
 run_case "Add is no bigger than the buttons beside it"
-mutate 's/    List<Button> islandButtons\(\) \{\n        unpin\(add\);\n        return List\.of\(add, undo, fit, plan, units\);/    List<Button> islandButtons() {\n        unpin(add);\n        return List.of(new Button("■"), new Button("Undo"), new Button("Fit"),\n                new Button("Plan"), new Button("Units"));/' $UI/TopBar.java
+mutate 's/    List<Button> islandButtons\(\) \{\n        unpin\(add\);\n        unpin\(menu\);\n        return List\.of\(add, undo, fit, plan, menu\);/    List<Button> islandButtons() {\n        unpin(add);\n        unpin(menu);\n        return List.of(new Button("■"), new Button("Undo"), new Button("Fit"),\n                new Button("Plan"), new Button("Menu"));/' $UI/TopBar.java
 run_case "the island builds its own five buttons instead of borrowing the bar's"
 
 # --- the frame --------------------------------------------------------------------

@@ -30,8 +30,8 @@ import org.testfx.util.WaitForAsyncUtils;
  * asserts nothing.
  *
  * <p>It exists because the user reported that dragging a planned item stutters on weak integrated
- * graphics, and CLAUDE.md §2 says an optimization needs a number behind it rather than an
- * argument. The milestone row named two suspects and this measures both:
+ * graphics, and this project does not optimize without a number behind it. Two suspects stood
+ * out and this measures both:
  *
  * <ul>
  *   <li>the card's {@code dropshadow(gaussian, ..., 16, 0, 0, 6)}, a 16 px blur that Prism

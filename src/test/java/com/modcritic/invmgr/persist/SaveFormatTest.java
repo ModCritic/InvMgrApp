@@ -10,9 +10,12 @@ import com.modcritic.invmgr.model.AppState;
 import com.modcritic.invmgr.model.Item;
 import com.modcritic.invmgr.model.Preset;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -178,6 +181,33 @@ class SaveFormatTest {
     }
 
     @Test
+    @DisplayName("half a character in a name loads as U+FFFD, and the room can be saved again")
+    void halfCharactersAreRepaired(@TempDir Path folder) throws IOException {
+        // Two ways a file gives a name half a character: an escape of one half on its own, and
+        // the original's cut at 200 units landing between the two halves of an emoji. Kept as they
+        // were, either made Files.writeString, and so every desktop Save, throw.
+        String emoji = "\\uD83D\\uDE00";
+        String json = "{\"items\":["
+                + "{\"id\":\"i1_1\",\"name\":\"box \\uD800\"},"
+                + "{\"id\":\"i1_2\",\"name\":\"" + "a".repeat(199) + emoji + "\"},"
+                + "{\"id\":\"i1_3\",\"name\":\"whole " + emoji + "\"}],"
+                + "\"presets\":[{\"name\":\"a" + emoji + "\"}]}";
+        AppState state = SaveFormat.load(json, FIXED_COLOR).state();
+
+        assertEquals("box \uFFFD", state.items.get(0).name);
+        assertEquals(Item.MAX_NAME_LENGTH, state.items.get(1).name.length(),
+                "cut where the original cuts, so the name is as long as it shows there");
+        assertEquals("a".repeat(199) + "\uFFFD", state.items.get(1).name);
+        assertEquals("whole \uD83D\uDE00", state.items.get(2).name, "a whole emoji is kept");
+        assertEquals("a\uFFFD", state.presets.get(0).name, "preset names go the same way");
+
+        Path saved = folder.resolve("room.json");
+        Files.writeString(saved, SaveFormat.save(state));
+        assertEquals("box \uFFFD", SaveFormat.load(Files.readString(saved), FIXED_COLOR)
+                .state().items.get(0).name);
+    }
+
+    @Test
     @DisplayName("a preset name longer than 2 characters is cut down")
     void truncatesPresetNames() {
         AppState state = SaveFormat.load(
@@ -214,6 +244,68 @@ class SaveFormatTest {
         assertTrue(result.error().startsWith("Load error: "),
                 "the message must carry the same prefix the original uses, got: "
                         + result.error());
+    }
+
+    @Test
+    @DisplayName("a file nested thousands deep is reported, not thrown")
+    void deeplyNestedFileIsReported() {
+        // 10 KB of brackets. Before Json.MAX_DEPTH this escaped load() as a StackOverflowError,
+        // which nothing catches, so the Load button did nothing and said nothing.
+        SaveFormat.LoadResult result = SaveFormat.load(
+                "{\"items\":" + "[".repeat(5_000) + "]".repeat(5_000) + "}", FIXED_COLOR);
+        assertFalse(result.isSuccess());
+        assertTrue(result.error().startsWith("Load error: nested more than"), result.error());
+    }
+
+    @Test
+    @DisplayName("the largest room the app can write is under a quarter of the file-size limit")
+    void theLargestPossibleRoomFitsWellUnderTheLimit() {
+        // The limit must never refuse a real room. So: 500 items and 50 presets, every name and
+        // ID at its longest and made of the character with the longest escape (\u0001, six
+        // characters), and every number with as many digits as its range allows.
+        AppState state = new AppState();
+        String longestEscape = "\u0001";
+        for (int i = 0; i < AppState.MAX_ITEMS; i++) {
+            Item item = new Item();
+            item.id = "item-id-00000000-0000-0000-0000-" + String.format("%012d", i);
+            item.serial = 999_999_999;
+            item.dragOrder = 999_999_999;
+            item.w_in = 999.123456;
+            item.l_in = 999.123456;
+            item.h_in = 999.123456;
+            item.x_px = 999_999.123456;
+            item.y_px = 999_999.123456;
+            item.color = "hsl(359,100%,100%)";
+            item.name = longestEscape.repeat(Item.MAX_NAME_LENGTH);
+            item.customId = longestEscape.repeat(Item.MAX_CUSTOM_ID_LENGTH);
+            item.baseHeight_in = 999_999.123456;
+            item.planned = true;
+            state.items.add(item);
+        }
+        state.presets.clear();
+        for (int i = 0; i < Preset.MAX_SLOTS; i++) {
+            state.presets.add(new Preset(longestEscape.repeat(Preset.MAX_NAME_LENGTH),
+                    999.123456, 999.123456, 999.123456));
+        }
+
+        long bytes = SaveFormat.save(state).getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        assertTrue(bytes < SaveFormat.MAX_FILE_BYTES / 4,
+                "the largest room is " + bytes + " bytes, too close to the limit");
+        assertTrue(bytes > 900_000, "the room is meant to be the largest possible, got " + bytes);
+    }
+
+    @Test
+    @DisplayName("readFile reads a file at the limit and refuses one a byte over, before reading it")
+    void readFileRefusesAnOversizedFile(@TempDir Path folder) throws IOException {
+        Path atLimit = folder.resolve("at-limit.json");
+        Files.write(atLimit, new byte[(int) SaveFormat.MAX_FILE_BYTES]);
+        assertEquals(SaveFormat.MAX_FILE_BYTES, SaveFormat.readFile(atLimit).length());
+
+        Path over = folder.resolve("over.json");
+        Files.write(over, new byte[(int) SaveFormat.MAX_FILE_BYTES + 1]);
+        IOException refused = org.junit.jupiter.api.Assertions.assertThrows(IOException.class,
+                () -> SaveFormat.readFile(over));
+        assertEquals(SaveFormat.TOO_LARGE, refused.getMessage());
     }
 
     @ParameterizedTest

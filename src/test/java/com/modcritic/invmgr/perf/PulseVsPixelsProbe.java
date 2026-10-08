@@ -21,7 +21,8 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * Phase 0 of M6.7b: does the app's idea of "the frame is out" match the pixels on the glass?
+ * Groundwork for the latency suite: does the app's idea of "the frame is out" match the pixels on
+ * the glass?
  *
  * <p>The latency suite rests on one claim, and the phone cannot check it: <b>that the start of the
  * second pulse after a change is a fair stand-in for the moment the screen changed.</b> It is

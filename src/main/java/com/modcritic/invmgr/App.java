@@ -10,10 +10,12 @@ import com.modcritic.invmgr.persist.AppDataDir;
 import com.modcritic.invmgr.persist.Autosave;
 import com.modcritic.invmgr.persist.AutosavePolicy;
 import com.modcritic.invmgr.persist.SaveFormat;
+import com.modcritic.invmgr.persist.SettingsFile;
 import com.modcritic.invmgr.threed.RenderScale;
 import com.modcritic.invmgr.threed.Transitions;
 import com.modcritic.invmgr.ui.AddItemDialog;
 import com.modcritic.invmgr.ui.AndroidBridge;
+import com.modcritic.invmgr.ui.AppInfo;
 import com.modcritic.invmgr.ui.Clips;
 import com.modcritic.invmgr.ui.Device;
 import com.modcritic.invmgr.ui.DragGhost;
@@ -22,8 +24,10 @@ import com.modcritic.invmgr.ui.Fonts;
 import com.modcritic.invmgr.ui.ItemListPanel;
 import com.modcritic.invmgr.ui.ItemTooltip;
 import com.modcritic.invmgr.ui.LayerSliderDrawer;
+import com.modcritic.invmgr.ui.MenuWindow;
 import com.modcritic.invmgr.ui.Overlays;
 import com.modcritic.invmgr.ui.PresetDialog;
+import com.modcritic.invmgr.ui.ResetRoomDialog;
 import com.modcritic.invmgr.ui.RoomCanvasView;
 import com.modcritic.invmgr.ui.StatusBar;
 import com.modcritic.invmgr.ui.SystemInsets;
@@ -106,7 +110,7 @@ public class App extends Application {
     private UndoHistory undoHistory;
     private Stage stage;
 
-    // ------------------------------------------------------ the 2D view, while 3D has it (M5.2)
+    // ------------------------------------------------------------- the 2D view, while 3D has it
     //
     // The original's `prev2dState`. Entering 3D forces Fit on so the room sits whole underneath
     // the view, and leaving has to undo that; otherwise you come back to a room fitted to the
@@ -124,7 +128,7 @@ public class App extends Application {
     /** Which rung of {@link UiScale#STEPS_PERCENT} the interface is currently drawn at. */
     private int uiScaleIndex = UiScale.defaultIndex();
 
-    // ------------------------------------------------------------------ autosave (M4)
+    // ----------------------------------------------------------------------- autosave
 
     /** Where the app keeps its own copy of the room. Null switches autosave off entirely. */
     private Autosave autosave;
@@ -170,14 +174,30 @@ public class App extends Application {
     private AddItemDialog addDialog;
     private EditItemDialog editDialog;
     private PresetDialog presetDialog;
+    private MenuWindow menuWindow;
+    private ResetRoomDialog resetDialog;
+
+    /**
+     * What the phone's own bars take right now, kept for the Menu window, which centers between
+     * them. Updated on every rotation by reserveSpaceForSystemBars; nothing on a desktop.
+     */
+    private SystemInsets currentInsets = SystemInsets.NONE;
+
+    /**
+     * The app's own settings, and the file beside the autosave they live in. The file is null
+     * exactly when the autosave is: a directly-built App is a test, and its settings stay in
+     * memory rather than landing in the real folder.
+     */
+    private SettingsFile settingsFile;
+    private SettingsFile.Settings settings = new SettingsFile.Settings();
 
     @Override
     public void start(Stage stage) {
         // First, before any control exists. The fonts load themselves the moment anything reads
         // Tokens, so this is not strictly required, but pinning it to a known line means a badly
         // built jar fails here, with a stack trace and no window, instead of part-way through
-        // building the interface. M6 also needs somewhere to set java.io.tmpdir before this runs;
-        // Fonts explains why.
+        // building the interface. The Android build also needs somewhere to set java.io.tmpdir
+        // before this runs; Fonts explains why.
         Fonts.ensureLoaded();
 
         this.stage = stage;
@@ -189,12 +209,19 @@ public class App extends Application {
         // dozen test classes sharing one autosave would restore each other's rooms and fail in
         // ways that look nothing like the cause. AutosaveTest calls useAutosaveDirectory with a
         // temporary folder and so drives this same path deliberately, because a shipped path no
-        // test ever takes is how M3.5 shipped a fix that could never have worked.
+        // test ever takes is how an earlier fix for button hints ignoring the interface zoom
+        // shipped and could never have worked.
         if (autosave == null && getParameters() != null) {
             useAutosaveDirectory(AppDataDir.current());
         }
         backUpPreviousSession();
         state = chooseStartingState();
+        if (settingsFile != null) {
+            settings = settingsFile.load();
+        }
+        // Before anything is laid out, so the first frame already has the whole screen when the
+        // bars are meant to be away. Does nothing off the phone.
+        AndroidBridge.setSystemBarsHidden(settings.hideSystemBars);
 
         undoHistory = new UndoHistory();
         canvas = new RoomCanvasView(state);
@@ -251,6 +278,8 @@ public class App extends Application {
         // in this stack, in a fixed order. See Overlays for why that order matters.
         root = new Overlays(column);
         tooltip = new ItemTooltip(root.tooltipLayer());
+        // Opening a dialog takes the tooltip down, or a tapped box's would stay on top of it.
+        root.setOnDialogShown(tooltip::hide);
         dragGhost = new DragGhost(root.ghostLayer());
         listPanel = new ItemListPanel(state, dragGhost);
         if (drawers != null) {
@@ -262,6 +291,8 @@ public class App extends Application {
         addDialog = new AddItemDialog(root, state);
         editDialog = new EditItemDialog(root, state);
         presetDialog = new PresetDialog(root, state);
+        menuWindow = new MenuWindow(root, state, () -> currentInsets);
+        resetDialog = new ResetRoomDialog(root, this::saveRoom);
 
         wire();
 
@@ -282,7 +313,9 @@ public class App extends Application {
         // The 3D view goes BESIDE the zoomed interface, not inside it. Its drawing surface has to
         // be exactly as many pixels as the window or the view comes out subtly stretched, and
         // anything inside `root` is scaled by the Ctrl+scroll zoom. See View3D for the longer
-        // version, including why canceling the zoom again would be the M3.2 bug over.
+        // version, including why canceling the zoom again would repeat the old bug where the
+        // tooltip and drag ghost took a coordinate in one space and positioned themselves in
+        // another, so the zoom applied twice.
         view3d = new View3D();
         // The 3D view's own tooltip, over its own layer; see wireThreeD for why it cannot be the
         // one built above. One line, no new interface code, and identical styling by
@@ -351,6 +384,23 @@ public class App extends Application {
     }
 
     /**
+     * Whether the insets in use came from Android or from the old arithmetic.
+     *
+     * <p>Reported at startup because the two agree exactly on a phone held upright (24 and 48),
+     * so the numbers alone cannot say which path ran, and knowing which one did is the whole
+     * question: can this app read the real insets from Android without Gluon's GPL library.
+     */
+    private boolean insetsWereMeasured;
+
+    /**
+     * The whole 2D interface in one column, kept so the side insets can be applied to it.
+     *
+     * <p>Only landscape needs that: held upright a phone puts nothing down either side, which
+     * is why this was a local variable until the landscape fix of 2026-09-05.
+     */
+    private VBox column;
+
+    /**
      * Keeps the interface out from under the phone's own clock and navigation buttons.
      *
      * <p>Does nothing at all on a desktop, where there is nothing to keep out of the way of.
@@ -370,39 +420,23 @@ public class App extends Application {
      *
      * <p><b>The 3D view is deliberately left full-bleed.</b> The picture keeps every pixel,
      * including the ones under the system bars, because a room drawn to the edges of the glass is
-     * the whole point and matches the OD-1 spike the user liked. Only the things floating on top of
-     * it (the return button, the controls hint, and the joystick when it arrives) move inward, so
-     * they can still be reached and read.
+     * the whole point and matches the early 3D prototype the user liked. Only the things floating
+     * on top of it (the return button, the controls hint, and the joystick when it arrives) move
+     * inward, so they can still be reached and read.
      *
      * @return what was reserved, so the caller can report it
      */
-    /**
-     * Whether the insets above came from Android or from the old arithmetic.
-     *
-     * <p>Reported at startup because the two agree exactly on a phone held upright (24 and 48),
-     * so the numbers alone cannot say which path ran, and knowing which one did is the whole
-     * question OD-3 was open on.
-     */
-    private boolean insetsWereMeasured;
-
-    /**
-     * The whole 2D interface in one column, kept so the side insets can be applied to it.
-     *
-     * <p>Only landscape needs that: held upright a phone puts nothing down either side, which
-     * is why this was a local variable until M6.5c-a.
-     */
-    private VBox column;
-
     private SystemInsets reserveSpaceForSystemBars() {
         if (!Device.isAndroid()) {
             return SystemInsets.NONE;
         }
         Screen primary = Screen.getPrimary();
 
-        // Ask Android first. It knows, and until M6.5c there was no way to ask; see
-        // ui/AndroidBridge and OD-3. The old arithmetic stays as the fallback for the two
-        // cases the bridge cannot answer: a desktop forced into the phone layout with
-        // -Dinvmgr.platform=android, and the moment before Android has attached the window.
+        // Ask Android first. It knows, and until the bridge was built on 2026-09-04 (the JNI calls
+        // between this app and Android's own Java; see ui/AndroidBridge) there was no way to ask.
+        // The old arithmetic stays as the fallback for the two cases the bridge cannot answer: a
+        // desktop forced into the phone layout with -Dinvmgr.platform=android, and the moment
+        // before Android has attached the window.
         SystemInsets insets = AndroidBridge.systemInsets(primary.getOutputScaleY());
         insetsWereMeasured = insets != null;
         if (insets == null) {
@@ -410,14 +444,27 @@ public class App extends Application {
                     primary.getBounds().getHeight(), primary.getVisualBounds().getHeight());
         }
 
+        // With Hide system bars on, the room takes the space the bars had. The bars a swipe brings
+        // back for a moment are drawn over the app and put away again by Android, so nothing is
+        // reserved for them. Decided here rather than read from Android because below API 30 the
+        // insets it reports are the STABLE ones, which go on saying the bars are there while they
+        // are hidden; see InvMgrActivity.systemInsets.
+        if (settings.hideSystemBars) {
+            insets = SystemInsets.NONE;
+        }
+
         topWrap.reserveTop(insets.top());
         statusBar.reserveBottom(insets.bottom());
         view3d.setSafeArea(insets);
+        currentInsets = insets;
+        if (menuWindow.isShowing()) {
+            menuWindow.relayout();
+        }
 
-        // ⚠ THE SIDES, which nothing applied until M6.5c-a and which only landscape needs.
+        // ⚠ THE SIDES, which nothing applied until 2026-09-05 and which only landscape needs.
         //
         // Held upright a phone puts its bars top and bottom and both of these are zero, which
-        // is why their absence was invisible for four milestones. Turned on its side the
+        // is why their absence was invisible until landscape was tried. Turned on its side the
         // navigation bar moves to one edge, and the room drew underneath it, reported by the
         // user as "landscape does not pad for the navigation bar".
         //
@@ -425,18 +472,15 @@ public class App extends Application {
         // clearing and the window's own background is the right thing to show beside the bar.
         // The 3D view is NOT in this column and stays full-bleed, which is deliberate: it gets
         // the same insets through setSafeArea above and moves only its floating controls.
-        if (column != null) {
-            column.setPadding(new javafx.geometry.Insets(0, insets.right(), 0, insets.left()));
-        }
+        column.setPadding(new javafx.geometry.Insets(0, insets.right(), 0, insets.left()));
 
         // Printed on every read rather than only the first, because this runs again on every
-        // rotation and the landscape numbers are the ones that were wrong before M6.5c.
+        // rotation and the landscape numbers are the ones that were wrong before the bridge.
         System.out.println("InvMgr: reserving " + insets
                 + (insetsWereMeasured ? " (measured)" : " (standards)"));
         return insets;
     }
 
-    /** Connects the pieces. Every cross-component effect in the app is in this one method. */
     // ------------------------------------------------------------- interface zoom
 
     /**
@@ -520,6 +564,7 @@ public class App extends Application {
         return UiScale.percentAt(uiScaleIndex);
     }
 
+    /** Connects the pieces. Every cross-component effect in the app is in this one method. */
     private void wire() {
         canvas.setUndoHistory(undoHistory);
         canvas.setOnStatus(statusBar::show);
@@ -548,7 +593,7 @@ public class App extends Application {
                 tooltip.showForTouch(TextFormat.tooltipText(state, item), sceneX, sceneY));
 
         // setSelectedId, not rebuild: replacing the rows mid-gesture is what kills
-        // double-click-to-edit, which is the rule in CLAUDE.md §6.
+        // double-click-to-edit.
         canvas.setOnSelectionChanged(() -> listPanel.setSelectedId(canvas.selectedId()));
 
         topBar.setOnStatus(statusBar::show);
@@ -575,7 +620,7 @@ public class App extends Application {
             statusBar.show(canvas.isFitMode() ? "Fit mode on." : "Fit mode off.");
         });
 
-        topBar.setOnUnitsChanged(() -> {
+        topBar.setOnMetricChanged(() -> {
             // Metric changes only what is shown; no stored measurement moves. Two things on
             // screen do change: the grid, from one-foot squares to one-meter squares, and the
             // list, because a search like "w20" now means 20 centimeters.
@@ -589,6 +634,17 @@ public class App extends Application {
         // Planning Mode changes nothing that is already on screen (only what the next Add
         // does), so the button's own color is the entire effect.
         topBar.setOnPlanChanged(() -> { });
+
+        topBar.setOnMenu(menuWindow::show);
+        menuWindow.setOnMetric(topBar::toggleMetric);
+        menuWindow.setOnResetRoom(resetDialog::open);
+        menuWindow.setOnOpenLink(this::openLink);
+        menuWindow.setOnHideSystemBars(this::setHideSystemBars);
+        menuWindow.setOnFeedbackByEmail(this::feedbackByEmail);
+        menuWindow.setOnFeedbackByIssue(this::feedbackByIssue);
+        menuWindow.setHideSystemBars(settings.hideSystemBars);
+        menuWindow.setPrivacyPolicy(AppInfo.privacyPolicy(Device.isAndroid(), AppDataDir.current()));
+        resetDialog.setOnReset(this::resetRoom);
 
         topBar.setOnAdd(addDialog::show);
         topBar.setOnUndo(this::undo);
@@ -625,11 +681,11 @@ public class App extends Application {
      * <b>bounds</b> test, which is a different question the moment anything sits on top of the room.
      *
      * <p>On a desktop the two always agree, because the item list is a column <em>beside</em> the
-     * room. <b>M6.4 made it a drawer that slides over the room</b>, and from that moment a point on
-     * the open list was geometrically inside the canvas and the app committed the item: the user's
-     * "dragging a planned item back to the item list should cancel, but it places it anyway". The
-     * regression was created by the drawers and landed in code the drawers never touched, which is
-     * why nothing caught it.
+     * room. <b>The phone layout made it a drawer that slides over the room</b>, and from that
+     * moment a point on the open list was geometrically inside the canvas and the app committed the
+     * item: the user's "dragging a planned item back to the item list should cancel, but it places
+     * it anyway". The regression was created by the drawers and landed in code the drawers never
+     * touched, which is why nothing caught it.
      *
      * <p>Only the open drawer is subtracted, because it is the only thing that can be over the room
      * while a drag is in progress: a dialog is modal and a tooltip is not pickable. That keeps this
@@ -762,7 +818,7 @@ public class App extends Application {
      * happen under GNOME Shell. The user hit it on 2026-07-30 and narrowed it themselves to Save,
      * Load and Export, which are the app's only three owned modal dialogs.
      *
-     * <p><b>We cannot take the upstream fix.</b> OD-2 pins the project to Java 17 so the Android
+     * <p><b>We cannot take the upstream fix.</b> This project is pinned to Java 17 so the Android
      * native image can build, and while JavaFX 22 still targets 17, the bug is present there too.
      * So the repair has to live here.
      *
@@ -826,10 +882,33 @@ public class App extends Application {
     }
 
     private void save() {
+        saveRoom(() -> { }, () -> { }, why -> { });
+    }
+
+    /**
+     * The top bar's Save, reporting how it went.
+     *
+     * <p>Split out of {@link #save} when Reset Room was added, because Reset Room offers the same
+     * save and has to know which of three things happened: saved, backed out of, or failed. The
+     * status bar says what it always said, whoever asked.
+     *
+     * <p>Exactly one of the three runs. On a desktop that is before this returns, since the file
+     * chooser waits for an answer; on a phone it is later, when Android's picker answers.
+     */
+    private void saveRoom(Runnable onSaved, Runnable onBackedOut,
+                          java.util.function.Consumer<String> onFailed) {
+        Runnable saved = () -> {
+            statusBar.show("Saved.");
+            onSaved.run();
+        };
+        java.util.function.Consumer<String> failed = why -> {
+            statusBar.show("Save error: " + why);
+            onFailed.accept(why);
+        };
         if (AndroidBridge.isAvailable()) {
             // The phone has no FileChooser at all; see saveOnAndroid.
-            saveOnAndroid("room_inventory.json", AndroidBridge.JSON,
-                    SaveFormat.save(state), "Saved.", "Save error: ");
+            AndroidBridge.saveFile("room_inventory.json", AndroidBridge.JSON, SaveFormat.save(state));
+            AndroidBridge.awaitFile(ignored -> saved.run(), failed, onBackedOut);
             return;
         }
         FileChooser chooser = new FileChooser();
@@ -840,15 +919,104 @@ public class App extends Application {
 
         File target = showChooser(chooser, true);
         if (target == null) {
-            return;                                  // canceled; say nothing
+            onBackedOut.run();                       // canceled; the status bar says nothing
+            return;
         }
         try {
             Files.writeString(target.toPath(), SaveFormat.save(state));
-            statusBar.show("Saved.");
+            saved.run();
         } catch (IOException e) {
             // Reported, never thrown: a failed save must not take the window down with it.
-            statusBar.show("Save error: " + e.getMessage());
+            failed.accept(e.getMessage());
         }
+    }
+
+    /**
+     * Turns the Hide system bars setting on or off: hides or shows the phone's bars, gives the room
+     * their space or takes it back, and writes the choice to the settings file so the next launch
+     * starts the same way.
+     *
+     * <p>A save that fails is said in the status bar and does not undo the change: the bars do what
+     * was asked for now, and only the next launch forgets it.
+     */
+    private void setHideSystemBars(boolean hidden) {
+        settings.hideSystemBars = hidden;
+        AndroidBridge.setSystemBarsHidden(hidden);
+        reserveSpaceForSystemBars();
+        menuWindow.setHideSystemBars(hidden);
+        if (settingsFile != null) {
+            try {
+                settingsFile.save(settings);
+            } catch (IOException e) {
+                System.err.println("InvMgr: could not save the settings: " + e.getMessage());
+                statusBar.show("Settings could not be saved: " + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Opens a web address in the browser, for About's Source code link.
+     *
+     * <p><b>This app still opens no connection of its own</b> (it makes no network calls at
+     * runtime): it hands the address to something else that does. On a phone that is an Android
+     * intent, sent by the Activity. On a desktop it is JavaFX's {@code HostServices.showDocument},
+     * which, read out of JavaFX 21's bytecode on 2026-09-24, runs {@code xdg-open} or the first of
+     * five named browsers it finds on Linux, {@code open} on macOS and
+     * {@code rundll32 url.dll,FileProtocolHandler} on Windows.
+     *
+     * <p>Neither can report that no browser opened: both only write the failure to the log. So the
+     * status bar says what was attempted, not that it worked.
+     */
+    private void openLink(String url) {
+        handOver(url);
+        statusBar.show("Opening " + url.replaceFirst("^https?://", "") + " in your browser.");
+    }
+
+    /** Gives an address to whatever opens it on this platform; see {@link #openLink}. */
+    private void handOver(String address) {
+        if (AndroidBridge.isAvailable()) {
+            AndroidBridge.openLink(address);
+        } else {
+            getHostServices().showDocument(address);
+        }
+    }
+
+    /**
+     * Feedback's Email button: the message, addressed to {@code AppInfo.FEEDBACK_EMAIL}, handed
+     * to the mail app to send.
+     *
+     * <p>On a phone, an Android intent with the address, subject and text as its extras. On a
+     * desktop, a {@code mailto:} address with all three in it, opened like the Source code link. On
+     * a computer with no mail program that may go nowhere useful: on the development machine
+     * {@code xdg-mime} names Firefox as the handler for email links. The Feedback page's GitHub
+     * button is there for exactly that case.
+     */
+    private void feedbackByEmail(String message) {
+        if (AndroidBridge.isAvailable()) {
+            AndroidBridge.composeEmail(AppInfo.FEEDBACK_EMAIL, AppInfo.feedbackSubject(), message);
+        } else {
+            getHostServices().showDocument(AppInfo.feedbackMailto(message));
+        }
+        statusBar.show("Opening your mail app.");
+    }
+
+    /** Feedback's GitHub button: a new issue on the repository, with the message filled in. */
+    private void feedbackByIssue(String message) {
+        handOver(AppInfo.feedbackIssueUrl(message));
+        statusBar.show("Opening a new GitHub issue in your browser.");
+    }
+
+    /**
+     * Empties the room, once Reset Room's last window has been answered with Reset.
+     *
+     * <p>{@code Items.clearAll} decides what goes; this puts the result on screen the same way a
+     * loaded file is, through {@link #adopt}, which every part of the interface already knows how
+     * to follow. Autosave writes the empty room on its next tick, a couple of seconds later.
+     */
+    private void resetRoom() {
+        Items.clearAll(state, undoHistory);
+        adopt(state);
+        statusBar.show("Room reset.");
     }
 
     private void load() {
@@ -868,7 +1036,7 @@ public class App extends Application {
             return;
         }
         try {
-            SaveFormat.LoadResult result = SaveFormat.load(Files.readString(source.toPath()));
+            SaveFormat.LoadResult result = SaveFormat.load(SaveFormat.readFile(source.toPath()));
             if (!result.isSuccess()) {
                 statusBar.show(result.error());
                 return;
@@ -969,12 +1137,13 @@ public class App extends Application {
         addDialog.setState(loaded);
         editDialog.setState(loaded);
         presetDialog.setState(loaded);
+        menuWindow.setState(loaded);
         canvas.rebuildRoom();
         sliderDrawer.rebuild();
         canvas.refreshItemAppearance();
     }
 
-    // ------------------------------------------------------------------ autosave (M4)
+    // ----------------------------------------------------------------------- autosave
 
     /**
      * Points the autosave at a directory, creating it if need be.
@@ -985,6 +1154,7 @@ public class App extends Application {
      */
     public void useAutosaveDirectory(Path directory) {
         autosave = new Autosave(directory);
+        settingsFile = new SettingsFile(directory);
     }
 
     /** The autosave in use, or {@code null} when there is none. Exposed for the tests. */
@@ -1057,7 +1227,7 @@ public class App extends Application {
         }
         // Seed the comparison with what is already on screen, so a launch that changes nothing
         // writes nothing. After a restore this text is the file's own contents, since a load
-        // followed by a save is byte-identical (M1).
+        // followed by a save is byte-identical.
         lastAutosaved = SaveFormat.save(state);
 
         autosaveWriter = Executors.newSingleThreadExecutor(runnable -> {
@@ -1177,7 +1347,7 @@ public class App extends Application {
         }
         Path path = Path.of(args.get(0));
         try {
-            SaveFormat.LoadResult result = SaveFormat.load(Files.readString(path));
+            SaveFormat.LoadResult result = SaveFormat.load(SaveFormat.readFile(path));
             if (!result.isSuccess()) {
                 System.err.println(result.error() + " (" + path + ")");
                 return failedToOpen();
@@ -1208,10 +1378,11 @@ public class App extends Application {
      * exception, no warning, just black. On Android there is no software fallback at all, so if
      * this is ever false on a phone, the 3D view is simply gone.
      *
-     * <p>A false result is reported loudly at startup and does not stop the app (OD-1 item 4,
-     * built in M5.1). {@code reportRenderingPipeline} prints the unmissable lines and the 3D
-     * button is grayed out; the 2D view is the primary interface and must keep working on a
-     * machine with no usable 3D. That trade is §5.5 D-10.
+     * <p>A false result is reported loudly at startup and does not stop the app.
+     * {@code reportRenderingPipeline} prints the unmissable lines and the 3D button is grayed out;
+     * the 2D view is the primary interface and must keep working on a machine with no usable 3D.
+     * The original (the single-file HTML app this one rewrites) has no such state; it never
+     * checks.
      */
     public static boolean isScene3dSupported() {
         return Platform.isSupported(ConditionalFeature.SCENE3D);
@@ -1262,7 +1433,7 @@ public class App extends Application {
      * checked against a real phone instead of assumed.
      *
      * <p>This exists because the layer that puts JavaFX on Android reports the bars to nobody:
-     * its own source recommends a GPL-licensed library this project may not link (OD-3). So
+     * its own source recommends a GPL-licensed library this project may not link (Gluon Attach). So
      * {@link SystemInsets#forAndroid} works the navigation bar out from the gap between the
      * screen's full height and its "visual" height, and falls back to Android's published standard
      * when that gap is not believable. <b>Whether that subtraction actually yields anything on a
@@ -1529,6 +1700,26 @@ public class App extends Application {
     /** The frame around the bar, what actually slides away when the 3D view opens. */
     public TopWrap topWrap() {
         return topWrap;
+    }
+
+    /** The app's own settings, as they stand. */
+    public SettingsFile.Settings settings() {
+        return settings;
+    }
+
+    /** What the phone's bars are taking now, as the layout was last given it. */
+    public SystemInsets currentInsets() {
+        return currentInsets;
+    }
+
+    /** The windows Reset Room goes through. */
+    public ResetRoomDialog resetDialog() {
+        return resetDialog;
+    }
+
+    /** The window the Menu button opens. */
+    public MenuWindow menuWindow() {
+        return menuWindow;
     }
 
     /** The six-button island, or null on a desktop. */

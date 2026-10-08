@@ -25,11 +25,11 @@ import org.junit.jupiter.api.Test;
  * written from my reading of the original would bake my misreadings in as expectations.
  *
  * <p>So the expectations come from elsewhere: {@code tools/golden/original-engine.js} holds a
- * verbatim copy of the shipped algorithms, and its output over 200 scenarios (8 hand-picked
- * edge cases plus 192 randomly generated ones, half with Layer Collision on) is committed as
+ * verbatim copy of the shipped algorithms, and its output over 250 scenarios (19 hand-picked
+ * edge cases plus 231 randomly generated ones, half with Layer Collision on) is committed as
  * the golden file. <b>If Java and the golden disagree, Java is wrong.</b>
  *
- * <p>Regenerate with {@code node tools/golden/original-engine.js --gen 200 && … --run}.
+ * <p>Regenerate with {@code node tools/golden/original-engine.js --gen 250 && … --run}.
  */
 class EngineDifferentialTest {
 
@@ -41,7 +41,7 @@ class EngineDifferentialTest {
     private static final double TOLERANCE = 1e-9;
 
     @Test
-    @DisplayName("all 200 scenarios agree with the original app's own algorithms")
+    @DisplayName("all 250 scenarios agree with the original app's own algorithms")
     void matchesTheOriginalEngine() throws IOException {
         List<?> scenarios = (List<?>) Json.parse(Fixtures.read("fixtures/engine-scenarios.json"));
         List<?> expected = (List<?>) Json.parse(Fixtures.read("golden/engine-scenarios.expected.json"));
@@ -111,18 +111,21 @@ class EngineDifferentialTest {
                 List<?> wantVisible = (List<?>) want.get("visible");
                 List<?> wantDim = (List<?>) want.get("dim");
 
-                // Paint order and dimming are DIVERGENCE D-5, so the golden values cannot simply
-                // be asserted: the golden is the original's behavior by construction, and D-5
+                // Paint order and dimming deliberately differ from the original: it orders by
+                // height while Layer Collision is on and by drag order while it is off, and this
+                // app orders by height in both states. So the golden values cannot simply be
+                // asserted: the golden is the original's behavior by construction, and the change
                 // exists because that behavior is wrong. Deleting the check would be the easy
                 // way out and would drop 200 scenarios of coverage, so it is split instead:
                 //
-                //  - where the two rules MUST agree, still compare against the golden. D-5 only
-                //    changes what happens when two items sit at different heights, so a scenario
+                //  - where the two rules MUST agree, still compare against the golden. The change
+                //    only matters when two items sit at different heights, so a scenario
                 //    whose items all share one base height must match the original exactly. That
                 //    is the ordinary flat-room case and by far the most common one.
-                //  - where they deliberately differ, assert the INVARIANT D-5 buys instead: no
-                //    item may paint above an item it is physically underneath. That is a property,
-                //    not a restatement of the rule, and it is the exact thing the user reported.
+                //  - where they deliberately differ, assert the INVARIANT the change buys instead:
+                //    no item may paint above an item it is physically underneath. That is a
+                //    property, not a restatement of the rule, and it is the exact thing the user
+                //    reported.
                 boolean heightsAllTie = state.items.stream()
                         .mapToDouble(item -> item.baseHeight_in).distinct().count() <= 1;
 
@@ -160,7 +163,7 @@ class EngineDifferentialTest {
      * Checks our front-to-back order agrees with the original's, by order rather than by value.
      *
      * <p>The original's z-index is a number it computes from drag order or from height, so its
-     * absolute values mean nothing once D-5 changes the rule. What has to survive is the
+     * absolute values mean nothing once this app changes the rule. What has to survive is the
      * <em>sequence</em>: which box ends up in front of which.
      */
     private void compareOrdering(String label, List<?> wantZ, AppState state,
@@ -180,7 +183,8 @@ class EngineDifferentialTest {
     }
 
     /**
-     * The invariant divergence D-5 exists to guarantee, checked over every scenario.
+     * The invariant that this app's paint order (height first, in both Layer Collision states)
+     * exists to guarantee, checked over every scenario.
      *
      * <p>If two boxes overlap on the floor and one is physically lower than the other, the lower
      * one must be drawn behind. The original breaks this whenever Layer Collision is off, which

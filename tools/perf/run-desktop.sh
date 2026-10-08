@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# M6.7b's desktop lanes: the latency bench, on one screen, in both arms.
+# The desktop lanes of the performance suite: the latency bench, on one screen, in both arms.
 #
 #   tools/perf/run-desktop.sh baseline xvfb      # the headless Xvfb at 2560x1440
 #   tools/perf/run-desktop.sh baseline plasma    # ⚠ the real session, see below
@@ -25,9 +25,9 @@ cd "$REPO"
 
 start_xvfb() {
     if pgrep -f "Xvfb :99" >/dev/null; then return; fi
-    # 2560x1440 and nothing else. CLAUDE.md §10: at 1280x800 twenty-nine tests fail for
-    # reasons that have nothing to do with the code, and a bench on a screen that small would
-    # be measuring a differently laid out app.
+    # 2560x1440 and nothing else. At 1280x800 twenty-nine tests fail for reasons that have
+    # nothing to do with the code, and a bench on a screen that small would be measuring a
+    # differently laid out app.
     Xvfb :99 -screen 0 2560x1440x24 -nolisten tcp &
     sleep 2
 }

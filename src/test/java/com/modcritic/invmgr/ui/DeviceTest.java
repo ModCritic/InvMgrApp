@@ -10,8 +10,9 @@ import org.junit.jupiter.api.Test;
  * The one question the interface asks about the machine it is running on, in both positions.
  *
  * <p>Everything here drives the two-argument form, which takes both answers as parameters. That is
- * the whole reason it exists: the single-codebase decision (OD-5) is only workable if the switch
- * can be flipped and checked without a phone.
+ * the whole reason it exists: the app is one codebase with a runtime switch between the desktop
+ * and touch layouts, which is only workable if the switch can be flipped and checked without a
+ * phone.
  */
 class DeviceTest {
 

@@ -16,7 +16,7 @@ import javafx.scene.input.KeyCode;
  * The dialog for changing a box that is already in the room, reached by clicking it, or by
  * double-clicking its row in the list.
  *
- * <p>Same four fields as Add Item, plus three things Add has no use for: a Delete button, and
+ * <p>Same four fields as Add Item, plus two things Add has no use for: a Delete button, and
  * the {@code ↻} button in the corner that turns the box a quarter turn.
  *
  * <p><b>The rotate button acts immediately.</b> It does not wait for OK, and pressing Cancel
@@ -227,10 +227,6 @@ public final class EditItemDialog extends ModalDialog {
 
     public NumberField heightField() {
         return heightField;
-    }
-
-    public TextField idField() {
-        return idField;
     }
 
     public Button okButton() {

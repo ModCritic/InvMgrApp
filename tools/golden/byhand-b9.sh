@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 #
-# B9's mutation sweep: break each rule in PanMomentum on purpose and confirm a test notices.
+# Mutation sweep for PanMomentum (the room's own coasting after a fling): break each rule on
+# purpose and confirm a test notices.
 #
 # Why by hand rather than in mutation-sweep.sh: nothing here needs a window, so it COULD live in
-# the headless sweep. It stayed separate after B9 landed, because running it alone checks the
-# coasting rules in one command without waiting on the full sweep, which is now 210 cases.
+# the headless sweep. It stayed separate after PanMomentum landed, because running it alone
+# checks the coasting rules in one command without waiting on the full sweep, which is now 210
+# cases.
 #
 # Two guards, both of them bought the hard way on this project:
 #
 #   * The md5 check. A pattern that matches nothing leaves the source untouched, the tests pass,
 #     and the case reports SURVIVED while having tested nothing at all. Every case here asserts
 #     the file actually changed before it runs anything.
-#   * Reverting from a copy, never from `git checkout`. M3.7's first sweep destroyed uncommitted
+#   * Reverting from a copy, never from `git checkout`. An earlier sweep destroyed uncommitted
 #     work that way and silently compared the old build against the new tests.
 #
 # Usage:  bash tools/golden/byhand-b9.sh
@@ -35,7 +37,7 @@ restore_all() {
     cp "$PURE_BACKUP" "$PURE"
     cp "$WIRING_BACKUP" "$WIRING"
 }
-# ⚠ BOTH files, always. M6.4's sweep restored only the files it had backed up BY NAME, so the
+# ⚠ BOTH files, always. An earlier sweep restored only the files it had backed up BY NAME, so the
 # first mutation in a new file stayed in the source for the rest of the run and everything after
 # it reported "caught" while testing nothing.
 trap 'restore_all; rm -f "$PURE_BACKUP" "$WIRING_BACKUP"' EXIT
@@ -82,7 +84,7 @@ fi
 echo
 echo "Mutations:"
 
-# --- the release-speed rule, which is the whole point of B9 -------------------
+# --- the release-speed rule, which is the whole point of PanMomentum ----------
 run_case "nothing is ever too slow to fling" \
     's/if (speed < MIN_FLING_SPEED) {/if (false) {/'
 

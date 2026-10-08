@@ -21,9 +21,10 @@ import org.testfx.util.WaitForAsyncUtils;
  * Photographs the same 3D room from the same places, so two builds of the app can be held side by
  * side.
  *
- * <p>Written for M6.7b's color atlas, at the user's request: they asked to see the pictures before
- * the change landed rather than to be told it was identical. A pixel comparison is in here too, but
- * <b>the pictures are the deliverable</b> and the number beside them only says where to look.
+ * <p>Written for the color atlas (one shared picture for every box's colors), at the user's
+ * request: they asked to see the pictures before the change landed rather than to be told it was
+ * identical. A pixel comparison is in here too, but <b>the pictures are the deliverable</b> and the
+ * number beside them only says where to look.
  *
  * <p>Run it once on each build, under a different label:
  *
@@ -42,14 +43,14 @@ class RoomPicturesProbe extends ApplicationTest {
     private static final int WIDTH = 1200;
     private static final int HEIGHT = 800;
 
-    /** Where the camera stands and looks, one row per picture: yaw, pitch, x, z, eye height. */
+    /** Where the camera stands and looks, one row per picture: yaw, pitch, x, z. */
     private static final double[][] POSES = {
-        {0, 0, 0, 0, 0},
-        {35, -8, 2, 2, 0},
-        {110, 4, -3, 1, 0},
-        {195, -14, 1, -2, 0},
-        {280, 10, -2, -3, 0},
-        {330, -3, 3, 3, 0},
+        {0, 0, 0, 0},
+        {35, -8, 2, 2},
+        {110, 4, -3, 1},
+        {195, -14, 1, -2},
+        {280, 10, -2, -3},
+        {330, -3, 3, 3},
     };
 
     /** Eight colors, chosen to span the hue circle so a row mix-up would be obvious. */

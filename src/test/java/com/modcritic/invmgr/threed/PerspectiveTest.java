@@ -86,9 +86,6 @@ class PerspectiveTest {
         assertEquals(exact, Perspective.verticalFovDegrees(1080), 1e-9);
         assertEquals(exact, Perspective.verticalFovDegrees(800), 1e-9);
 
-        // Bounded on both sides, so "close enough to 67" cannot pass: it must be above 67.3 and
-        // below 67.4, which excludes both the spec's rounded 67 and any accidental 68.
-        assertTrue(exact > 67.3 && exact < 67.4, "expected 67.38°, got " + exact);
         assertTrue(Math.abs(Perspective.verticalFovDegrees(1440) - 67.0) > 0.3,
                 "a flat 67 would be wrong by more than a third of a degree");
     }

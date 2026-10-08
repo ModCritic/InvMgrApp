@@ -52,7 +52,8 @@ class WalkGestureTest {
         // ⚠ The literal 0.3, not 50 * LOOK_SENS_RAD_PER_PX. A test that computes what it expects
         // out of the constant it is checking agrees with whatever that constant says: the sweep
         // dropped the sensitivity to the mouse's 0.0022 and this case stayed green, because both
-        // sides moved together. Same lesson as D-9's color test, which writes the hex out.
+        // sides moved together. Same lesson as the 3D button's color test in ChromeAppearanceTest,
+        // which writes the hex out.
         assertEquals(0.3, cam.yaw, TOLERANCE, "50 px at 0.006 rad/px is 0.3 rad");
         assertTrue(cam.yaw > 0, "dragging right must turn toward east");
         assertEquals(0, cam.pitch, TOLERANCE, "a horizontal drag must not tilt the view");
@@ -228,7 +229,7 @@ class WalkGestureTest {
         assertEquals(10, cam.x, TOLERANCE);
     }
 
-    // ------------------------------------------------------- the pinch, D-15
+    // ------------------------------------------------------------------------- the pinch
 
     @Test
     @DisplayName("spreading two fingers moves you forward and squeezing them moves you back")
@@ -262,8 +263,9 @@ class WalkGestureTest {
         gesture.began(at(150, 300, 250, 300), 0);
         gesture.moved(at(100, 300, 300, 300), cam, room());
 
-        // D-15's second sentence, checked through the gesture rather than only through Walk.dolly,
-        // because "flat forward" has to survive the wiring as well as the arithmetic.
+        // The pinch moves you flat forward, along the yaw direction, whatever the pitch. Checked
+        // through the gesture rather than only through Walk.dolly, because "flat forward" has to
+        // survive the wiring as well as the arithmetic.
         assertEquals(CameraPose.EYE_HEIGHT_FT, cam.y, TOLERANCE);
         assertEquals(15 - 1.5, cam.z, TOLERANCE);
     }
@@ -293,7 +295,7 @@ class WalkGestureTest {
                 "the same 25 px of finger travel must move the camera the same distance either way");
     }
 
-    // ------------------------------------- one job at a time, the 2026-08-11 amendment to D-15
+    // ------------------------------------------ one job at a time, as of 2026-08-11
 
     @Test
     @DisplayName("sliding and spreading at once does the bigger of the two and only that")
@@ -422,7 +424,8 @@ class WalkGestureTest {
         gesture.began(at(100, 300, 200, 300), 0);
         // One finger travels 30 px right and the other 10: the midpoint slides 20 and the pair
         // closes by 20. Dead level, and the tie-break is a decision: the slide is what the
-        // original does and the pinch is what D-15 added, so an ambiguous hand gets the original.
+        // original does and the pinch is what this app added, so an ambiguous hand gets the
+        // original.
         gesture.moved(at(130, 300, 210, 300), cam, room());
 
         assertEquals(WalkGesture.Job.SLIDE, gesture.job());

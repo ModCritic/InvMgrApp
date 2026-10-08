@@ -46,9 +46,10 @@ import org.testfx.util.WaitForAsyncUtils;
  * A throwaway probe that puts the room's two grids side by side and photographs them: the capped
  * picture the app used to paint, reconstructed, and the one-foot tile it repeats now.
  *
- * <p><b>It is kept rather than deleted because it is the evidence for M6.7 item 1</b>, and the old
- * painter is gone from the source, so the before-and-after can only be re-run if something still
- * knows how to draw it. {@link #shippedQuad} is that reconstruction, clamp included.
+ * <p><b>It is kept rather than deleted because it is the evidence for tiling the grid</b> (a large
+ * room's floor and walls had read as soft blurs while the boxes on them stayed sharp), and the
+ * old painter is gone from the source, so the before-and-after can only be re-run if something
+ * still knows how to draw it. {@link #shippedQuad} is that reconstruction, clamp included.
  *
  * <p>The question it settled is not whether tiling is sharper, which is arithmetic. It is
  * <b>whether tiling trades blur for shimmer</b>. The capped picture in a 200 ft room is 9.4 times
@@ -60,7 +61,7 @@ import org.testfx.util.WaitForAsyncUtils;
  *
  * <p>It also asks what each costs, whether a small offset between coplanar layers survives the
  * depth buffer at room distances (the vignette needs a second quad and the far clip is 2000 ft),
- * and photographs the shipped renderer itself, which is where the D-25 crease shot comes from.
+ * and photographs the shipped renderer itself, which is where the crease shot comes from.
  *
  * <p>Run it deliberately: {@code mvn -B test -Dtest=RoomSharpnessProbe}.
  */
@@ -88,7 +89,7 @@ class RoomSharpnessProbe extends ApplicationTest {
      */
     private static final double STAND_BACK_FT = 4;
 
-    /** The vignette cap that shipped before M6.7, which the historical arm is frozen at. */
+    /** The vignette cap before it came down to 512 on 2026-09-15; the old arm is frozen at it. */
     private static final double OLD_CAP_PX = 2048;
 
     private Scene scene;
@@ -125,7 +126,7 @@ class RoomSharpnessProbe extends ApplicationTest {
         // The comparison below builds its quads by hand so the two grids can be put side by side.
         // This one drives JfxRenderer3D itself, so what comes out is what the app draws: two quads
         // per surface, the vignette over the grid, the room's boundary lines and all.
-        // The third is the D-25 shot: standing back in the middle of a room, looking at the
+        // The third is the crease shot: standing back in the middle of a room, looking at the
         // crease where the floor meets a wall, which is where the one line the original does not
         // draw has to land. Whether it can be seen there is not a thing to reason about.
         for (double[] room : new double[][] {{200, 200, 10}, {12.5, 10.5, 8}, {12, 10, 8}}) {
@@ -318,7 +319,6 @@ class RoomSharpnessProbe extends ApplicationTest {
         room.l = sideFt;
         room.h = 10;
 
-        WritableImage[] shots = new WritableImage[2];
         for (boolean tiled : new boolean[] {false, true}) {
             interact(() -> {
                 world.getChildren().removeIf(node -> !(node instanceof AmbientLight));
@@ -469,8 +469,8 @@ class RoomSharpnessProbe extends ApplicationTest {
     }
 
     /**
-     * A surface textured the way the app used to do it, before M6.7: one stretched, capped picture
-     * carrying the fill, the grid and the darkening together.
+     * A surface textured the way the app used to do it, before the grid was tiled: one stretched,
+     * capped picture carrying the fill, the grid and the darkening together.
      *
      * <p><b>Reconstructed here rather than called</b>, because the code that did it is gone. That
      * is the point of keeping this probe: the before-and-after can be re-run and re-photographed
@@ -516,17 +516,10 @@ class RoomSharpnessProbe extends ApplicationTest {
         params.setFill(Color.TRANSPARENT);
         return quad(s.corners, canvas.snapshot(params, null), 1, 1, 0, 0);
         // The vignette above is painted here rather than called out to SurfaceTexture, for the
-        // same reason as the clamp: this arm has to keep drawing what M6.6 drew whatever the app
-        // does next.
+        // same reason as the clamp: this arm has to keep drawing what the app drew before the grid
+        // was tiled, whatever the app does next.
     }
 
-    /**
-     * The shipped vignette, or the same gradient at a smaller cap so the cost of the cap can be
-     * read on its own.
-     *
-     * <p>At the shipped cap this calls the shipped painter, so arm 1 of the cost measurement is
-     * measuring the real thing and not a copy of it.
-     */
     /**
      * The old rule: 96 pixels to the foot, or whatever fits in 2048, whichever is smaller.
      *
@@ -547,7 +540,7 @@ class RoomSharpnessProbe extends ApplicationTest {
      * <p>Both quads, not just the grid, because half the reason to keep this probe is the
      * question the sharpness does not answer: <b>did splitting the picture in two change how the
      * darkening looks?</b> A small room should come out of both arms as very nearly the same
-     * photograph, and {@code compareSmallRoom} is where that is read as a number.
+     * photograph, and {@link #howDifferent} is where that is read as a number.
      */
     private static List<MeshView> tiledQuads(RoomGeometry.Surface s, float[] center) {
         return tiledQuads(s, center, SurfaceMetrics.MAX_TEXTURE_PX);

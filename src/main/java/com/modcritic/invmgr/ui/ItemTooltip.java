@@ -52,8 +52,8 @@ public final class ItemTooltip {
      * <b>decided</b> width with the text sliding about inside it, which is three nodes: the box that
      * is clipped, the track that moves, and the copies of the words on it. Trying to be both at once
      * would mean a label that sometimes ignores its own preferred width, and the desktop tooltip
-     * (which has been right since M3 and is checked against the reference screenshots) would be
-     * carrying the weight of a feature it never uses.
+     * (which has been right from the start and is checked against the reference screenshots)
+     * would be carrying the weight of a feature it never uses.
      */
     private final Pane touchBox = new Pane();
 
@@ -147,7 +147,7 @@ public final class ItemTooltip {
         // setLayoutX therefore multiplied the pointer's position by the zoom a second time, and
         // the tooltip drifted further from the cursor the further right the cursor was: at 200%
         // and 740 px across the window it appeared 768 px away, and past the right of the room
-        // it left the screen entirely. Reported by the user 2026-07-30 from the M3-fixes jar.
+        // it left the screen entirely. Reported by the user 2026-07-30.
         //
         // sceneToLocal undoes every transform between the scene and the layer, so this is right
         // for any transform anyone adds above it later, not just this one scale.
@@ -162,7 +162,7 @@ public final class ItemTooltip {
     /**
      * Shows the tooltip above a box that has just been tapped, and takes it away again by itself.
      *
-     * <p>Three things differ from the desktop version, and each of them is because a finger is not
+     * <p>Four things differ from the desktop version, and each of them is because a finger is not
      * a pointer:
      *
      * <ul>
@@ -193,13 +193,13 @@ public final class ItemTooltip {
 
         // Everything from here on is in the LAYER's coordinates, not the scene's. The whole
         // interface is drawn through one Scale transform, so a scene position used as a layout
-        // position gets multiplied by the zoom a second time: the bug M3.2 fixed for the hover
+        // position gets multiplied by the zoom a second time: the bug already fixed for the hover
         // tooltip, and it would come straight back here.
         javafx.geometry.Point2D anchor = layer.sceneToLocal(anchorSceneX, anchorSceneY);
 
         // The words have to be laid out before their own size can be read, or every number below
-        // uses whatever the previous tooltip measured. Same trap as M3.4's glyphs: every number
-        // agrees with itself and the picture is still wrong.
+        // uses whatever the previous tooltip measured. Same trap as the top bar's symbol glyphs:
+        // every number agrees with itself and the picture is still wrong.
         layer.applyCss();
         layer.layout();
         double wordsWidth = firstCopy.prefWidth(-1);

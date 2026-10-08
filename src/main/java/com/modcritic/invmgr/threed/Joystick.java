@@ -55,10 +55,10 @@ public final class Joystick {
      */
     public static final double DEADZONE = 0.12;
 
-    /** The circle you put your thumb on, in pixels. {@code SPEC-3D-VIEW.md} §5. */
+    /** The circle you put your thumb on, in pixels. Matches the original's joystick. */
     public static final double BASE_DIAMETER_PX = 108;
 
-    /** The circle that follows your thumb, in pixels. {@code SPEC-3D-VIEW.md} §5. */
+    /** The circle that follows your thumb, in pixels. Matches the original's joystick. */
     public static final double KNOB_DIAMETER_PX = 50;
 
     private boolean active;

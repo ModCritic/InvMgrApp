@@ -60,6 +60,19 @@ class DialogsTest extends ApplicationTest {
         return app.state().items.get(app.state().items.size() - 1);
     }
 
+    @Test
+    @DisplayName("an emoji that would not fit in Name is refused whole, not cut in half")
+    void nameRefusesHalfAnEmoji() {
+        // 199 letters and an emoji is 201 units. Cutting at 200 kept the emoji's first half, and
+        // a name holding half a character made every desktop Save fail.
+        clickOn(app.topBar().addButtonNode());
+        WaitForAsyncUtils.waitForFxEvents();
+        NameField name = app.addDialog().nameField();
+        String letters = "a".repeat(Item.MAX_NAME_LENGTH - 1);
+        interact(() -> name.setText(letters + "\uD83D\uDE00"));
+        assertEquals(letters, name.getText());
+    }
+
     // --------------------------------------------------------------- Add Item
 
     @Test
@@ -123,7 +136,9 @@ class DialogsTest extends ApplicationTest {
     @Test
     @DisplayName("in metric the labels say cm and what you type is converted to inches")
     void metricEntryIsConvertedOnTheWayIn() {
-        clickOn(app.topBar().unitsButton());
+        clickOn(app.topBar().menuButton());
+        clickOn(app.menuWindow().metricEntry());
+        clickOn(app.menuWindow().closeButton());
         WaitForAsyncUtils.waitForFxEvents();
 
         clickOn(app.topBar().addButtonNode());
@@ -428,10 +443,9 @@ class DialogsTest extends ApplicationTest {
         // was actually laid out, which is exactly the thing that was false.
         NameField field = app.addDialog().nameField();
 
-        // Compared as LINE COUNTS rather than raw pixels: the viewport sits a couple of pixels
-        // under the text's nominal line height even when everything is correct, so a pixel
-        // comparison fails on a perfectly good field. What actually breaks is the box being
-        // sized for fewer lines than the text wrapped onto.
+        // Compared as LINE COUNTS. The pixels of a single line have a case of their own,
+        // theBottomOfEveryLetterShows; what breaks here is the box being sized for fewer lines
+        // than the text wrapped onto.
         javafx.scene.text.Text oneLine = new javafx.scene.text.Text("X");
         oneLine.setFont(field.getFont());
         double lineHeight = oneLine.getLayoutBounds().getHeight();
@@ -449,6 +463,107 @@ class DialogsTest extends ApplicationTest {
         assertTrue(linesTheBoxAllows >= linesOfText,
                 "the box must be tall enough to show every line of the name: it allows "
                         + linesTheBoxAllows + " line(s) but the name wrapped onto " + linesOfText);
+    }
+
+    @Test
+    @DisplayName("the Name box shows the bottom of every letter, and stays the reference's height")
+    void theBottomOfEveryLetterShows() {
+        clickOn(app.topBar().addButtonNode());
+        WaitForAsyncUtils.waitForFxEvents();
+        clickOn(app.addDialog().nameField()).write("Books, magazines");
+        WaitForAsyncUtils.waitForFxEvents();
+        NameField field = app.addDialog().nameField();
+
+        // The text is clipped to the inner viewport, so the viewport has to be at least one line
+        // of this font tall. It was 14 px for a 17.7 px line, which cut off the bottoms of g, y
+        // and the comma: the name read "Books. maqazines" on the desktop and the phone alike.
+        Node viewport = field.lookup(".viewport");
+        assertNotNull(viewport, "the field should have its skin by now");
+        Text line = new Text("Bg,");
+        line.setFont(field.getFont());
+        double lineHeight = line.getLayoutBounds().getHeight();
+        double viewportHeight = viewport.getLayoutBounds().getHeight();
+        assertTrue(viewportHeight >= lineHeight,
+                "the text gets " + viewportHeight + " px but one line is " + lineHeight + " px tall");
+
+        // Making the box taller would also pass the case above, so its height is pinned too: 26 px,
+        // measured off desktop-03-add-item-dialog.png, border included.
+        assertEquals(26.0, field.getHeight(), 0.01, "the box must stay the reference's height");
+    }
+
+    @Test
+    @DisplayName("the phone's Next on the dialog's Height wraps to its Width, not to the room's W")
+    void nextStaysInsideTheDialog() {
+        clickOn(app.topBar().addButtonNode());
+        WaitForAsyncUtils.waitForFxEvents();
+        clickOn(app.addDialog().heightField().textField());
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // The room's W, L and H are on screen behind the dialog, as they are on a phone with the
+        // top bar open, and they come first in the window. Searching the whole window put the
+        // focus on the room's W, and the phone's keyboard then typed into the room's width.
+        assertTrue(app.topBar().widthField().textField().isVisible(),
+                "the room's boxes must be showing, or this case tests nothing");
+        interact(() -> assertTrue(AndroidBridge.stepToTheNextNumberField(scene),
+                "Height is a number box, so Next should have moved"));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(app.addDialog().widthField().textField().isFocused(),
+                "Next on the last box must wrap to the dialog's own Width; focus is on "
+                        + scene.getFocusOwner());
+    }
+
+    @Test
+    @DisplayName("a tooltip goes away when a dialog opens, rather than staying on top of it")
+    void aTooltipGoesWhenADialogOpens() {
+        // A phone's tooltip for a tapped box stays up for seconds, and a long name scrolls, so it
+        // was still sliding across the Menu after the Menu opened. Shown here the way a tap shows
+        // it, and the dialog opened directly, so no pointer movement can be what hid it.
+        interact(() -> app.tooltip().showForTouch(
+                "Movies, discs, music  13in W x 12in L x 10in H  base:17in", 600, 500));
+        assertTrue(app.tooltip().isShowing(), "the tooltip should be up before the dialog opens");
+
+        interact(() -> app.addDialog().show());
+
+        assertFalse(app.tooltip().isShowing(), "opening a dialog must take the tooltip down");
+    }
+
+    @Test
+    @DisplayName("Escape still closes Add Item after Escape closed the Save Preset over it")
+    void escapeClosesAddAfterSavePreset() {
+        clickOn(app.topBar().addButtonNode());
+        WaitForAsyncUtils.waitForFxEvents();
+        clickOn(app.addDialog().presetSlots().slotButton(0));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(app.presetDialog().isShowing(), "an empty slot opens Save Preset");
+
+        type(KeyCode.ESCAPE);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertFalse(app.presetDialog().isShowing(), "the first Escape closes Save Preset");
+        assertTrue(app.addDialog().isShowing(), "and leaves Add Item open underneath");
+
+        // Closing Save Preset used to leave the focus nowhere, so this Escape reached no dialog.
+        type(KeyCode.ESCAPE);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertFalse(app.addDialog().isShowing(), "the second Escape closes Add Item; focus is on "
+                + scene.getFocusOwner());
+    }
+
+    @Test
+    @DisplayName("closing a dialog leaves the focus where it was, not on the room's W box")
+    void closingADialogLeavesTheRoomBoxesAlone() {
+        clickOn(app.topBar().addButtonNode());
+        WaitForAsyncUtils.waitForFxEvents();
+        type(KeyCode.ESCAPE);
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // Taken away with the focus still in it, the dialog left JavaFX to pick the next control,
+        // which was the room's W box, and that box selected its number as the focus arrived: the
+        // room's width sat highlighted after every dialog closed.
+        assertFalse(app.addDialog().isShowing(), "Escape closes Add Item");
+        assertFalse(scene.getFocusOwner() instanceof javafx.scene.control.TextInputControl,
+                "no text box should have the focus after a dialog closes; it is on "
+                        + scene.getFocusOwner());
     }
 
     @Test

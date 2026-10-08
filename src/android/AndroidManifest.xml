@@ -7,7 +7,7 @@
   Substrate's generated default requests android.permission.INTERNET
   unconditionally (AndroidTargetConfiguration, around line 527), whether or not the
   app has any use for it. InvMgr's standing rule is "Network access at runtime:
-  None. Ever." (CLAUDE.md §6), and a permission the app never uses is still a
+  None. Ever.", and a permission the app never uses is still a
   permission the phone shows the user and the Play Store lists.
 
   Substrate copies this file verbatim when it exists, so what is written here is
@@ -21,20 +21,32 @@
   Two things that look like they could be dropped and cannot:
 
   - android:name points at our own activity, com.modcritic.invmgr.android.InvMgrActivity.
-    Until M6.5b this had to read com.gluonhq.helloandroid.MainActivity, because that was
+    It used to have to read com.gluonhq.helloandroid.MainActivity, because that was
     the only activity able to start a JavaFX application and it was welded in by a
-    FindClass in Gluon's launcher.c. Our host layer replaced both, which is the whole
-    point of M6.5b. See docs/PLAN-M6.5B-HOST-LAYER.md.
+    FindClass in Gluon's launcher.c. Then this project replaced Gluon's Android host code
+    with its own: the C in native/ that starts the Java VM on the phone and hands JavaFX
+    the screen and touches, plus this activity. That replacement is why the name can
+    point here.
   - configChanges tells Android that we handle rotation, folding and a keyboard
     appearing ourselves. Without it Android destroys and recreates the activity on
     every rotation, which restarts the app and loses the room on screen.
 
-  Check after every build with `aapt dump permissions`. See MANUAL.md.
+  android:allowBackup="false" (the user's decision 2026-09-26): Android's Auto
+  Backup never copies this app's files to the user's Google account. By default it would
+  copy only the files, databases and shared-preferences folders, and the rooms live in
+  .local/share/InvMgr outside all of them, so nothing was backed up before this line
+  either (Android's "Auto Backup for apps" page, read 2026-09-26). Written out so the
+  privacy policy's "your rooms leave this device only when you move a file yourself"
+  stays true if the files ever move. Android's page adds that from API 31 it does not
+  stop a device-to-device transfer, which follows the same default folders.
+
+  Check after every build with `aapt dump permissions`.
 -->
 <manifest xmlns:android='http://schemas.android.com/apk/res/android'
-          android:versionCode='1' android:versionName='1.0'>
+          android:versionCode='1' android:versionName='1.0.0'>
     <supports-screens android:xlargeScreens="true"/>
-    <application android:label='InvMgr' android:icon="@mipmap/ic_launcher">
+    <application android:label='InvMgr' android:icon="@mipmap/ic_launcher"
+                 android:allowBackup="false">
         <activity android:name='com.modcritic.invmgr.android.InvMgrActivity'
                   android:exported="true"
                   android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">

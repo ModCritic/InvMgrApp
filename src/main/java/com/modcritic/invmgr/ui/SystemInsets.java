@@ -15,15 +15,15 @@ package com.modcritic.invmgr.ui;
  *
  * <h2>⚠ The top number is a standard, not a measurement</h2>
  *
- * <p>This is the honest state of it as of M6.1b, and it is worth stating plainly rather than
- * leaving someone to discover it.
+ * <p>This is the honest state of it as of 2026-08-07, and it is worth stating plainly rather
+ * than leaving someone to discover it.
  *
  * <p>The layer that puts JavaFX on Android hands over exactly one number about the screen (how
  * many real pixels make up one design pixel) and nothing at all about the system bars. Its own
  * source says, in a comment, that the way to get the bars is a library this project may not use:
  * that library is GPL-licensed without the exemption that would let a permissively licensed app
- * link it, and linking it would force this entire program to change license. See {@code CLAUDE.md}
- * OD-3.
+ * link it, and linking it would force this entire program to change license, so this project
+ * does not link it.
  *
  * <p>So {@link #forAndroid} does the best available thing, and does two different things for the
  * two edges on purpose:

@@ -9,10 +9,10 @@ import org.junit.jupiter.api.Test;
 /**
  * The lean of the drag ghost, tested as arithmetic rather than through a window.
  *
- * <p>Every number asserted here was measured off the real class before it was written down: see
- * the milestone note in {@code CLAUDE.md}. They are not round numbers and they are not supposed to
- * be; they are the observed behavior with a little slack, so that a change to the constants in
- * {@link TiltPendulum} shows up here as a failure rather than as a feel nobody can describe.
+ * <p>Every number asserted here was measured off the real class before it was written down. They
+ * are not round numbers and they are not supposed to be; they are the observed behavior with a
+ * little slack, so that a change to the constants in {@link TiltPendulum} shows up here as a
+ * failure rather than as a feel nobody can describe.
  *
  * <p><b>The two tests that matter most are the two the old code would fail:</b>
  * {@link #aSlowCrawlDoesNotJitter}, which is the bug the user reported on 2026-08-01, and
@@ -96,7 +96,7 @@ class TiltPendulumTest {
         // The card trails its own movement, the way anything hanging from your hand does: shove it
         // right and the bottom swings left. This is BACKWARDS from the original app, which tilts
         // clockwise for a rightward move (HTML line 2046), so it is a deliberate divergence, made
-        // on the user's decision on 2026-08-01 after seeing both. CLAUDE.md §5.5, D-8. Pinned here
+        // on the user's decision on 2026-08-01 after seeing both. Pinned here
         // so that anyone restoring faithfulness to the original trips this rather than shipping it.
         double rightward = peakWithin(run(rampTo(1200, 0.125, 20), FRAME), 0, 20);
         double leftward = peakWithin(run(rampTo(-1200, 0.125, 20), FRAME), 0, 20);

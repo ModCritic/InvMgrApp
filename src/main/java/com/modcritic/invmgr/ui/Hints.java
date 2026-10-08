@@ -38,7 +38,7 @@ public final class Hints {
      *
      * <p><b>Why the sizes are in {@code em} and not in pixels.</b> A hint has to grow with the
      * Ctrl+scroll interface zoom, and unlike everything else in the app it cannot simply be
-     * carried along by the zoom's transform (see {@link #tooltip}). So the zoom has to be applied
+     * carried along by the zoom's transform (see {@link #attach}). So the zoom has to be applied
      * to the hint by hand, and there is exactly one property that can carry it: the font.
      * Measured, on a real popup: <b>a tooltip's stylesheet is processed once, on its first
      * showing, and never again.</b> Later {@code setStyle} calls are stored and ignored, and an
@@ -83,7 +83,7 @@ public final class Hints {
      * <em>separate popup window</em> with its own scene, which is precisely why it can hang over
      * the edge of the app. Being its own window, it sits outside the transform, so it stayed at
      * its 100% size at every zoom level while the button it belonged to grew. Reported by the
-     * user on 2026-08-01, against the M3.2.4 jar.
+     * user on 2026-08-01.
      *
      * <p>The zoom is therefore read off the button the hint belongs to:
      * {@code getLocalToSceneTransform()} is the accumulated effect of every transform between that
@@ -96,8 +96,8 @@ public final class Hints {
      * <p><b>Why the button is passed in rather than asked for.</b> This method used to be
      * {@code tooltip(String)} and got the button from {@code Tooltip.getOwnerNode()} at showing
      * time. <b>That is null in the running app and always will be</b>, so the zoom read as 1 and
-     * the hint never grew: the same bug, reported again on 2026-08-01 against the M3.2.5 jar that
-     * was supposed to have fixed it. A popup records an owner <em>node</em> only when it is shown
+     * the hint never grew: the same bug, reported again on 2026-08-01 after a build that was
+     * supposed to have fixed it. A popup records an owner <em>node</em> only when it is shown
      * with {@code show(Node, x, y)}; shown with {@code show(Window, x, y)} it records an owner
      * window and leaves the node null. Disassembling JavaFX 21's own {@code TooltipBehavior} (the
      * thing that counts your half-second rest and puts the hint up) shows all four of its show
@@ -179,8 +179,8 @@ public final class Hints {
      * The width is computed inside {@code DialogPane} and is not in {@code modena.css}, and it does
      * not come from the text: the content label already wraps. So on the user's phone, whose whole
      * scene is <b>360</b> logical pixels across, every confirmation hangs about thirty pixels off
-     * each edge. Reported by them 2026-08-07 against {@code InvMgr-M6.2a.apk}, where the delete
-     * itself worked and only the box around the question was wrong.
+     * each edge. Reported by them 2026-08-07, where the delete itself worked and only the box
+     * around the question was wrong.
      *
      * <p><b>Capped against the screen, not against the window.</b> A dialog wider than its owner
      * window is ordinary on a desktop and nobody has ever complained about it; a dialog wider than
@@ -201,7 +201,7 @@ public final class Hints {
      * JavaFX with the owner window 360 px wide: pane preferred 419, real width 344, dialog placed
      * <b>37.5 px left of center</b>, which is exactly (419 − 344) / 2. On the phone that is
      * x = −29.5, hanging off the left edge with a gap on the right. <b>Reported by the user
-     * 2026-08-08 against {@code InvMgr-M6.3.apk}</b>, where the M6.3 cap had made the box fit and
+     * 2026-08-08</b>, when the first version of the cap, a maximum width, had made the box fit and
      * pushed it sideways in the same move.
      *
      * <p>A preferred width is read by both, so both agree. It is harmless on a desktop because of

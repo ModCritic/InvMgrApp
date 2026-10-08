@@ -207,7 +207,6 @@ class CollisionTest {
     private static AppState roomOf(double widthFeet, double lengthFeet) {
         AppState state = new AppState();
         state.room = new Room(widthFeet, lengthFeet, 8);
-        state.items.clear();
         return state;
     }
 

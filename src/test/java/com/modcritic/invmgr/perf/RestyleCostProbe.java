@@ -5,7 +5,6 @@ import com.modcritic.invmgr.model.Item;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.testfx.framework.junit5.ApplicationTest;
@@ -23,7 +22,7 @@ import org.testfx.util.WaitForAsyncUtils;
  * that an optimization earns its place with a number.
  *
  * <p>So this does the one thing, many times, with nothing else in the frame: change the selection,
- * force the CSS pass and a draw <b>of the list panel alone</b>, and time the three together.
+ * force the CSS pass <b>of the list panel alone</b>, and time the two together.
  *
  * <p>⚠ <b>The list panel alone, and the first version of this got that wrong.</b> It drew the whole
  * window, which on Xvfb costs 35 to 50 ms of canvas and grid on its own, and the thing being
@@ -48,7 +47,6 @@ class RestyleCostProbe extends ApplicationTest {
     private static final int CHANGES = 400;
 
     private App app;
-    private Scene scene;
 
     @Override
     public void start(Stage stage) {
@@ -59,7 +57,6 @@ class RestyleCostProbe extends ApplicationTest {
         stage.setHeight(HEIGHT);
         stage.setX(0);
         stage.setY(0);
-        scene = stage.getScene();
     }
 
     @Test
@@ -94,8 +91,7 @@ class RestyleCostProbe extends ApplicationTest {
                 long at = System.nanoTime();
                 app.listPanel().setSelectedId(id);
                 // applyCss is the pass the change actually causes: the setter only marks the rows,
-                // and without this the number would be the loop rather than the work. The snapshot
-                // is of the panel, not the scene, so the room's own drawing stays out of it.
+                // and without this the number would be the loop rather than the work.
                 // applyCss and NOTHING else. That is the pass an inline style change causes, and
                 // it is the only thing the skip can affect. ⚠ Drawing the panel was still a 20 to
                 // 40 ms floor on Xvfb, which put the arms 20% apart in both directions at
@@ -106,7 +102,7 @@ class RestyleCostProbe extends ApplicationTest {
             }));
         }
         // The first few pay for whatever the list was doing before; drop them rather than let
-        // them decide a median taken over sixty.
+        // them decide the median.
         List<Double> settled = new ArrayList<>(times.subList(40, times.size()));
         settled.sort(null);
         double sum = 0;

@@ -40,10 +40,10 @@ class SafeAreaTest extends ApplicationTest {
     @Override
     public void start(Stage stage) {
         topBar = new TopBar(new AppState());
-        // M6.4 moved the reservation one level out, onto the frame the bar sits in, because the bar
-        // itself now folds away on a phone and the space behind the clock must not fold with it.
-        // Re-derived rather than ported: these ask the same questions of the piece that answers
-        // them now, and one new question that only became askable once the bar could fold.
+        // The reservation sits one level out, on the frame the bar sits in, because the bar
+        // itself folds away on a phone and the space behind the clock must not fold with it.
+        // These tests ask their questions of the frame, and one of them only became askable once
+        // the bar could fold.
         topWrap = new TopWrap(topBar);
         statusBar = new StatusBar();
         VBox column = new VBox(topWrap, statusBar);
@@ -140,7 +140,7 @@ class SafeAreaTest extends ApplicationTest {
     @Test
     @DisplayName("folding the bar away does not take the strip behind the clock with it")
     void theStripSurvivesTheBarFolding() {
-        // The assertion the M6.4 move exists for, and the one nothing before it could have made.
+        // The assertion the move onto the frame exists for.
         // The reservation used to be the top bar's own top padding. The moment the bar could fold
         // (which is what the touch island's ▼ does), that padding went with it, and the island
         // would have slid up underneath the phone's clock. Reserving on the frame instead is only

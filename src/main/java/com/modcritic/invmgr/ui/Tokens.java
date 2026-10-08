@@ -5,8 +5,8 @@ import javafx.scene.paint.Color;
 /**
  * Every color, size and duration the interface uses, in one place.
  *
- * <p>These are not preferences; they are transcribed from {@code SPEC-DESIGN-SYSTEM.md},
- * which was in turn read out of the original app's stylesheet. The Java app is meant to look
+ * <p>These are not preferences; they are read out of the stylesheet of the original app (the
+ * single-file HTML app, InvMgr 1.3.0, that this one rewrites). The Java app is meant to look
  * like the original, not merely similar to it, and a value invented here is a visual bug.
  *
  * <p>Named after what each value is <em>for</em> rather than what color it is, so that
@@ -79,9 +79,9 @@ public final class Tokens {
     /**
      * The "Layer" label above the slider.
      *
-     * <p>Note: {@code SPEC-DESIGN-SYSTEM.md}'s token table lists section headers as
-     * {@code #aaa}, but the original's stylesheet sets this particular label to {@code #888}
-     * at 10 px. The stylesheet wins, per CLAUDE.md §7.
+     * <p>Note: section headers are {@code #aaa} elsewhere in the design values, but the
+     * original's stylesheet sets this particular label to {@code #888} at 10 px. The
+     * stylesheet wins.
      */
     public static final Color DRAWER_LABEL_TEXT = Color.web("#888");
 
@@ -166,8 +166,8 @@ public final class Tokens {
 
     /**
      * The 3D button's color: <b>the plain default</b>, deliberately the same value as
-     * {@link #BUTTON_BG} rather than an identity color of its own; see CLAUDE.md §5.5
-     * <b>D-9</b>. Decided by the user 2026-08-05.
+     * {@link #BUTTON_BG} rather than an identity color of its own, a deliberate departure from
+     * the original. Decided by the user 2026-08-05.
      *
      * <p>The original's stylesheet (line 426) gives this button {@code #2e3a4e}, a cool blue-gray
      * <em>one digit</em> from the Add button's {@code #2e3e4e}. The two sit side by side in the
@@ -188,7 +188,7 @@ public final class Tokens {
      */
     public static final Color BUTTON_3D_BG = Color.web("#383838");
 
-    /** Fit, Plan and Units share a quieter base than the plain buttons. */
+    /** Fit and Plan share a quieter base than the plain buttons. */
     public static final Color BUTTON_TOGGLE_BG = Color.web("#303030");
 
     /**
@@ -219,10 +219,16 @@ public final class Tokens {
     public static final Color TOGGLE_PLAN_BORDER = Color.web("#b06dc8");
     public static final Color TOGGLE_PLAN_TEXT = Color.web("#d9a0ee");
 
-    /** Units, when metric: green. */
-    public static final Color TOGGLE_UNITS_BG = Color.web("#2e5a30");
-    public static final Color TOGGLE_UNITS_BORDER = Color.web("#6dc87a");
-    public static final Color TOGGLE_UNITS_TEXT = Color.web("#a0eeae");
+    /**
+     * Metric, when on: green.
+     *
+     * <p>The original's {@code #units-btn.active} colors. The Units button left the top bar when
+     * the Menu was added (2026-09-24) and Metric became an entry in the Menu window, which kept
+     * the green so that "metric is on" still looks the way it always has.
+     */
+    public static final Color TOGGLE_METRIC_BG = Color.web("#2e5a30");
+    public static final Color TOGGLE_METRIC_BORDER = Color.web("#6dc87a");
+    public static final Color TOGGLE_METRIC_TEXT = Color.web("#a0eeae");
 
     /** Layer Collision, when on: amber. */
     public static final Color TOGGLE_LAYER_BG = Color.web("#4a3620");
@@ -313,7 +319,7 @@ public final class Tokens {
      * CSS lines 210-215 and 359-363). The red gets stronger, the ring does not grow. Confirmed
      * with the user 2026-08-07 before any of it was written.
      *
-     * <p>Touch only; see {@code CLAUDE.md} §5.5 <b>D-1</b>. A mouse deletes by right-clicking.
+     * <p>Touch only. A mouse deletes by right-clicking, with no hold.
      */
     public static final Color HOLD_RING = Color.web("#e55");
     public static final double HOLD_RING_WIDTH = 3;
@@ -389,8 +395,9 @@ public final class Tokens {
      * <p>This used to be the string {@code "monospace"}, copied from the original's stylesheet.
      * That is not a font but a generic <em>alias</em>, which each system answers with a different
      * typeface, so the app looked different on every platform. It now names a real face that
-     * ships inside the jar; see {@link Fonts}, and {@code CLAUDE.md} §5.5 <b>D-6</b> for why
-     * departing from the original here was a deliberate decision.
+     * ships inside the jar; see {@link Fonts}. Departing from the original here was a deliberate
+     * decision (the user's, 2026-07-31, after a Windows build showed the interface in a
+     * different typeface).
      *
      * <p><b>Do not replace this with the literal {@code "Noto Sans Mono"}.</b> It would compile
      * and it would run, but a {@code static final String} set to a literal is a compile-time
@@ -505,7 +512,6 @@ public final class Tokens {
     public static final double STATUS_PADDING_V = 3;
     public static final double STATUS_PADDING_H = 10;
 
-    /** How long an action's message shows before the instructions return. */
     /**
      * How long after a box drag the room keeps ignoring scroll gestures.
      *
@@ -518,6 +524,7 @@ public final class Tokens {
      */
     public static final double BOX_DRAG_INERTIA_GUARD_MS = 1600;
 
+    /** How long an action's message shows before the instructions return. */
     public static final double STATUS_REVERT_MS = 3000;
 
     // ------------------------------------- the touch island and the folding bar
@@ -552,7 +559,7 @@ public final class Tokens {
     public static final double ISLAND_ADD_FONT_PERCENT = 5.6;
     public static final double ISLAND_ADD_FONT_MAX = 20;
 
-    /** Fit, Plan and Units are the smallest, so the six fit a narrow phone. */
+    /** Fit and Plan are the smallest, so the six fit a narrow phone. */
     public static final double ISLAND_TOGGLE_FONT_MIN = 10;
     public static final double ISLAND_TOGGLE_FONT_PERCENT = 3.6;
     public static final double ISLAND_TOGGLE_FONT_MAX = 13;
@@ -577,7 +584,7 @@ public final class Tokens {
      *
      * <p>A button's height is its line box plus its padding plus its border, and a line box is a
      * property of the <em>font</em>. Noto Sans Mono, which this app bundles because the original
-     * only ever said {@code monospace} (§5.5 D-6), declares generous vertical metrics: JavaFX lays
+     * only ever said {@code monospace}, declares generous vertical metrics: JavaFX lays
      * one line out at about <b>1.62 em</b> where the browser the reference screenshots were taken
      * in used about <b>1.18</b>. That is four to seven pixels on every touch button, which is what
      * the user saw and reported as "elongated upward".
@@ -598,9 +605,9 @@ public final class Tokens {
      *
      * <p>They get their own figure because in the original they got their own <em>font</em>. Neither
      * character is in a typical monospace face, so the browser silently borrowed both from a
-     * fallback with taller metrics, the same gap §5.5 D-6 records, seen from the other side. Two
-     * buttons agree: the Add button (40.7 tall at 19.04 px type) gives 1.433 and the menu arrow
-     * (33.3 at 15.30) gives 1.446.
+     * fallback with taller metrics, the same font-metrics gap as above, seen from the other
+     * side. Two buttons agree: the Add button (40.7 tall at 19.04 px type) gives 1.433 and the
+     * menu arrow (33.3 at 15.30) gives 1.446.
      */
     public static final double TOUCH_GLYPH_LINE_EM = 1.44;
 
@@ -679,13 +686,6 @@ public final class Tokens {
     public static final double ICON_3D_SIZE_TOUCH = 1.3 * FONT_BUTTON_TOUCH;
 
     /**
-     * How long the bar takes to fold away, and how long its contents take to fade.
-     *
-     * <p>Two numbers because the original uses two: {@code transition: max-height 0.25s ease,
-     * padding 0.25s ease, opacity 0.2s ease}. The fade finishing first is what stops the last
-     * frames of the fold showing a squashed row of half-height buttons.
-     */
-    /**
      * The {@code max-height} the original folds against: {@code #top-bar { max-height: 200px }}.
      *
      * <p>Not a height the bar ever has. It is a ceiling chosen to be comfortably above whatever the
@@ -695,6 +695,13 @@ public final class Tokens {
      */
     public static final double TOP_BAR_MAX_HEIGHT = 200;
 
+    /**
+     * How long the bar takes to fold away, and how long its contents take to fade.
+     *
+     * <p>Two numbers because the original uses two: {@code transition: max-height 0.25s ease,
+     * padding 0.25s ease, opacity 0.2s ease}. The fade finishing first is what stops the last
+     * frames of the fold showing a squashed row of half-height buttons.
+     */
     public static final double TOP_BAR_COLLAPSE_MS = 250;
     public static final double TOP_BAR_COLLAPSE_FADE_MS = 200;
 
@@ -780,6 +787,134 @@ public final class Tokens {
     public static final double PRESET_SIZE_TOUCH = 34;
     public static final double FONT_PRESET_TOUCH = 12;
     public static final double FONT_PRESET_ADD_TOUCH = 18;
+
+    // ------------------------------------------------------------ the Menu
+    //
+    // UI the original never had, so nothing below comes from its stylesheet or its screenshots.
+    // The user approved every number here as a mockup on 2026-09-24, built from the colors and
+    // sizes above.
+
+    /**
+     * The Menu button's box on a desktop: a square as tall as the bar's other buttons.
+     *
+     * <p>{@link #ADD_BUTTON_HEIGHT} rather than a new number, so that the button can never be the
+     * one that makes the bar taller.
+     */
+    public static final double MENU_BUTTON_SIDE = ADD_BUTTON_HEIGHT;
+
+    /** The Menu icon on a desktop: the same 1.3 em the 3D cube is drawn at, beside it in the bar. */
+    public static final double ICON_MENU_SIZE = 1.3 * FONT_CONTROL;
+
+    /** The Menu icon on the island: 1.3 em of the island's own type, the 3D cube's proportion. */
+    public static final double ICON_MENU_EM_TOUCH = 1.3;
+
+    /**
+     * The Menu window's size on a desktop, both ways: the size it comes out on the test phone (the
+     * phone this project's device tests run on).
+     *
+     * <p>One box everywhere means Settings and About open exactly where the Menu was, a rule set
+     * when the Menu was added so that one window never shows through another under a translucent
+     * theme later.
+     */
+    public static final double MENU_WINDOW_SIDE = 334;
+
+    /** How close the Menu window may come to the left and right edges of a phone's screen. */
+    public static final double MENU_WINDOW_SIDE_MARGIN = 8;
+
+    /** The Menu window's entries: one row each, and the gap between two. */
+    public static final double MENU_ENTRY_HEIGHT = 30;
+    public static final double MENU_ENTRY_HEIGHT_TOUCH = 40;
+    public static final double MENU_ENTRY_GAP = 8;
+
+    /** Padding either side of an entry's words. */
+    public static final double MENU_ENTRY_PADDING_H = 12;
+
+    /** The small words at the right-hand end of an entry, like the gray "coming soon". */
+    public static final double FONT_MENU_NOTE = 11;
+
+    /**
+     * The window's own type on a phone: the touch sizes the original wrote for its dialogs.
+     *
+     * <p>Unlike the dialogs, which keep the desktop's 13 px on a phone because those rules are dead
+     * in the original (see {@link TouchType}), the Menu has no original to be faithful to, and the
+     * user approved it at these sizes. So it uses the three numbers the original's author meant.
+     */
+    public static final double FONT_MENU_TOUCH = FONT_CONTROL_TOUCH;
+    public static final double FONT_MENU_TITLE_TOUCH = FONT_DIALOG_TITLE_TOUCH;
+    public static final double MENU_PADDING_TOUCH = DIALOG_PADDING_TOUCH;
+
+    /** The title row's close and back buttons, as a share of an entry's height. */
+    public static final double MENU_TITLE_BUTTON_SHARE = 0.8;
+
+    /**
+     * The windows that open from the Menu: their width, the type their explanations are
+     * set in, and their buttons' height on a phone.
+     *
+     * <p>From the mockup the user approved. The desktop's button height is the dialogs' own
+     * {@link #DIALOG_BUTTON_HEIGHT}; on a phone these buttons are four pixels short of an entry, a
+     * size for a thumb, where the original's dialogs keep a desktop button there (see
+     * {@link TouchType}).
+     */
+    public static final double MENU_DIALOG_WIDTH = 300;
+    public static final double FONT_MENU_PROSE = 12;
+    public static final double FONT_MENU_PROSE_TOUCH = 14;
+    public static final double MENU_DIALOG_BUTTON_HEIGHT_TOUCH = 36;
+
+    /**
+     * The sentences on the About, Privacy policy and Credits pages: the dialogs' own 13 px
+     * on a phone, one smaller than the Reset Room window's 14.
+     *
+     * <p>Measured into place when the About pages were added (2026-09-25). At 14 the privacy
+     * policy came to 276 px of text in the 231 a 360 x 740 phone leaves it, and a phone draws no
+     * scrollbar until you scroll, so its last paragraph, the developer and the contact, sat
+     * below the fold with nothing to say it was there. At 13 it was 214 and fit. The paragraph
+     * about feedback, added with the Feedback entry on 2026-09-26, made it longer than the page
+     * again, and it now scrolls, with {@link ScrollHint}'s bar to say so. The three pages share
+     * the size so they look like one set.
+     */
+    public static final double FONT_MENU_PAGE_PROSE = 12;
+    public static final double FONT_MENU_PAGE_PROSE_TOUCH = 13;
+
+    /** The gap between two paragraphs on the Privacy policy and Credits pages. */
+    public static final double MENU_PROSE_GAP = 10;
+
+    /**
+     * The About page's own, tighter gap, between the version, the description and the entries.
+     *
+     * <p>Measured, not chosen. With the description at 14 px, a 10 px gap made the page 246 px of
+     * content in the 231 a 360 x 740 phone leaves it, and it scrolled. With the About pages' prose
+     * at 13 ({@link #FONT_MENU_PAGE_PROSE_TOUCH}) and this gap at 6 it fits with room to spare, so
+     * all three entries show at once. {@code TouchLayoutTest.theAboutPagesOnAPhone} holds it there
+     * and prints the numbers.
+     */
+    public static final double MENU_ABOUT_GAP = 6;
+
+    /**
+     * The scrollbar a phone gets from {@link ScrollHint}: the desktop scrollbar thumb's
+     * {@code #888} from canvas.css, 4 px wide, never shorter than 24 px. Its ends are fully
+     * rounded, the scrollbar thumb being one of the design system's few exceptions to square
+     * corners.
+     *
+     * <p>It sits outside the page, in the middle of the Menu window's 24 px right-hand padding,
+     * so it can never cover what it scrolls. The first version sat 2 px inside the page's edge,
+     * and on the phone it hid the last letter of the Privacy policy's widest lines.
+     */
+    public static final Color SCROLL_HINT = Color.web("#888");
+    public static final double SCROLL_HINT_WIDTH = 4;
+    public static final double SCROLL_HINT_GAP = (MENU_PADDING_TOUCH - SCROLL_HINT_WIDTH) / 2;
+    public static final double SCROLL_HINT_MIN_LENGTH = 24;
+
+    /**
+     * How far a finger may move before it is scrolling rather than tapping, for
+     * {@link DragCancelsTap}. The phone's own scroll gesture, which a desktop never sends, starts
+     * at 10 px ({@code ScrollGestureRecognizer.SCROLL_THRESHOLD}), so a finger that
+     * has moved the list has stopped being a tap at the same moment.
+     */
+    public static final double TAP_SLOP = 10;
+
+    /** The gray an entry that does nothing yet is drawn in, words and border both. */
+    public static final Color MENU_INERT_TEXT = TEXT_STATUS;
+    public static final Color MENU_INERT_BORDER = BORDER;
 
     // ------------------------------------------------------ the drawer tabs
 

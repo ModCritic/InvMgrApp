@@ -18,13 +18,13 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * Proves the M6.7b clock can see a delay, before any number it reports is believed.
+ * Proves the latency clock can see a delay, before any number it reports is believed.
  *
- * <p><b>Why this exists as a test and not as a note.</b> CLAUDE.md §2 says a green suite proves the
- * tests pass, not that they would catch a regression, and a measuring tool has its own version of
- * that failure: one that reports plausible numbers while measuring nothing would look exactly like
- * a fast app. So the delay is put in on purpose here and the clock has to find it. The
- * {@code LatencyBench} numbers, and every percentage in the M6.7b tables, rest on this passing.
+ * <p><b>Why this exists as a test and not as a note.</b> A green suite proves the tests pass, not
+ * that they would catch a regression, and a measuring tool has its own version of that failure:
+ * one that reports plausible numbers while measuring nothing would look exactly like a fast app.
+ * So the delay is put in on purpose here and the clock has to find it. The {@code LatencyBench}
+ * numbers, and every percentage in the latency tables, rest on this passing.
  *
  * <p>It runs in the ordinary suite because it is quick and because a clock that silently stops
  * working should break the build rather than wait to be noticed.

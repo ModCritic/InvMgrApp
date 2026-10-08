@@ -43,6 +43,54 @@ class ItemsTest {
         assertEquals("item #2", second.displayName());
     }
 
+    // ------------------------------------------------------------ Reset Room
+
+    @Test
+    void clearingEmptiesTheRoomAndStartsTheNumberingOver() {
+        AppState state = new AppState();
+        UndoHistory undo = new UndoHistory();
+        Items.add(state, undo, 12, 12, 12, "Placed", "");
+        state.planMode = true;
+        Items.add(state, undo, 12, 12, 12, "Planned", "");
+
+        Items.clearAll(state, undo);
+
+        assertTrue(state.items.isEmpty(), "every item goes, the planned one included");
+        assertTrue(undo.isEmpty(), "and the whole undo history with them");
+        assertEquals(0, state.itemCounter);
+
+        state.planMode = false;
+        Item next = Items.add(state, undo, 12, 12, 12, "", "");
+        assertEquals("item #1", next.displayName(), "the next unnamed box is numbered from one");
+    }
+
+    @Test
+    void clearingLeavesTheRoomItsSizeAndItsSwitches() {
+        // The user's spec read literally: only the items, the undo history and the numbering go.
+        AppState state = new AppState();
+        UndoHistory undo = new UndoHistory();
+        state.room.w = 20;
+        state.room.l = 30;
+        state.room.h = 9;
+        state.layerFeet = 4.5;
+        state.planMode = true;
+        state.metricMode = true;
+        state.layerCollision = true;
+        state.presets.set(0, new com.modcritic.invmgr.model.Preset("Bx", 10, 11, 12));
+        Items.add(state, undo, 12, 12, 12, "Bin", "");
+
+        Items.clearAll(state, undo);
+
+        assertEquals(20, state.room.w);
+        assertEquals(30, state.room.l);
+        assertEquals(9, state.room.h);
+        assertEquals(4.5, state.layerFeet);
+        assertTrue(state.planMode);
+        assertTrue(state.metricMode);
+        assertTrue(state.layerCollision);
+        assertEquals("Bx", state.presets.get(0).name, "and the presets");
+    }
+
     @Test
     void addingIsUndoable() {
         AppState state = new AppState();
@@ -138,6 +186,11 @@ class ItemsTest {
         assertEquals(Item.MIN_DIMENSION_IN, huge.l_in);
         assertEquals("Trimmed", huge.name, "surrounding spaces are dropped");
         assertEquals(Item.MAX_CUSTOM_ID_LENGTH, huge.customId.length());
+
+        // An emoji that would straddle the limit goes whole, rather than leaving half of itself.
+        Item straddling = Items.add(state, undo, 12, 12, 12, "box",
+                "x".repeat(Item.MAX_CUSTOM_ID_LENGTH - 1) + "\uD83D\uDE00");
+        assertEquals("x".repeat(Item.MAX_CUSTOM_ID_LENGTH - 1), straddling.customId);
     }
 
     @Test

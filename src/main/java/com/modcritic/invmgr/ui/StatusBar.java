@@ -26,20 +26,24 @@ public final class StatusBar extends HBox {
     /**
      * The same reminder for a finger, which does none of those three things.
      *
-     * <p><b>Now the whole sentence</b>, character for character as the original writes it at line
-     * 672, including the double spaces before {@code ◄} and {@code ▼}, which are its own.
+     * <p><b>Now the whole sentence</b>, character for character as the original (the single-file
+     * HTML app this one rewrites) writes it at its line 672, including the double spaces before
+     * {@code ◄} and {@code ▼}, which are its own, <b>except its last word.</b> The original ends
+     * {@code ▼ menu}; this ends {@code ▼ room options}, the user's wording, because the island (the
+     * phone layout's floating group of buttons) now has a real Menu button and {@code ▼} only folds
+     * the room's own controls away. A departure from the original made on purpose.
      *
-     * <p>The tail names the three tabs of the touch layout, and it was held back at M6.2 because
-     * they did not exist yet: <em>"the drawers become sliding overlays with tabs at M6.4, and that
-     * is when the rest of this sentence arrives."</em> M6.4 built the tabs and left the sentence
-     * alone, so a phone spent a milestone being told about two drawers it could not see named. Its
-     * own row in CLAUDE.md promised this; nothing checked that the promise had been kept.
+     * <p>The tail names the three tabs of the touch layout. It was held back at first because the
+     * tabs did not exist yet, with a note that the rest of the sentence should arrive when they
+     * did. They were built and the sentence was left alone, so a phone went a while being told
+     * about two drawers it could not see named. Nothing checked that the note had been acted on.
      *
      * <p>It is long, and it is <b>meant</b> to be: the original wraps it onto two lines and the
      * user has confirmed a two-line bar is wanted over a truncated one.
      */
     public static final String TOUCH_INSTRUCTIONS =
-            "Tap: tooltip. Double-tap: edit. Hold 1.5s: delete. Drag: move. ► layer  ◄ items  ▼ menu";
+            "Tap: tooltip. Double-tap: edit. Hold 1.5s: delete. Drag: move."
+                    + " ► layer  ◄ items  ▼ room options";
 
     /** Whichever of the two describes the way this device is actually driven. */
     public static String instructions() {
@@ -149,17 +153,18 @@ public final class StatusBar extends HBox {
      * is the point of it. The instructions are the longest thing this bar ever says, so sizing
      * to them keeps the bar one height for the whole run.
      *
-     * <p>Reported by the user 2026-08-13 against `InvMgr-M6.4a.apk`: a message like "Added Box" is
-     * one line where the instructions are two, so the bar shrank every time something happened and
-     * grew back three seconds later; the room, the layer-slider tab and the item-list tab all
-     * jumped up and down with it, with Fit re-fitting the whole room each way. Their words: the rest
-     * of the interface "should not depend on the status bar's size".
+     * <p>Reported by the user 2026-08-13 against the 2026-08-12 phone build: a message like "Added
+     * Box" is one line where the instructions are two, so the bar shrank every time something
+     * happened and grew back three seconds later; the room, the layer-slider tab and the item-list
+     * tab all jumped up and down with it, with Fit re-fitting the whole room each way. Their words:
+     * the rest of the interface "should not depend on the status bar's size".
      *
-     * <p>It is a **divergence** (§5.5): the original is a plain {@code <div>} that really does grow
-     * and shrink with its text. On a desktop nobody notices, because the desktop line is one line
-     * either way; on a phone the instructions need two and every message needs one, so the original
-     * would jump too; it simply has not been looked at on a phone. Matching the original exactly
-     * here would mean reproducing something the user has explicitly called annoying.
+     * <p>It is a **divergence** from the original: the original is a plain {@code <div>} that
+     * really does grow and shrink with its text. On a desktop nobody notices, because the desktop
+     * line is one line either way; on a phone the instructions need two and every message needs
+     * one, so the original would jump too; it simply has not been looked at on a phone. Matching
+     * the original exactly here would mean reproducing something the user has explicitly called
+     * annoying.
      */
     private double heightFor(String text, double width) {
         heightProbe.setText(text);
@@ -170,7 +175,7 @@ public final class StatusBar extends HBox {
     /**
      * Grows the bar downward to sit clear of the phone's navigation buttons.
      *
-     * <p>The mirror of {@code TopBar.reserveTop}, and it needs no color reasoning: this bar is
+     * <p>The mirror of {@code TopWrap.reserveTop}, and it needs no color reasoning: this bar is
      * already painted the window's own background, so extending it downward changes nothing about
      * how the bottom edge looks. That is why the user reported the bottom of the first Android
      * build as already integrated and only the top as wrong; the seam at the top existed because

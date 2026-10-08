@@ -76,9 +76,9 @@ class Geometry3DTest {
     @Test
     @DisplayName("planned items never become boxes")
     void plannedItemsAreSkipped() {
-        // The §6 invariant, in 3D. A planned item is a note about something not in the room yet:
-        // it is not a stacking obstacle, it gets no automatic base height, and it does not draw
-        // on the 2D canvas. Drawing one here would make the two views disagree about what is
+        // The planned-items rule, in 3D. A planned item is a note about something not in the room
+        // yet: it is not a stacking obstacle, it gets no automatic base height, and it does not
+        // draw on the 2D canvas. Drawing one here would make the two views disagree about what is
         // actually in the room.
         AppState state = new AppState();
         Item real = item(0, 0, 12, 12, 12, 0);

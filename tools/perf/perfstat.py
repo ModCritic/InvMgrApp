@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-The one place M6.7b works out what a run of numbers means.
+The one place the performance tools work out what a run of numbers means.
 
 WHY IT IS ALONE
 ===============
@@ -23,11 +23,11 @@ So nothing here leads with a mean. A sample is called an OUTLIER when it is BOTH
   * at least one 60 Hz frame (16.7 ms) above that median.
 
 Both halves are needed, and each one alone is wrong. Twice the median alone flags a 0.4 ms sample
-against a 0.2 ms median, which no hand can feel. A fixed threshold alone is the mistake M6.7a
-already made and corrected in FlightClock: a machine sitting exactly on its vsync lands half its
-frames a hair above any fixed line, so "51% over budget" described a laptop that was running
-perfectly. A threshold has to be built out of what THIS machine did, not out of a number the app
-picked.
+against a 0.2 ms median, which no hand can feel. A fixed threshold alone is the mistake
+FlightClock (in the app's 3D code) made at first and then corrected: a machine sitting exactly
+on its vsync lands half its frames a hair above any fixed line, so "51% over budget" described a
+laptop that was running perfectly. A threshold has to be built out of what THIS machine did, not
+out of a number the app picked.
 
 The plain worst sample and the 99th percentile are printed whatever the rule says, so a spike the
 rule misses is still on the page.
@@ -49,7 +49,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 # ⚠ NOT under target/. A baseline is compared against a later build, and target/ is the directory
-# `mvn clean` exists to delete; putting them there cost this milestone every run it had taken.
+# `mvn clean` exists to delete; putting them there once cost every run taken up to that point.
 PERF = os.path.join(REPO, "perf-runs")
 
 # One frame at 60 Hz. Used ONLY as "how much slower does a spike have to be before a hand notices",
@@ -91,11 +91,11 @@ def totals(blob):
     """
     The `t` column of every sample worth counting.
 
-    ⚠ ON THE PHONE A FINGER ARRIVES TWICE, as a touch event and as a synthesized mouse event
-    (CLAUDE.md §5.8 item 5). Both are genuinely delivered and both are recorded, but counting both
-    would make every phone median a blend of a finger and its shadow, and would double the sample
-    count for no extra information. So when a file has any touch samples at all, only those count.
-    A desktop file has none and is unaffected.
+    ⚠ ON THE PHONE A FINGER ARRIVES TWICE, as a touch event and as a synthesized mouse copy of it.
+    Both are genuinely delivered and both are recorded, but counting both would make every phone
+    median a blend of a finger and its shadow, and would double the sample count for no extra
+    information. So when a file has any touch samples at all, only those count. A desktop file has
+    none and is unaffected.
     """
     samples = blob["samples"]
     touches = [s for s in samples if s["type"].startswith("touch-")]
@@ -123,14 +123,11 @@ def summarize(values):
     outliers = [v for v in ordered if v >= threshold]
     return {
         "n": n,
-        "min": ordered[0],
         "median": median,
         "mean": sum(ordered) / n,
         "p90": percentile(ordered, 0.90),
         "p99": percentile(ordered, 0.99),
         "max": ordered[-1],
-        "threshold": threshold,
-        "outliers": outliers,
         "outlier_n": len(outliers),
         "outlier_pct": 100.0 * len(outliers) / n,
         "worst_outlier": outliers[-1] if outliers else 0.0,

@@ -25,7 +25,7 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * The room's coasting, wired up: B9.
+ * The room's coasting after a fling, wired up: the app's own momentum in place of the platform's.
  *
  * <p>{@code PanMomentumTest} proves the arithmetic decides correctly. This proves the view is
  * connected to it, and that the platform's own fling is thrown away before it can arrive.
@@ -34,8 +34,8 @@ import org.testfx.util.WaitForAsyncUtils;
  * phone comes from a {@code ScrollGestureRecognizer} that Glass builds only when the app's own
  * Android launcher has set {@code com.sun.javafx.gestures.scroll=true}, so no scroll gesture
  * exists in this container at all and {@code ScrollPaneSkin}'s touch pan cannot be provoked. That
- * is why B2 took
- * six attempts and why a test for it passed identically with the fix deleted.
+ * is why the bug where dragging a box also panned the room took six attempts, and why a test for
+ * it passed identically with the fix deleted.
  *
  * <p>This one is different, and the difference is worth stating. A {@code ScrollEvent} carrying the
  * inertia flag is publicly constructible, so the suppression can be fired at the real view and
@@ -195,8 +195,6 @@ class PanCoastTest extends ApplicationTest {
                 List.of(point), 1, false, false, false, false)));
         WaitForAsyncUtils.waitForFxEvents();
     }
-
-    // ------------------------------------------------------------------ helpers
 
     /**
      * Drives one pan gesture by moving the pane the way the platform's skin would.

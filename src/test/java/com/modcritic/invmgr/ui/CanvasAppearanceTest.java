@@ -59,7 +59,6 @@ class CanvasAppearanceTest extends ApplicationTest {
     /** Mirrors {@code LayerTrack}'s own geometry, which is private to it. */
     private static final double THUMB_RADIUS_PX = 9.5;
 
-    private Stage stage;
     private Scene scene;
     private RoomCanvasView canvas;
     private LayerSliderDrawer drawer;
@@ -69,8 +68,6 @@ class CanvasAppearanceTest extends ApplicationTest {
 
     @Override
     public void start(Stage stage) {
-        this.stage = stage;
-
         state = new AppState();
         state.room = new Room(12, 10, 8);
 

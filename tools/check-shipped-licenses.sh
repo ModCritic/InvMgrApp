@@ -4,19 +4,18 @@
 #
 # WHY THIS EXISTS
 #
-# CLAUDE.md §8 says to verify with `mvn dependency:list -DincludeScope=runtime`, and
-# that command has always answered "only org.openjfx". It was telling the truth about
-# the question it was asked, and the answer was still wrong, because it lists MAVEN
-# DEPENDENCIES and the problem was never a dependency.
-#
+# This project's license rules used to say to verify with
+# `mvn dependency:list -DincludeScope=runtime`, and that command has always answered "only
+# org.openjfx". It was telling the truth about the question it was asked, and the answer was still
+# wrong, because it lists MAVEN DEPENDENCIES and the problem was never a dependency.
 # The Android build runs gluonfx-maven-plugin, which runs Gluon Substrate, which writes
 # its OWN Java classes into the APK's dex and links its OWN C into libsubstrate.so.
 # None of that is a dependency of this project. It is injected at package time by the
 # build tool, so it appears in no dependency tree, and it carries a GPL-3.0-or-later
-# header with no classpath exception. See docs/LICENSE-AUDIT.md.
+# header with no classpath exception.
 #
-# §8 had already learned this once with the bundled fonts: "shipped assets are not
-# dependencies, and mvn dependency:list cannot see them". This is the third category:
+# The same lesson had come up once before with the bundled fonts: shipped assets are not
+# dependencies, and mvn dependency:list cannot see them. This is the third category:
 # code the toolchain adds behind the build's back.
 #
 # WHAT IT DOES
@@ -32,8 +31,7 @@
 #   ./tools/check-shipped-licenses.sh path/to/some.apk     # one named artifact
 #
 # Adding a legitimate new origin means adding a line to the .allow file WITH its license
-# and a reason, which is the same discipline MANUAL.md's audit table asks for. The point
-# is that adding it has to be a deliberate act.
+# and a reason, so that adding one is a deliberate act.
 
 set -euo pipefail
 
@@ -120,7 +118,7 @@ inspect_jar() {
     rm -f /tmp/jar-origins.$$
 
     # Fonts and other shipped assets carry licenses and no dependency tree shows them;
-    # this is the §8 fonts lesson. OpenJFX's own skin images are excluded: they arrive
+    # this is the fonts lesson. OpenJFX's own skin images are excluded: they arrive
     # under the same CE as its code and would otherwise bury the few that need a row.
     echo "  shipped assets needing a license row (OpenJFX's own skin files excluded):"
     unzip -l "$jar" | awk '{print $4}' | grep -Ei '\.(ttf|otf|woff2?|png|svg|jpg)$' \

@@ -6,10 +6,11 @@ import java.util.Arrays;
 /**
  * Times the frames of one flight into or out of the 3D view, and says how it went.
  *
- * <p><b>Why the app measures itself.</b> M6.7 item 3 ran out of road from this end: every number in
- * it came from a machine with no graphics card, and the report was about a virtual machine running
- * Mesa's software OpenGL. Asking that machine for its own numbers is the only way past that, and a
- * bug report that arrives with a line of these in it is worth several rounds of asking.
+ * <p><b>Why the app measures itself.</b> The investigation into a laggy 3D view (2026-09-15) ran
+ * out of road from this end: every number in it came from a machine with no graphics card, and the
+ * report was about a virtual machine running Mesa's software OpenGL. Asking that machine for its
+ * own numbers is the only way past that, and a bug report that arrives with a line of these in it
+ * is worth several rounds of asking.
  *
  * <p>Printed under {@code -Dinvmgr.verbose=3d}; see {@link Verbose}.
  *

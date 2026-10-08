@@ -95,8 +95,9 @@ class TouchTypeTest {
      * coarse)} declaration sits <em>earlier</em> in the stylesheet than a base rule of equal
      * specificity, so the cascade has always given a phone the desktop value. Fourteen rules are in
      * that position ({@code TouchType}'s class documentation lists them with line numbers), and
-     * these are the two the phone actually complained about, so these are the two put back. The
-     * other twelve keep their touch sizes by the user's decision of 2026-08-13.
+     * these are the ones put back, the whole dialog and the status bar, because those are where the
+     * phone actually complained. The other six, the item list and the search box, keep their touch
+     * sizes by the user's decision of 2026-08-13.
      *
      * <p><b>Naming them is the point, not a hole in the test.</b> "This one does not change" becomes
      * a claim the suite checks, instead of an absence it cannot see; without it, a method that
@@ -137,7 +138,7 @@ class TouchTypeTest {
     }
 
     @Test
-    @DisplayName("and a phone changes every one of them except the six that must not change")
+    @DisplayName("and a phone changes every one of them except the ones that must not change")
     void aPhoneChangesEveryOne() {
         // Bounded the other way, and it is not the same claim. The test above passes perfectly on
         // a table where every method ignores the platform and returns the desktop value, which is

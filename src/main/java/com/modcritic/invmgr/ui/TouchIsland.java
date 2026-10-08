@@ -8,9 +8,14 @@ import javafx.scene.layout.HBox;
 /**
  * The strip of six buttons that never goes away on a phone.
  *
- * <p>Under the top bar, above the room: {@code ■} to add a box, Undo, Fit, Plan, Units, and a
+ * <p>Under the top bar, above the room: {@code ■} to add a box, Undo, Fit, Plan, the Menu, and a
  * {@code ▼} that folds the top bar out of sight. On a desktop it does not exist at all; those five
  * live in the bar, where there is room for them.
+ *
+ * <p><b>{@code ▼} is the dropdown, not the menu.</b> The original (the single-file HTML app this
+ * one rewrites) calls it its menu, and so did this class until a real Menu button was added beside
+ * it on 2026-09-24. The code now says {@code dropdown} and the screen says "room options", the
+ * user's words, so "menu" means one thing.
  *
  * <p>It is what makes the top bar foldable. Collapsing the bar on a phone takes away Save, Load,
  * the room's dimensions <em>and</em> the five things you actually use while arranging a room; the
@@ -38,20 +43,21 @@ import javafx.scene.layout.HBox;
  * A width listener is the only way to have this at all</b>, and the arithmetic it runs lives in
  * {@link Fluid} so it can be checked at every width without a window.
  *
- * <p>What must survive is the <em>ratio</em>: Add largest, Undo and the menu in the middle, Fit,
- * Plan and Units smallest. That hierarchy is the design, and it holds at 320 px and at 412 because
- * all three are percentages of the same number.
+ * <p>What must survive is the <em>ratio</em>: Add largest, Undo and the dropdown in the middle,
+ * Fit and Plan smallest. That hierarchy is the design, and it holds at 320 px and at 412 because
+ * all three are percentages of the same number. The Menu button is a square as tall as the
+ * dropdown, so it sits in the middle band with it.
  */
 public final class TouchIsland extends HBox {
 
-    /** The menu button when the bar is folded away: press it to bring the bar back. */
+    /** The dropdown when the bar is folded away: press it to bring the bar back. */
     public static final String SHOW_BAR_GLYPH = "▼";
 
     /** And when the bar is out. */
     public static final String HIDE_BAR_GLYPH = "▲";
 
     private final TopBar bar;
-    private final Button menu = TopBar.button(SHOW_BAR_GLYPH, Tokens.BUTTON_ISLAND_MENU_BG);
+    private final Button dropdown = TopBar.button(SHOW_BAR_GLYPH, Tokens.BUTTON_ISLAND_MENU_BG);
 
     /**
      * Builds the island around a bar, and folds that bar away.
@@ -72,10 +78,10 @@ public final class TouchIsland extends HBox {
                 + "-fx-border-width: 1 0 0 0;");
 
         getChildren().addAll(bar.islandButtons());
-        getChildren().add(menu);
+        getChildren().add(dropdown);
 
-        Hints.attach(menu, "Menu");
-        menu.setOnAction(event -> setBarOpen(bar.isCollapsed(), true));
+        Hints.attach(dropdown, "Room options");
+        dropdown.setOnAction(event -> setBarOpen(bar.isCollapsed(), true));
 
         // Fluid.queryWidth, not the width the listener is handed: a cqi is one percent of the
         // container's CONTENT box, and this island has 10 px of padding each side. Handing over the
@@ -95,12 +101,12 @@ public final class TouchIsland extends HBox {
      */
     public void setBarOpen(boolean open, boolean animated) {
         bar.setCollapsed(!open, animated);
-        menu.setText(open ? HIDE_BAR_GLYPH : SHOW_BAR_GLYPH);
+        dropdown.setText(open ? HIDE_BAR_GLYPH : SHOW_BAR_GLYPH);
         // And re-draw it, because on touch the arrow the eye sees is a GRAPHIC sized from its own
         // ink rather than the button's text, so setText alone changes what getText() answers and
         // nothing on the screen. See TopBar.sizeGlyphForTouch.
         if (Device.isTouch()) {
-            typeGlyph(menu, Fluid.size(Fluid.queryWidth(this), Tokens.ISLAND_FONT_MIN,
+            typeGlyph(dropdown, Fluid.size(Fluid.queryWidth(this), Tokens.ISLAND_FONT_MIN,
                     Tokens.ISLAND_FONT_PERCENT, Tokens.ISLAND_FONT_MAX));
         }
     }
@@ -108,10 +114,14 @@ public final class TouchIsland extends HBox {
     /**
      * Re-types the six buttons and the gaps between them from the island's own width.
      *
-     * <p>The menu button takes the base size rather than the small one, which looks like an
-     * oversight and is not: it is the {@code #island-menu} rule in the original, which sets a
-     * color and no font size and so inherits the shared {@code #top-island button} size. Undo does
-     * the same. Only Add is bigger and only the three toggles are smaller.
+     * <p>The dropdown takes the base size rather than the small one, which looks like an oversight
+     * and is not: it is the {@code #island-menu} rule in the original, which sets a color and no
+     * font size and so inherits the shared {@code #top-island button} size. Undo does the same.
+     * Only Add is bigger and only the toggles are smaller.
+     *
+     * <p>The Menu button is new and has no rule in the original. It is a square exactly as
+     * tall as the dropdown, worked out with the dropdown's own arithmetic so the two cannot drift
+     * apart, and its icon is 1.3 em of the base size, the proportion the 3D cube is drawn at.
      */
     private void applyType(double islandWidth) {
         setSpacing(Fluid.size(islandWidth, Tokens.ISLAND_GAP_MIN, Tokens.ISLAND_GAP_PERCENT,
@@ -131,8 +141,10 @@ public final class TouchIsland extends HBox {
         type(undoButton(), base);
         type(fitButton(), toggleSize);
         type(planButton(), toggleSize);
-        type(unitsButton(), toggleSize);
-        typeGlyph(menu, base);
+        typeGlyph(dropdown, base);
+        TopBar.sizeIconForTouch(menuButton(),
+                TopBar.touchGlyphHeight(base, Tokens.ISLAND_BUTTON_PADDING_V_EM * base),
+                Tokens.ICON_MENU_EM_TOUCH * base);
     }
 
     /** One button, set in its size, padded in ems of that size as the original pads it. */
@@ -149,8 +161,12 @@ public final class TouchIsland extends HBox {
 
     // ------------------------------------------------------------ for tests
 
+    public Button dropdownButton() {
+        return dropdown;
+    }
+
     public Button menuButton() {
-        return menu;
+        return bar.menuButton();
     }
 
     public Button addButton() {
@@ -167,9 +183,5 @@ public final class TouchIsland extends HBox {
 
     public Button planButton() {
         return bar.planButton();
-    }
-
-    public Button unitsButton() {
-        return bar.unitsButton();
     }
 }

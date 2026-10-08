@@ -3,7 +3,7 @@ package com.modcritic.invmgr.ui;
 /**
  * Which kind of machine is this running on: a desktop with a mouse, or a phone with fingers?
  *
- * <p>The app is <b>one interface with a switch in it</b>, not two interfaces (decision OD-5,
+ * <p>The app is <b>one interface with a switch in it</b>, not two interfaces (decided
  * 2026-08-06). That mirrors the original web version, which is a single file that asks the browser
  * one question and lays itself out accordingly. Two separate interfaces would mean every future
  * fix has two homes and the bug where only one of them got it.
@@ -23,7 +23,7 @@ package com.modcritic.invmgr.ui;
  * <p>It is for development, not for people using the app: no menu offers it and nothing writes it
  * to a settings file. And it changes only what the interface <em>looks</em> like. A forced desktop
  * cannot test a <em>gesture</em>, because a mouse has one finger and never two, which is why the
- * phone came first in M6.1 and why gestures are checked on real glass.
+ * Android build came first, before the touch work, and why gestures are checked on real glass.
  */
 public final class Device {
 
@@ -36,8 +36,7 @@ public final class Device {
 
     /**
      * What JavaFX itself calls the platform it is running on. Reads {@code android} on a phone
-     * (confirmed in the OD-1 spike's own on-device readout) and something else everywhere we care
-     * about.
+     * (confirmed by reading it on a phone) and something else everywhere we care about.
      */
     static final String PLATFORM_PROPERTY = "javafx.platform";
 

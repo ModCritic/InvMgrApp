@@ -15,8 +15,16 @@ set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/adb-env.sh" >/dev/null 2>&1 || { echo "adb-env.sh failed" >&2; exit 1; }
 
-APP=com.modcritic.invmgr
-ACT=$APP/.android.InvMgrActivity
+# The app ID and the activity's class name are DIFFERENT STRINGS, and were the same
+# until 2026-09-22. The ID is what Play and the phone file the app under; the class
+# name is Java and did not move.
+#
+# ⚠ So the activity CANNOT be written as $APP/.android.InvMgrActivity any more. A
+# leading dot means "relative to the app ID", which would resolve to
+# com.asterkazika.invmgr.android.InvMgrActivity, a class that does not exist. Write
+# it out in full.
+APP=com.asterkazika.invmgr
+ACT=$APP/com.modcritic.invmgr.android.InvMgrActivity
 APK="$HERE/../../target/gluonfx/aarch64-android/gvm/InvMgr.apk"
 
 # Blocks until the app has built its scene. Firing taps before this point is the

@@ -23,13 +23,14 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * Autosave as the running application actually uses it (M4).
+ * Autosave as the running application actually uses it.
  *
  * <p>{@code AutosaveTest} and {@code AutosavePolicyTest} cover the file and the timing on their
  * own. This file exists because those two passing proves nothing about whether the app is wired
- * to them, which is precisely how M3.5 shipped a fix that could never have worked in the real
- * app while its tests stayed green. So every test here launches a real {@link App} through its
- * real {@code start} method and lets it find, or fail to find, a real autosave on disk.
+ * to them, which is precisely how a 2026-08-01 fix for the button hints shipped when it could
+ * never have worked in the real app while its tests stayed green. So every test here launches a
+ * real {@link App} through its real {@code start} method and lets it find, or fail to find, a
+ * real autosave on disk.
  *
  * <p>Each test launches its own app, rather than sharing one from the usual {@code start(Stage)}
  * hook, because what is being tested happens <em>during</em> startup and the directory has to be

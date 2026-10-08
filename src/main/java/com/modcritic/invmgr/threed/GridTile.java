@@ -9,7 +9,7 @@ import com.modcritic.invmgr.model.Units;
  * picture each, sized {@code min(96, 2048 / longest side)} pixels to the foot. That cap is what
  * made a large room blurry: a 200 ft floor got 10.24 pixels to the foot where the app draws at 96,
  * so every grid line on it was smeared across nine pixels' worth of world. The original has the
- * same line and the same blur; see {@code MILESTONES.md} M6.7 item 1.
+ * same line and the same blur.
  *
  * <p>The grid is periodic, so it does not need a picture of the whole floor. One square foot drawn
  * at the full 96 pixels to the foot, laid down as many times as the room is wide, is sharp in a
@@ -20,10 +20,10 @@ import com.modcritic.invmgr.model.Units;
  * renders a quad with coordinates running 0 to 4 and counts the stripes: <b>they repeat</b>. If
  * they had clamped, none of this would be possible.
  *
- * <p><b>This is not the tiling CLAUDE.md §1 forbids.</b> That rule is about the original's CSS3D
- * workarounds, which tiled walls to dodge a near-plane clipping problem JavaFX does not have. That
- * reasoning is untouched. This tiles for an unrelated reason, texture resolution, which the
- * original also suffers from and never solved.
+ * <p><b>This is not the tiling the original's CSS 3D code does.</b> That code tiled walls to dodge
+ * a near-plane clipping problem JavaFX does not have, and this project does not port it. This
+ * tiles for an unrelated reason, texture resolution, which the original also suffers from and
+ * never solved.
  *
  * <h2>Where the grid starts, which is the whole subtlety</h2>
  *
@@ -51,8 +51,9 @@ import com.modcritic.invmgr.model.Units;
  * whole foot except the first one. So each axis of each surface gains exactly one line the
  * original does not have, on the room's own boundary.
  *
- * <p>That is §5.5 D-25, and it lands where two surfaces already meet at a right angle: on the
- * crease between the floor and a wall, or in a corner between two walls.
+ * <p>That is a deliberate difference from the original, and it lands where two surfaces already
+ * meet at a right angle: on the crease between the floor and a wall, or in a corner between two
+ * walls.
  */
 public final class GridTile {
 

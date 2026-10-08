@@ -3,7 +3,7 @@
 # Source it, don't run it:   . tools/android/adb-env.sh
 #
 # There is nothing to install. adb ships inside ~/.gluon (Gluon pulled it down
-# with the Android SDK during the M6.1 toolchain setup), and systemd-logind
+# with the Android SDK when the Android toolchain was first set up), and systemd-logind
 # already grants the active seat an ACL on the USB node via the uaccess udev
 # tag, so no root, no android-udev package, no rules file.
 

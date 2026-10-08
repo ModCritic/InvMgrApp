@@ -10,11 +10,10 @@ package com.modcritic.invmgr.threed;
  * speed is 9 ft/s and the room's own dimensions are already feet. Converting once, here, is what
  * stops a stray factor of 8 or 96 turning up in the middle of the camera code.
  *
- * <p>The axes follow {@code SPEC-3D-VIEW.md} §1: <b>x is east, z is south, y is up</b>. That is
+ * <p>The axes follow the original's: <b>x is east, z is south, y is up</b>. That is
  * <em>not</em> what JavaFX uses (its y points down) and the conversion happens once, at the
  * point the mesh is built, rather than being smeared through this class. Everything here is in
- * spec coordinates, which are also the coordinates the original's own code used, so the numbers
- * can be compared against it directly.
+ * the original's coordinates, so the numbers can be compared against its own code directly.
  */
 public final class Box3D {
 

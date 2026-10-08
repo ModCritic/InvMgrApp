@@ -9,7 +9,7 @@ import java.util.Map;
  *
  * <p>Everything here is a number or a curve. Nothing in this class knows what a frame is, what a
  * window is, or how long a second lasts; {@code ui/View3D} owns the clock and asks this for a
- * pose. That split is what lets the part of M5.2 most likely to be got wrong be checked without a
+ * pose. That split is what lets the part most likely to be got wrong be checked without a
  * screen: {@code TransitionsTest} can ask "where is pitch a third of the way down, and where is
  * height at that same moment" and compare them, which is the one question a screenshot cannot ask.
  *
@@ -94,7 +94,7 @@ public final class Transitions {
      * this starts; the camera is placed at the middle of the room, so x, z and yaw do not move
      * at all.
      *
-     * <p><b>Pitch gets its own curve, and this is the single most important line in M5.2.</b> It
+     * <p><b>Pitch gets its own curve, and this is the most important line in this class.</b> It
      * eases <em>in</em>: it stays looking almost straight down through the early part and only
      * rotates to level near the end, while height uses the default symmetric curve. The original's
      * own comment explains why they cannot share one (original lines 2977-2983): an equal fraction

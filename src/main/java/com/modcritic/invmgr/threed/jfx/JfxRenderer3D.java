@@ -68,7 +68,6 @@ public final class JfxRenderer3D implements Renderer3D {
     private final Rotate pitch = new Rotate(0, Rotate.X_AXIS);
 
     private SubScene subScene;
-    private AppState state;
     private double widthPx;
     private double heightPx;
 
@@ -112,8 +111,8 @@ public final class JfxRenderer3D implements Renderer3D {
         // of it.
         //
         // It also settles a divergence that was coming anyway: Android refuses SceneAntialiasing
-        // outright (SPIKE-OD-1), so the phone was always going to render without it. Desktop and
-        // mobile now agree.
+        // outright (it logs "System can't support antiAliasing"), so the phone was always going to
+        // render without it. Desktop and mobile now agree.
         subScene = new SubScene(world, this.widthPx, this.heightPx, true,
                 SceneAntialiasing.DISABLED);
         subScene.setCamera(camera);
@@ -122,7 +121,6 @@ public final class JfxRenderer3D implements Renderer3D {
 
     @Override
     public void build(AppState appState) {
-        this.state = appState;
         // Keep the light; drop everything else. Rebuilding is how a changed room gets on screen.
         world.getChildren().removeIf(node -> !(node instanceof AmbientLight));
 
@@ -175,7 +173,7 @@ public final class JfxRenderer3D implements Renderer3D {
      *
      * <p><b>Both angles pass through untouched, and no half turn is applied.</b> That is worth
      * writing down, because the obvious reading of every line here is wrong in an interesting way
-     * and the M5.1 build got two of the three questions right by accident.
+     * and the first version of this method got two of the three questions right by accident.
      *
      * <p>An untransformed JavaFX camera looks along +z, with up at −y and right at +x. The
      * geometry arrives having had its y and z negated, so north (−z in the specification) is +z
@@ -183,11 +181,12 @@ public final class JfxRenderer3D implements Renderer3D {
      * right exactly, so zero rotation already faces north the right way up with east on the
      * right, and there is nothing to correct.
      *
-     * <p>M5.1 negated y and <em>not</em> z, which faced the camera at the south wall, and turned
-     * it half a turn to compensate. That fixed which wall it looked at and left the room reflected
-     * east-to-west: the half turn is a rotation and the missing negation was a mirror, so the one
-     * could never undo the other. Whether it looks at the right wall and whether the room is the
-     * right way round are two separate questions, and only the first is visible in an empty room.
+     * <p>That first version negated y and <em>not</em> z, which faced the camera at the south wall,
+     * and turned it half a turn to compensate. That fixed which wall it looked at and left the room
+     * reflected east-to-west: the half turn is a rotation and the missing negation was a mirror, so
+     * the one could never undo the other. Whether it looks at the right wall and whether the room
+     * is the right way round are two separate questions, and only the first is visible in an empty
+     * room.
      *
      * <p>Yaw's sign then comes out right on its own: a positive JavaFX rotation about y takes +z
      * toward +x, which is north toward east, a clockwise turn seen from above, which is what a
@@ -217,7 +216,6 @@ public final class JfxRenderer3D implements Renderer3D {
     @Override
     public void dispose() {
         world.getChildren().clear();
-        state = null;
         // Letting go of the boxes, not guarding the answer. `View3D.pickItem` already refuses to
         // ask anything once the view is closed, so this line cannot change a pick: the mutation
         // sweep says so, and it survives deleting this on purpose. What it does buy is memory: at
@@ -235,7 +233,8 @@ public final class JfxRenderer3D implements Renderer3D {
         // handler, where an exception is printed to the console and otherwise swallowed. The
         // button simply stops working, with no visible reason.
         //
-        // Reported by the user against the M5.1 jar: press 3D, come back, press 3D again, nothing.
+        // Reported by the user against the first 3D build: press 3D, come back, press 3D again,
+        // nothing.
         //
         // The camera is owned exactly as jealously as the root and has to be handed back too,
         // found by fixing only the root and getting the identical failure one line further on,
@@ -267,8 +266,8 @@ public final class JfxRenderer3D implements Renderer3D {
 
         MeshView view = new MeshView(mesh);
         view.setMaterial(shared);
-        // Culling stays ON. The OD-1 spike switched it off to sidestep the winding problem, which
-        // hides the mistake and makes the card draw every surface twice.
+        // Culling stays ON. The first 3D prototype switched it off to sidestep the winding
+        // problem, which hides the mistake and makes the card draw every surface twice.
         view.setCullFace(CullFace.BACK);
         view.setId(box.itemId);
         return view;

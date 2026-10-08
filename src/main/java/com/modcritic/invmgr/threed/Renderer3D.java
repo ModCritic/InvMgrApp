@@ -6,11 +6,11 @@ import com.modcritic.invmgr.model.AppState;
  * Everything the 3D view asks of whatever is actually drawing it.
  *
  * <p><b>This interface is the reason the 3D renderer choice can still be changed.</b> Deciding to
- * use JavaFX's own 3D support (`OD-1`) came with an accepted risk written into the ground rules:
- * the toolchain that builds the phone version is lightly maintained, was published in 2022, and its
- * vendor documents no 3D support at all. It works (it was measured working on a real phone), but
- * if it ever stops, the fallback is a different graphics library, and the cost of that swap is
- * whatever has leaked out of this boundary.
+ * use JavaFX's own 3D support came with an accepted risk: the toolchain that builds the phone
+ * version is lightly maintained, was published in 2022, and its vendor documents no 3D support at
+ * all. It works (it was measured working on a real phone), but if it ever stops, the fallback is a
+ * different graphics library, and the cost of that swap is whatever has leaked out of this
+ * boundary.
  *
  * <p>So nothing here mentions a JavaFX type. The camera, the movement, the transitions and the
  * shading all sit in front of this interface and know nothing about what is behind it. The
@@ -54,7 +54,7 @@ public interface Renderer3D {
      * draws from whatever pose it is handed and never keeps its own.
      *
      * <p>Every room surface is mouse-transparent, so nothing this returns can be a wall or the
-     * floor. That is not luck; it was done at M5.1 for this method.
+     * floor. That is not luck; it was done on purpose for this method.
      */
     String pickItem(double xPx, double yPx, CameraPose camera);
 }

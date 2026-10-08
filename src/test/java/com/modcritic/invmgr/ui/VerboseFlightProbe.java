@@ -2,7 +2,6 @@ package com.modcritic.invmgr.ui;
 
 import com.modcritic.invmgr.App;
 import com.modcritic.invmgr.Verbose;
-import javafx.scene.Scene;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.Test;
 import org.testfx.framework.junit5.ApplicationTest;
@@ -26,7 +25,6 @@ import org.testfx.util.WaitForAsyncUtils;
 class VerboseFlightProbe extends ApplicationTest {
 
     private App app;
-    private Scene scene;
 
     @Override
     public void start(Stage stage) {
@@ -37,7 +35,6 @@ class VerboseFlightProbe extends ApplicationTest {
         stage.setHeight(900);
         stage.setX(0);
         stage.setY(0);
-        scene = stage.getScene();
     }
 
     @Test

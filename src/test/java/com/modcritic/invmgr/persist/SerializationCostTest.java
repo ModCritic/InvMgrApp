@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
  * wrote, rather than by having every mutation set a dirty flag. The flag would be faster and is
  * the obvious design, but it has to be set in a dozen places and a thirteenth is added every
  * time the app grows a feature; a forgotten one loses the user's work silently, which is the
- * one failure this milestone exists to prevent. Comparing the text cannot be forgotten.
+ * one failure autosave exists to prevent. Comparing the text cannot be forgotten.
  *
  * <p>The price is running {@link SaveFormat#save} once a second forever, on the FX thread, where
  * anything over a millisecond or two would show as a stutter during a drag. This test measures

@@ -56,7 +56,8 @@ class TouchLayoutTest extends ApplicationTest {
     }
 
     /**
-     * The window every other class in the suite expects to find, per CLAUDE.md §10.
+     * The window every other class in the suite expects to find: 2560 x 1440, the reference
+     * resolution the tests run at.
      *
      * <p>TestFX reuses one stage for the whole run, and this is the only class that shrinks it to a
      * phone. Leaving it that way is not a small untidiness: TestFX clicks in <em>screen</em>
@@ -131,7 +132,7 @@ class TouchLayoutTest extends ApplicationTest {
     // ------------------------------------------------------------------ the island
 
     @Test
-    @DisplayName("the island holds six buttons, in the original's order")
+    @DisplayName("the island holds six buttons, in the original's order with the Menu where Units was")
     void theIslandHoldsSix() {
         TouchIsland island = app.island();
         assertNotNull(island, "a phone gets an island");
@@ -141,8 +142,8 @@ class TouchLayoutTest extends ApplicationTest {
         assertSame(island.undoButton(), island.getChildren().get(1));
         assertSame(island.fitButton(), island.getChildren().get(2));
         assertSame(island.planButton(), island.getChildren().get(3));
-        assertSame(island.unitsButton(), island.getChildren().get(4));
-        assertSame(island.menuButton(), island.getChildren().get(5));
+        assertSame(island.menuButton(), island.getChildren().get(4));
+        assertSame(island.dropdownButton(), island.getChildren().get(5));
     }
 
     @Test
@@ -155,7 +156,7 @@ class TouchLayoutTest extends ApplicationTest {
         assertSame(app.topBar().addButtonNode(), app.island().addButton());
         assertSame(app.topBar().undoButton(), app.island().undoButton());
         assertSame(app.topBar().planButton(), app.island().planButton());
-        assertSame(app.topBar().unitsButton(), app.island().unitsButton());
+        assertSame(app.topBar().menuButton(), app.island().menuButton());
 
         for (Node child : app.topBar().getChildrenUnmodifiable()) {
             assertFalse(contains(child, app.topBar().fitButton()),
@@ -182,7 +183,7 @@ class TouchLayoutTest extends ApplicationTest {
         double fit = app.island().fitButton().getFont().getSize();
 
         assertTrue(add > undo, "Add is the biggest: " + add + " vs " + undo);
-        assertTrue(undo > fit, "and Fit, Plan and Units the smallest: " + undo + " vs " + fit);
+        assertTrue(undo > fit, "and Fit and Plan the smallest: " + undo + " vs " + fit);
 
         // Bounded against the CSS, not against each other: getting the ratio right with all three
         // sizes wrong would otherwise pass.
@@ -216,16 +217,18 @@ class TouchLayoutTest extends ApplicationTest {
         assertBox("Undo", app.island().undoButton(), 57.0, 29.3);
         assertBox("Fit", app.island().fitButton(), 39.0, 23.7);
         assertBox("Plan", app.island().planButton(), 46.0, 23.7);
-        assertBox("Units", app.island().unitsButton(), 53.3, 23.7);
-        assertBox("menu", app.island().menuButton(), 35.0, 33.3);
+        assertBox("dropdown", app.island().dropdownButton(), 35.0, 33.3);
+        // The Menu button has no reference: the original has none. It is a square exactly as tall
+        // as the dropdown beside it, which the mockup the user approved showed.
+        assertBox("Menu", app.island().menuButton(), 33.3, 33.3);
 
         // Stated separately, because every size above could drift together and keep its proportion.
         // These two are the shape the user actually reported: in the original both are slightly
         // WIDER than tall, and here both had become taller than wide.
         assertTrue(width(app.island().addButton()) > height(app.island().addButton()),
                 "the Add button is wider than it is tall, as the original's is");
-        assertTrue(width(app.island().menuButton()) >= height(app.island().menuButton()),
-                "and the menu arrow is not taller than it is wide");
+        assertTrue(width(app.island().dropdownButton()) >= height(app.island().dropdownButton()),
+                "and the dropdown arrow is not taller than it is wide");
     }
 
     @Test
@@ -316,7 +319,7 @@ class TouchLayoutTest extends ApplicationTest {
     @Test
     @DisplayName("the status bar is one height whatever it says, so nothing above it moves")
     void theStatusBarDoesNotResizeWithItsMessage() {
-        // Reported by the user 2026-08-13 against InvMgr-M6.4a.apk, and caused by the fix that made
+        // Reported by the user 2026-08-13 from the phone, and caused by the fix that made
         // the tip wrap: the instructions take two lines on a phone and a message takes one, so the
         // bar shrank on every action and grew back three seconds later. The layer-slider tab, the
         // item-list tab and, worst, the whole room under Fit all jumped each way.
@@ -373,8 +376,8 @@ class TouchLayoutTest extends ApplicationTest {
      * rather than a rounding allowance.</b>
      *
      * <ul>
-     *   <li><b>Width, ±1.5.</b> These land exactly: Undo 57.0, Fit 39.0, Plan 46.0, Units 53.3,
-     *       Add 43.0, menu 35.0, every one on the nose. The slack is for the reference itself,
+     *   <li><b>Width, ±1.5.</b> These land exactly: Undo 57.0, Fit 39.0, Plan 46.0, Add 43.0,
+     *       dropdown 35.0, every one on the nose. The slack is for the reference itself,
      *       which is measured at scale 3 and so is only good to a third of a CSS pixel.
      *   <li><b>Height, ±2.0.</b> Every height comes out <b>1.3 to 1.7 px over</b> the original's,
      *       consistently, at four different type sizes. That is not the line-box constant being
@@ -404,6 +407,160 @@ class TouchLayoutTest extends ApplicationTest {
                 "it belongs at the top, not floating in the middle");
     }
 
+    // ------------------------------------------------------------------ the Menu
+
+    @Test
+    @DisplayName("the island's Menu button opens a 334 px square, centered between the phone's bars")
+    void theMenuWindowSitsBetweenTheBars() {
+        clickOn(app.island().menuButton());
+        layOut();
+        MenuWindow menu = app.menuWindow();
+        assertTrue(menu.isShowing(), "the island's Menu button opens it");
+
+        // The Menu window's size on the test phone, and the one MenuWindowTest works out: half of
+        // 740 less the 24 px status bar and the 48 px navigation bar.
+        Bounds panel = menu.panel().localToScene(menu.panel().getLayoutBounds());
+        assertEquals(334, panel.getWidth(), 0.5);
+        assertEquals(334, panel.getHeight(), 0.5);
+
+        // Centered in what the bars leave, 24 to 692, not in the whole 740. Centered in the whole
+        // glass it would sit 12 px lower, and on its side it would slide up under the clock.
+        assertEquals(24 + (740 - 24 - 48 - 334) / 2.0, panel.getMinY(), 0.5);
+        assertEquals((360 - 334) / 2.0, panel.getMinX(), 0.5);
+
+        WaitForAsyncUtils.waitForAsyncFx(5000, () -> {
+            menu.hide();
+            return null;
+        });
+    }
+
+    @Test
+    @DisplayName("on a phone the Menu has six entries in order, and scrolls to show the last")
+    void theMenusEntriesScroll() {
+        clickOn(app.island().menuButton());
+        layOut();
+        MenuWindow menu = app.menuWindow();
+        // No touch screen on this desktop, so ScrollHint hands back the bare scroll pane; the thumb
+        // itself is ScrollHintTest's and the phone's.
+        javafx.scene.control.ScrollPane scroller =
+                (javafx.scene.control.ScrollPane) menu.panel().getChildren().get(1);
+        javafx.scene.layout.VBox entries = (javafx.scene.layout.VBox) scroller.getContent();
+        assertEquals(6, entries.getChildren().size(),
+                "Metric, Theme, Settings, Feedback, About, Reset Room");
+        assertSame(menu.settingsEntry(), entries.getChildren().get(2));
+        assertSame(menu.feedbackEntry(), entries.getChildren().get(3));
+        assertSame(menu.aboutEntry(), entries.getChildren().get(4));
+        assertSame(menu.resetRoomEntry(), entries.getChildren().get(5));
+
+        // Printed for tools/android/device_suite.py, which checks the scrollbar's length and place
+        // on the phone against these; see MENU_PAGE_TOP there.
+        Bounds top = menu.panel().localToScene(menu.panel().getLayoutBounds());
+        Bounds page = scroller.localToScene(scroller.getLayoutBounds());
+        System.out.println("The Menu on a phone: entries " + entries.getLayoutBounds().getHeight()
+                + " in " + scroller.getViewportBounds().getHeight() + "; the page's top is "
+                + (page.getMinY() - top.getMinY()) + " below the window's top");
+        // Six entries are more than a 334 px square holds under its title, so the page scrolls:
+        // the user's rule for a sixth entry (2026-09-25), with ScrollHint's bar on a phone.
+        assertTrue(entries.getLayoutBounds().getHeight() > scroller.getViewportBounds().getHeight(),
+                "the entries should run past the square and scroll: "
+                        + entries.getLayoutBounds().getHeight() + " in "
+                        + scroller.getViewportBounds().getHeight());
+
+        WaitForAsyncUtils.waitForAsyncFx(5000, () -> {
+            menu.hide();
+            return null;
+        });
+    }
+
+    @Test
+    @DisplayName("on a phone, About fits the square without scrolling, and the policy is the phone's")
+    void theAboutPagesOnAPhone() {
+        clickOn(app.island().menuButton());
+        layOut();
+        MenuWindow menu = app.menuWindow();
+        clickOn(menu.aboutEntry());
+        layOut();
+
+        // All three entries showing at once at 16 px type, in 334 px, is the whole question: About
+        // comes within a few pixels of it. The body scrolls rather than clip, so what is checked is
+        // that it did not have to.
+        javafx.scene.control.ScrollPane body = (javafx.scene.control.ScrollPane)
+                menu.panel().getChildren().get(1);
+        double content = body.getContent().getLayoutBounds().getHeight();
+        double viewport = body.getViewportBounds().getHeight();
+        // Printed for tools/android/device_suite.py, which taps these on the phone by their
+        // distance below the window's top edge; see ABOUT_SOURCE_BELOW_TOP there.
+        Bounds top = menu.panel().localToScene(menu.panel().getLayoutBounds());
+        Bounds source = menu.sourceCodeEntry().localToScene(
+                menu.sourceCodeEntry().getLayoutBounds());
+        System.out.println("About on a phone: content " + content + " in " + viewport
+                + "; Source code's middle is " + (source.getCenterY() - top.getMinY())
+                + " below the window's top");
+        assertTrue(content <= viewport + 0.5,
+                "About needs scrolling on a 360 x 740 phone: " + content + " in " + viewport);
+
+        clickOn(menu.privacyEntry());
+        layOut();
+        javafx.scene.control.ScrollPane policy = (javafx.scene.control.ScrollPane)
+                menu.panel().getChildren().get(1);
+        System.out.println("Privacy on a phone: content "
+                + policy.getContent().getLayoutBounds().getHeight() + " in "
+                + policy.getViewportBounds().getHeight());
+        // The sentence about feedback made the policy longer than the page again. It now scrolls,
+        // and on a phone ScrollHint draws the bar JavaFX would not, which the About window was
+        // missing when it hid its last paragraph with nothing to say so. The device suite checks
+        // the bar.
+        assertTrue(menu.pageText().contains(
+                AppInfo.privacyPolicy(true, java.nio.file.Path.of("/unused")).get(1)),
+                "the phone gets the sentence about uninstalling: " + menu.pageText());
+
+        WaitForAsyncUtils.waitForAsyncFx(5000, () -> {
+            menu.hide();
+            return null;
+        });
+    }
+
+    @Test
+    @DisplayName("on a phone, the Feedback page shows its box and both buttons without scrolling")
+    void theFeedbackPageOnAPhone() {
+        clickOn(app.island().menuButton());
+        layOut();
+        MenuWindow menu = app.menuWindow();
+        clickOn(menu.feedbackEntry());
+        layOut();
+        javafx.scene.control.ScrollPane notice = (javafx.scene.control.ScrollPane)
+                menu.panel().getChildren().get(1);
+        System.out.println("Feedback's warning on a phone: content "
+                + notice.getContent().getLayoutBounds().getHeight() + " in "
+                + notice.getViewportBounds().getHeight());
+        assertTrue(notice.getContent().getLayoutBounds().getHeight()
+                        <= notice.getViewportBounds().getHeight() + 0.5,
+                "the warning page needs scrolling to reach its OK");
+        clickOn(menu.feedbackOkButton());
+        layOut();
+
+        javafx.scene.control.ScrollPane body = (javafx.scene.control.ScrollPane)
+                menu.panel().getChildren().get(1);
+        Bounds page = body.localToScene(body.getLayoutBounds());
+        Bounds top = menu.panel().localToScene(menu.panel().getLayoutBounds());
+        Bounds email = menu.feedbackByEmailButton().localToScene(
+                menu.feedbackByEmailButton().getLayoutBounds());
+        System.out.println("Feedback on a phone: content "
+                + body.getContent().getLayoutBounds().getHeight() + " in "
+                + body.getViewportBounds().getHeight() + "; the buttons' middle is "
+                + (email.getCenterY() - top.getMinY()) + " below the window's top");
+        // Sending is the page's whole job, so its buttons may not hide below the fold. The result
+        // line under them may: it only appears once the message has gone to another app.
+        assertTrue(email.getMaxY() <= page.getMaxY() + 0.5,
+                "the Email and GitHub buttons end at " + email.getMaxY() + ", below the page's "
+                        + page.getMaxY());
+
+        WaitForAsyncUtils.waitForAsyncFx(5000, () -> {
+            menu.hide();
+            return null;
+        });
+    }
+
     // ------------------------------------------------------------------ the fold
 
     @Test
@@ -411,13 +568,13 @@ class TouchLayoutTest extends ApplicationTest {
     void theBarStartsFolded() {
         assertTrue(app.topBar().isCollapsed(), "the bar starts folded");
         assertEquals(0, app.topBar().getHeight(), 0.5, "and takes up no height at all");
-        assertEquals(TouchIsland.SHOW_BAR_GLYPH, app.island().menuButton().getText(),
-                "and the menu button offers to bring it back");
+        assertEquals(TouchIsland.SHOW_BAR_GLYPH, app.island().dropdownButton().getText(),
+                "and the dropdown offers to bring it back");
     }
 
     @Test
-    @DisplayName("the menu button brings the bar back, and puts it away again")
-    void theMenuButtonFolds() {
+    @DisplayName("the dropdown brings the bar back, and puts it away again")
+    void theDropdownFolds() {
         WaitForAsyncUtils.waitForAsyncFx(5000, () -> {
             app.island().setBarOpen(true, false);
             return null;
@@ -427,7 +584,7 @@ class TouchLayoutTest extends ApplicationTest {
         assertFalse(app.topBar().isCollapsed(), "unfolded");
         assertTrue(app.topBar().getHeight() > 20,
                 "and the bar has a real height: " + app.topBar().getHeight());
-        assertEquals(TouchIsland.HIDE_BAR_GLYPH, app.island().menuButton().getText());
+        assertEquals(TouchIsland.HIDE_BAR_GLYPH, app.island().dropdownButton().getText());
 
         WaitForAsyncUtils.waitForAsyncFx(5000, () -> {
             app.island().setBarOpen(false, false);
@@ -437,7 +594,7 @@ class TouchLayoutTest extends ApplicationTest {
 
         assertTrue(app.topBar().isCollapsed(), "folded again");
         assertEquals(0, app.topBar().getHeight(), 0.5);
-        assertEquals(TouchIsland.SHOW_BAR_GLYPH, app.island().menuButton().getText());
+        assertEquals(TouchIsland.SHOW_BAR_GLYPH, app.island().dropdownButton().getText());
     }
 
     @Test
@@ -671,9 +828,10 @@ class TouchLayoutTest extends ApplicationTest {
     @Test
     @DisplayName("the room canvas has no scrollbars on a phone")
     void theRoomCanvasHasNoScrollbarsOnAPhone() {
-        // §5.5 D-3, amended by the user 2026-08-30. A phone gets none at all: the vertical bar is
-        // too thin to catch on a waterfall-edge screen, and widening it would spend width there
-        // is not any of. Dragging and B9's coast are what moves the room instead.
+        // The room's scrollbars are styled on the desktop. Since the user's decision of 2026-08-30
+        // a phone gets none at all: the vertical bar is too thin to catch on a waterfall-edge
+        // screen, and widening it would spend width there is not any of. Dragging and the room's
+        // own coasting after a fling are what move the room instead.
         interact(() -> app.canvas().setFitMode(false));
         WaitForAsyncUtils.waitForFxEvents();
 

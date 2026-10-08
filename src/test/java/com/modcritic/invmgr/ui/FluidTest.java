@@ -82,7 +82,7 @@ class FluidTest {
             assertTrue(add > base,
                     "Add must stay bigger than the base at " + width + ": " + add + " vs " + base);
             assertTrue(base > toggle,
-                    "the base must stay bigger than Fit/Plan/Units at " + width
+                    "the base must stay bigger than Fit/Plan at " + width
                             + ": " + base + " vs " + toggle);
         }
     }

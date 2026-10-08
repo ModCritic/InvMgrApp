@@ -113,9 +113,9 @@ public final class NumberField extends HBox {
         dialogField.setMinHeight(TouchType.dialogNumberHeight());
         dialogField.setMaxHeight(TouchType.dialogNumberHeight());
         dialogField.limitToThreeDecimals();
-        // §5.5 D-28: a tap selects the box's contents so typing replaces the number. The
-        // original does this for the Add dialog's three boxes only; the user chose all nine
-        // on 2026-09-19, because Edit is where a size is most often retyped.
+        // A tap selects the box's contents so typing replaces the number. The original does this
+        // for the Add dialog's three boxes only; the user chose all nine on 2026-09-19, because
+        // Edit is where a size is most often retyped.
         dialogField.selectsOnTouchFocus = true;
         return dialogField;
     }
@@ -157,14 +157,14 @@ public final class NumberField extends HBox {
         // nothing, and a click on an already-focused box selects nothing. So desktop Tab and
         // desktop click are both right with no help from here.
         //
-        // Until M6.7c this cleared the selection on EVERY focus. The comment justifying that
+        // Until 2026-09-19 this cleared the selection on EVERY focus. The comment justifying that
         // said the skin "selects everything on focus", which is half true: it selects on
         // TRAVERSAL focus. So the clearing was not protecting the click case, which never
         // needed it; it was removing desktop's tab-to-select and the phone's tap-to-replace.
         // The user found the second half from the phone: the keypad appends, so typing 24 into
         // a box holding 12 gives 1224, which clamps to MAX_DIMENSION_IN and silently makes a
-        // 1000 inch box. Going wider than the original's three Add-dialog boxes to all nine is
-        // §5.5 D-28.
+        // 1000 inch box. Going wider than the original's three Add-dialog boxes to all nine is a
+        // deliberate difference from it.
         //
         // ⚠ The app must still not OPEN with a box selected, or one stray keystroke replaces
         // the room's width. Nothing here does that any more: App gives the canvas focus at
@@ -179,7 +179,7 @@ public final class NumberField extends HBox {
             }
         });
 
-        // B6: marks this box as holding a number, so a phone raises the keypad when it takes
+        // Marks this box as holding a number, so a phone raises the keypad when it takes
         // focus (what the original gets for free from <input type="number">). The watching is
         // done once for the whole window; see AndroidBridge.followTheFocusedField.
         AndroidBridge.marksANumberField(field);

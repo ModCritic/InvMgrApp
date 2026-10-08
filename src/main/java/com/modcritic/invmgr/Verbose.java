@@ -33,21 +33,22 @@ import java.util.function.Supplier;
  * before the check is paying for logging that nobody asked for.
  *
  * <p><b>No new dependency.</b> Everything here is {@code System.out} and the standard library, in
- * the same shape and with the same {@code InvMgr:} prefix as the lines already printed. §8 and
- * OD-3 make adding a logging library a decision rather than a convenience, and nothing here needs
- * one.
+ * the same shape and with the same {@code InvMgr:} prefix as the lines already printed. Adding a
+ * dependency is a decision this project makes deliberately, because a library can bring in code
+ * under a license the app cannot ship, and nothing here needs one.
  *
  * <p><b>⚠ It must not print what the user made.</b> These lines exist to be pasted into a public
  * bug report. Item names, the text in a search box and the path a save file came from are the
- * user's, and §6 says what they make stays local unless they export it deliberately. <b>Log
+ * user's, and what they make stays local unless they export it deliberately. <b>Log
  * measurements, counts and shapes; never contents.</b> "42 items" is a diagnostic, "Mum's china"
  * is somebody's business.
  *
  * <h2>Adding a topic</h2>
  *
  * <p>Add a constant to {@link Topic} with the word that turns it on, and use it. The topics here
- * are exactly the ones with something to say; an empty topic is a promise nothing keeps, which is
- * the same rule §3 puts on MANUAL.md sections.
+ * are exactly the ones with something to say; an empty topic is a promise nothing keeps. On a
+ * phone the word arrives through the launch intent, and {@code InvMgrActivity} passes on only the
+ * words it lists itself, so a new word goes in that list too.
  */
 public final class Verbose {
 
@@ -64,21 +65,35 @@ public final class Verbose {
          * The 3D view: how long its transitions take, frame by frame, and what it decided about
          * the machine it is running on.
          *
-         * <p>First one here because it is the one being asked about. M6.7 item 3 could not be
-         * finished from this end: every number in it comes from a machine with no graphics card,
-         * and the report was about a virtual machine running Mesa's software OpenGL. This is how
-         * that machine reports its own numbers instead.
+         * <p>First one here because it is the one being asked about. The report that the 3D view
+         * is laggy on weak graphics could not be finished from this end: every number
+         * came from a machine with no graphics card, and the report was about a virtual machine
+         * running Mesa's software OpenGL. This is how that machine reports its own numbers
+         * instead.
          */
         THREE_D("3d"),
 
         /**
          * Input to frame: how long the app takes to show the result of a tap, a drag or a key.
          *
-         * <p>Added at M6.7b, whose whole suite reads these lines back. See {@link LatencyClock},
-         * and note that this is the one topic that <b>changes the app while it is on</b>: it runs
-         * an {@code AnimationTimer}, so the app pulses every frame whether or not anything moved.
+         * <p>Added for the performance suite in {@code tools/perf}, which reads these lines back.
+         * See {@link LatencyClock}, and note that this is the one topic that <b>changes the app
+         * while it is on</b>: it runs an {@code AnimationTimer}, so the app pulses every frame
+         * whether or not anything moved.
          */
-        LATENCY("latency");
+        LATENCY("latency"),
+
+        /**
+         * The phone's on-screen keyboard: each call it makes, in order, with the length of the
+         * text it carries and never the text itself.
+         *
+         * <p><b>Printed by the other half of the app.</b> These lines come from
+         * {@code InvMgrActivity}, which runs in Android's own Java and reads this word from the
+         * launch intent. It is listed here so the app accepts the word when it is passed on, rather
+         * than complaining that it is unknown; nothing in this half prints for it, and on a desktop
+         * it does nothing at all.
+         */
+        KEYBOARD("keyboard");
 
         /** The word that turns this topic on. */
         public final String word;

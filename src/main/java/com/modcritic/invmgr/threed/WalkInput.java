@@ -31,9 +31,9 @@ public final class WalkInput {
      *
      * <p><b>Returns true only when this actually changed something</b>, that is, on the edge from
      * up to down or from down to up, and not on the repeats an operating system sends while a key
-     * stays held. The 3D view's "any input lands the transition" rule (CLAUDE.md §5.5 <b>D-11</b>)
-     * is built on exactly that edge, so it gets it from here rather than keeping a second copy of
-     * the key state to compare against.
+     * stays held. The 3D view's rule that any input lands the transition at once (the original
+     * ignores input during one) is built on exactly that edge, so it gets it from here rather
+     * than keeping a second copy of the key state to compare against.
      */
     public boolean set(Control control, boolean pressed) {
         return pressed ? held.add(control) : held.remove(control);

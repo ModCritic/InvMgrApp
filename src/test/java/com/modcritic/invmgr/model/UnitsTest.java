@@ -53,9 +53,9 @@ class UnitsTest {
     @Test
     @DisplayName("rounding in cm first gives a different answer than rounding once at the end")
     void roundingOrderMatters() {
-        // This is the case SPEC-2D-ENGINE.md §2 warns about. If someone ever
-        // "simplifies" cmDimensionInputToInches into a single rounding step, this test
-        // is what catches it.
+        // This is the case the original's unit conversion exists for: it rounds in cm
+        // first. If someone ever "simplifies" cmDimensionInputToInches into a single
+        // rounding step, this test is what catches it.
         double specOrder = Units.cmDimensionInputToInches(12.3456);
         double collapsed = Units.round6(Units.cmToIn(12.3456));
 

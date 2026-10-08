@@ -14,13 +14,14 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * What is in the one enormous frame every entry into the 3D view pays for?
  *
- * <p>M6.7b's baseline found it and could not explain it: <b>a 200 x 200 ft room with 200 boxes has
- * one frame of 400 to 616 ms about a fifth of the way into the descent</b>, once per entry, in all
- * three descents of every run and in both arms. It is the largest single stall anywhere in the app,
- * four times what M6.7a saw in a smaller room.
+ * <p>The baseline of the optimization suite ({@code tools/perf}) found it and could not explain
+ * it: <b>a 200 x 200 ft room with 200 boxes has one frame of 400 to 616 ms about a fifth of the
+ * way into the descent</b>, once per entry, in all three descents of every run and in both arms.
+ * It is the largest single stall anywhere in the app, four times what an earlier optimization
+ * pass saw in a smaller room.
  *
- * <p>M6.7a's answer was "the view becomes visible and pays for every texture at once", which is a
- * reasonable story and <b>the arithmetic does not support it</b>: a box's texture is a
+ * <p>That earlier pass's answer was "the view becomes visible and pays for every texture at once",
+ * which is a reasonable story and <b>the arithmetic does not support it</b>: a box's texture is a
  * {@code FaceStrip}, 40 x 8 pixels, 1,280 bytes. Two hundred of them is 256 KB. Nothing uploads
  * 256 KB in half a second. So the story is wrong somewhere and this finds out where.
  *
@@ -46,7 +47,7 @@ class FirstDrawProbe extends ApplicationTest {
      * that contradicted two others: a 200 ft room with 200 boxes in 200 colors read 743 ms while
      * the same 200 boxes in a 20 ft room read 329, which cannot both describe a per-box cost. With
      * three builds and a median the arms separate cleanly. One sample is not a measurement, which
-     * is the same rule the rest of M6.7b is built on.
+     * is the same rule the rest of the optimization suite is built on.
      */
     private static final int BUILDS = 3;
 

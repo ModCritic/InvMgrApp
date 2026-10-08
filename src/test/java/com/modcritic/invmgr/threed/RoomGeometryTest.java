@@ -122,8 +122,8 @@ class RoomGeometryTest {
         // result is not a rotated grid but a grid of the wrong SHAPE: 1.2 ft one way and 0.83 ft
         // the other, on a floor whose squares are supposed to be a foot.
         //
-        // The floor was exactly that, in the M5.1 jar. It is invisible in a square room, which is
-        // both why it survived and why this test uses a room that is 12 by 10 by 8, three
+        // The floor was exactly that, in the first 3D build. It is invisible in a square room,
+        // which is both why it survived and why this test uses a room that is 12 by 10 by 8, three
         // different numbers, so nothing can agree by coincidence.
         for (RoomGeometry.Surface s : RoomGeometry.surfacesOf(ROOM)) {
             assertEquals(s.widthFt, distance(corner(s, 0), corner(s, 1)), TOLERANCE,
@@ -190,7 +190,7 @@ class RoomGeometryTest {
     @Test
     @DisplayName("a lifted layer moves into the room, by exactly the distance asked for")
     void theLiftGoesInwardsAndNotOutwards() {
-        // Since M6.7 every surface is two quads, a grid with a vignette floating just off it, and
+        // Every surface is two quads, a grid with a vignette floating just off it, and
         // this is what decides which way "off it" is. Get the sign wrong and the vignette ends up
         // on the far side of the wall, where it is invisible and where nothing else would notice:
         // the room would simply stop being darkened at the edges and still pass every pixel test

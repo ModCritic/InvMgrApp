@@ -11,10 +11,12 @@ import org.junit.jupiter.api.Test;
  * The box's corners, its triangles, and (the one that matters) which way each triangle faces.
  *
  * <p><b>Why the winding gets its own test rather than being left to the eye.</b> The specification
- * has y pointing up and JavaFX has it pointing down, so every point is mirrored on the way in. A
- * mirror reverses which side of a triangle is the front, so unless the corner order is reversed to
- * compensate, every surface in the room is inside out. The OD-1 spike hit this and switched face
- * culling off, with a comment admitting the real port had to do better.
+ * has y pointing up and z pointing south, and JavaFX has both the other way round, so both are
+ * negated on the way in. Negating only one of them mirrors the world, and a mirror reverses which
+ * side of a triangle is the front, so every surface in the room is inside out. The early research
+ * spike that proved
+ * JavaFX 3D works hit this and switched face culling off, with a comment admitting the real port
+ * had to do better.
  *
  * <p>It is worth catching here because it is nearly invisible from where you normally stand. Inside
  * a room, an inside-out wall behind you is not on screen, and an inside-out box shows you the
@@ -71,9 +73,6 @@ class BoxGeometryTest {
             for (int t = 0; t < faces.length; t += 18) {
                 for (int tri = 0; tri < 3; tri++) {
                     int at = t + tri * 6;
-                    if (at + 5 >= faces.length) {
-                        break;
-                    }
                     double[] p0 = point(points, faces[at]);
                     double[] p1 = point(points, faces[at + 2]);
                     double[] p2 = point(points, faces[at + 4]);
@@ -108,7 +107,7 @@ class BoxGeometryTest {
     void theOutwardCheckIsNotVacuous() {
         // The test above is only worth anything if it fails when the winding is wrong. Rather than
         // trusting that, this reverses two corners by hand and confirms the same arithmetic says
-        // "inward", so a mutation that removes the swap in BoxGeometry cannot pass.
+        // "inward", so a mutation that reverses the winding in BoxGeometry cannot pass.
         Box3D b = box(12, 12, 12);
         float[] points = BoxGeometry.points(b);
         int[] faces = BoxGeometry.faces(b);

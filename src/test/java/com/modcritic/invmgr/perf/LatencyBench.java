@@ -21,7 +21,8 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * M6.7b's desktop lane: how long the app takes to show the result of each thing you can do to it.
+ * The desktop lane of the latency suite: how long the app takes to show the result of each thing
+ * you can do to it.
  *
  * <p><b>This is a bench, not a test.</b> It asserts nothing, and {@code mvn test} never runs it:
  * surefire picks up {@code *Test} and nothing else, which is the same reason the dozen
@@ -394,8 +395,8 @@ class LatencyBench extends ApplicationTest {
     /**
      * Carry a planned item's card out of the list.
      *
-     * <p>This is the object M6.7a item 2 cached: a card with the app's one drop shadow, turning as
-     * it moves. Its cost is per frame of the carry, so the drag is long.
+     * <p>This is the object an earlier optimization cached: a card with the app's one drop shadow,
+     * turning as it moves. Its cost is per frame of the carry, so the drag is long.
      */
     private void carryAPlannedCard(String name) {
         Item ghost = interactPlanned();
@@ -481,8 +482,8 @@ class LatencyBench extends ApplicationTest {
      *
      * <p>Every other number here is bounded below by the pulse, so on a machine that keeps up they
      * all read about one frame and a change of a few milliseconds is invisible in them. This one is
-     * the work itself, and it is the number an optimization has to move. Same measurement M6.7a
-     * item 3 used.
+     * the work itself, and it is the number an optimization has to move. An earlier optimization
+     * timed a full draw the same way.
      */
     private void drawTheWholeWindow(String name) {
         List<Double> draws = new ArrayList<>();

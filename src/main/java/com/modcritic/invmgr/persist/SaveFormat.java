@@ -4,6 +4,11 @@ import com.modcritic.invmgr.model.AppState;
 import com.modcritic.invmgr.model.Item;
 import com.modcritic.invmgr.model.Preset;
 import com.modcritic.invmgr.model.Room;
+import com.modcritic.invmgr.model.WholeCharacters;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +50,38 @@ public final class SaveFormat {
 
     private static final Random RANDOM = new Random();
 
+    /**
+     * The largest file {@link #readFile} reads: 4 MB.
+     *
+     * <p>The biggest room this app can write is under 1 MB: 500 items with the longest name and ID
+     * allowed, every character of both a six-character escape, and every number at its longest.
+     * {@code SaveFormatTest.theLargestPossibleRoomFitsWellUnderTheLimit} builds that room and
+     * measures it. A file four times that size is not a room. Reading one whole before looking
+     * at it is how a large enough file could run a phone out of memory and close the app.
+     *
+     * <p>The phone's file picker reads through Android's own Java, which cannot see this class, so
+     * {@code InvMgrActivity.readFrom} carries the same number and the same message.
+     */
+    public static final long MAX_FILE_BYTES = 4L * 1024 * 1024;
+
+    /** Why a file over {@link #MAX_FILE_BYTES} was refused; shown after "Load error: ". */
+    public static final String TOO_LARGE = "the file is over 4 MB, and no room file is that big.";
+
     private SaveFormat() {
+    }
+
+    /**
+     * Reads a save file's text as UTF-8, refusing one over {@link #MAX_FILE_BYTES} before reading
+     * any of it.
+     *
+     * @throws IOException if the file cannot be read or is too large, with a message that says
+     *     which
+     */
+    public static String readFile(Path file) throws IOException {
+        if (Files.size(file) > MAX_FILE_BYTES) {
+            throw new IOException(TOO_LARGE);
+        }
+        return Files.readString(file, StandardCharsets.UTF_8);
     }
 
     /**
@@ -194,8 +230,8 @@ public final class SaveFormat {
 
         // A non-boolean is ignored rather than treated as false. That matters when loading
         // into a running app: the original leaves the *current* mode alone in that case, so
-        // whoever wires this up at M3 must apply these two only when the key was a boolean,
-        // not blindly copy the defaults below.
+        // whoever applies a loaded state to a running app must apply these two only when the
+        // key was a boolean, not blindly copy the defaults below.
         Object planMode = Json.get(state, "planMode");
         loaded.planMode = planMode instanceof Boolean ? (Boolean) planMode : false;
         Object metricMode = Json.get(state, "metricMode");
@@ -286,8 +322,14 @@ public final class SaveFormat {
         return truncate((String) value, maxLength);
     }
 
+    /**
+     * Cut at exactly {@code maxLength} units, as the original cuts, and then any half character
+     * left behind, by the cut or by the file itself, becomes U+FFFD. See {@link WholeCharacters}:
+     * a half character kept here made every later desktop Save fail.
+     */
     private static String truncate(String text, int maxLength) {
-        return text.length() <= maxLength ? text : text.substring(0, maxLength);
+        String cut = text.length() <= maxLength ? text : text.substring(0, maxLength);
+        return WholeCharacters.repair(cut);
     }
 
     // ------------------------------------------------------------------- save

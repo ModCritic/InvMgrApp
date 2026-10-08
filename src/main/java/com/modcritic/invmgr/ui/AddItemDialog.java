@@ -97,6 +97,9 @@ public final class AddItemDialog extends ModalDialog {
             if (event.getCode() == KeyCode.ENTER
                     || (event.getCode() == KeyCode.TAB && !event.isShiftDown())) {
                 widthField.textField().requestFocus();
+                // On a phone the Name box going out of focus put the keyboard away, so Width had
+                // the focus and nothing to type with. Found 2026-10-01.
+                AndroidBridge.keepTheKeyboardUp();
                 event.consume();
             } else if (event.getCode() == KeyCode.TAB) {
                 event.consume();
@@ -179,6 +182,9 @@ public final class AddItemDialog extends ModalDialog {
         scroller.setVbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroller.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scroller.setMinViewportHeight(Tokens.PRESET_SIZE);
+        // On a phone the strip stops at its ends, rather than stretching past them and springing
+        // back (the user, 2026-09-26; see ScrollEnds).
+        ScrollEnds.install(scroller);
         scroller.setStyle("-fx-background: transparent; -fx-background-color: transparent;"
                 + "-fx-padding: 0;");
         strip.setStyle("-fx-background-color: transparent;");

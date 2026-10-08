@@ -16,9 +16,9 @@ import org.junit.jupiter.api.Test;
  * <p><b>The important cases here are the ones that ask which side of the screen something is on.</b>
  * A reflection leaves the middle of the screen exactly where it was, so a test that puts a box
  * straight ahead and checks the middle of the screen finds it will pass against a world mirrored
- * east to west, which is precisely how M5.1 shipped one. Every case below that could be satisfied
- * by picking in the wrong place says where it expects the hit <em>and</em> asserts a miss at the
- * mirror-image point.
+ * east to west, which is precisely how an early build of the 3D view shipped one. Every case below
+ * that could be satisfied by picking in the wrong place says where it expects the hit
+ * <em>and</em> asserts a miss at the mirror-image point.
  *
  * <p>The window used throughout is 1000 × 800, which makes the arithmetic checkable by hand: the
  * perspective distance is 600 px, so the vertical half-angle has a tangent of exactly 2/3 and the
@@ -87,10 +87,6 @@ class PickingTest {
         assertEquals(2.0 / 3.0, top[1] / -top[2], 1e-12,
                 "the top edge must be tan(fov/2) up per unit forward: no aspect on this one");
         assertEquals(0, top[0], 1e-12);
-
-        // And the two are genuinely different numbers, which is what makes the assertions above
-        // capable of telling the horizontal and vertical apart at all.
-        assertTrue(Math.abs(5.0 / 6.0 - 2.0 / 3.0) > 0.1, "a square window would prove nothing");
     }
 
     @Test

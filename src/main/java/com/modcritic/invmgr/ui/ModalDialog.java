@@ -41,11 +41,36 @@ public abstract class ModalDialog {
     private boolean showing;
 
     /**
+     * The strip around the window this dialog keeps clear of, usually nothing.
+     *
+     * <p>Only the Menu window sets it, to the phone's own bars, so that it centers in the part of
+     * the glass the app actually has. The dialogs from the original center in the whole window,
+     * as they always have. See {@link #setSafeArea}.
+     */
+    private Insets safeArea = Insets.EMPTY;
+
+    /**
      * Watches the on-screen keyboard while this dialog is up, so the panel can move clear of it.
      *
      * <p>Null on a desktop and null while nothing is showing. See {@link #watchTheKeyboard}.
      */
     private javafx.animation.AnimationTimer keyboardWatcher;
+
+    /** The mark every dialog's overlay carries, so a dialog can tell it was opened from another. */
+    private static final String OVERLAY_MARK = "invmgr.dialogOverlay";
+
+    /**
+     * Where the focus goes back to when this dialog closes, or null for the window's root.
+     *
+     * <p><b>Inside another dialog</b> (Save Preset opened from a preset slot on Add Item): back
+     * there, whatever it was. Without it Escape stopped closing Add Item, because Escape goes to
+     * whatever has the focus and closing Save Preset had taken the focus out of the window.
+     *
+     * <p><b>Anywhere else</b>, back to what had it (the room, or the button that opened the
+     * dialog) unless that was a text box: on a phone a text box with the focus can bring the
+     * keyboard up when nobody asked for it.
+     */
+    private javafx.scene.Node returnFocusTo;
 
     protected ModalDialog(Overlays host) {
         this.host = host;
@@ -56,6 +81,10 @@ public abstract class ModalDialog {
         overlay.setAlignment(Pos.CENTER);
         overlay.getChildren().add(panel);
         overlay.setStyle("-fx-background-color: rgba(0,0,0,0.65);");
+        overlay.getProperties().put(OVERLAY_MARK, Boolean.TRUE);
+        // The phone's Next key moves among this dialog's number boxes only, and never to the
+        // room's W, L and H boxes in the top bar behind it.
+        AndroidBridge.keepsNextInside(overlay);
 
         // Escape closes, from anywhere in the dialog. Handled on the overlay rather than on
         // each field, so it works even when focus is on a button or on nothing at all.
@@ -66,10 +95,47 @@ public abstract class ModalDialog {
             }
         });
         // The overlay swallows clicks aimed at the app behind it -- that is what makes it
-        // modal. It deliberately does NOT close when the darkened area is clicked: the
-        // original has no such handler, and losing a half-filled form to a stray click
-        // outside the panel would be a real annoyance.
+        // modal. The dialogs from the original deliberately do NOT close when the darkened area is
+        // clicked: the original has no such handler, and losing a half-filled form to a stray
+        // click outside the panel would be a real annoyance. A dialog with no form in it can ask
+        // to; see closesOnOutsideTap.
         overlay.setOnMousePressed(event -> event.consume());
+        // On CLICKED, not PRESSED, so the whole press and release land on the overlay before it
+        // goes away. On a desktop the two measured the same (MenuWindowAppTest's click-outside
+        // case passes with either), so this is a precaution rather than a fix: on a phone the
+        // release is a synthesized mouse event (a finger arrives twice on Android, as a touch and
+        // as a mouse copy), and nothing here has shown where one goes when the node it was
+        // pressed on has gone. The target test is what keeps a click on the panel itself, or on
+        // a button in it, from counting as outside.
+        overlay.setOnMouseClicked(event -> {
+            if (event.getTarget() == overlay && closesOnOutsideTap()) {
+                cancel();
+            }
+            event.consume();
+        });
+    }
+
+    /**
+     * Whether a tap on the darkened area outside the panel closes this dialog, as Cancel would.
+     *
+     * <p>No by default, for the reason given in the constructor. The Menu window says yes, because
+     * it holds nothing that a stray tap could lose.
+     */
+    protected boolean closesOnOutsideTap() {
+        return false;
+    }
+
+    /**
+     * Keeps the panel clear of a strip around the window, and centers it in what is left.
+     *
+     * <p>Added for the Menu window, which on a phone must center between the status bar and the
+     * navigation bar rather than in the whole glass: on its side the phone has only 336 px below
+     * the status bar and the window is 334, so centering in the full 360 would push its top edge
+     * up under the clock. Safe to call while showing; rotation does exactly that.
+     */
+    protected final void setSafeArea(Insets area) {
+        safeArea = area == null ? Insets.EMPTY : area;
+        overlay.setPadding(safeArea);
     }
 
     /** The panel subclasses put their rows into. */
@@ -94,6 +160,10 @@ public abstract class ModalDialog {
         if (showing) {
             return;
         }
+        javafx.scene.Node owner = host.getScene() == null ? null : host.getScene().getFocusOwner();
+        returnFocusTo = insideADialog(owner)
+                || (owner != null && !(owner instanceof javafx.scene.control.TextInputControl))
+                ? owner : null;
         host.showDialog(overlay);
         showing = true;
         watchTheKeyboard();
@@ -105,16 +175,37 @@ public abstract class ModalDialog {
         if (!showing) {
             return;
         }
+        // The focus is placed BEFORE the panel goes. Taken out with the focus still in it,
+        // JavaFX hands the focus to the next control it finds, which is the room's W box, and a
+        // text box selects its text when the focus arrives that way: closing any dialog left the
+        // room's width highlighted. So it goes where returnFocusTo says, and otherwise to the
+        // window's own root, which shows nothing and still passes keys on to the app.
+        if (returnFocusTo != null && returnFocusTo.getScene() != null) {
+            returnFocusTo.requestFocus();
+        } else {
+            host.requestFocus();
+        }
+        returnFocusTo = null;
         host.hideDialog(overlay);
         showing = false;
         if (keyboardWatcher != null) {
             // ⚠ Stopping this is not tidiness. A timer left running is invisible on screen and
-            // costs a phone battery for the rest of the session, which is the same hole M6.2's
-            // hold ring had and the reason its test counts frames.
+            // costs a phone battery for the rest of the session, which is the same hole the
+            // canvas's hold ring animation once had and the reason its test counts frames.
             keyboardWatcher.stop();
             keyboardWatcher = null;
         }
-        overlay.setPadding(Insets.EMPTY);
+        overlay.setPadding(safeArea);
+    }
+
+    /** Whether a node sits in a dialog's overlay. */
+    private static boolean insideADialog(javafx.scene.Node node) {
+        for (javafx.scene.Node at = node; at != null; at = at.getParent()) {
+            if (Boolean.TRUE.equals(at.getProperties().get(OVERLAY_MARK))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean isShowing() {
@@ -138,7 +229,7 @@ public abstract class ModalDialog {
     /**
      * Keeps the panel above the on-screen keyboard for as long as this dialog is up.
      *
-     * <p><b>This is M6.5c's B7.</b> A dialog with a text field in it raised the keyboard over its
+     * <p><b>The bug this fixes:</b> a dialog with a text field in it raised the keyboard over its
      * own bottom half, so the field being typed into could be the one covered up.
      *
      * <p><b>⚠ The obvious fix does not work and is not worth re-trying.</b> Android can shrink a
@@ -160,9 +251,13 @@ public abstract class ModalDialog {
             @Override
             public void handle(long now) {
                 double density = javafx.stage.Screen.getPrimary().getOutputScaleY();
-                overlay.setPadding(new Insets(0, 0,
-                        liftFor(overlay.getHeight(), panel.getHeight(),
-                                AndroidBridge.keyboardHeight(density)), 0));
+                double lift = liftFor(overlay.getHeight() - safeArea.getTop(), panel.getHeight(),
+                        AndroidBridge.keyboardHeight(density));
+                // The larger of the two, not their sum: the keyboard rises from the bottom edge of
+                // the glass, over the navigation bar, so it already covers the strip the safe
+                // area keeps clear there.
+                overlay.setPadding(new Insets(safeArea.getTop(), safeArea.getRight(),
+                        Math.max(safeArea.getBottom(), lift), safeArea.getLeft()));
             }
         };
         keyboardWatcher.start();

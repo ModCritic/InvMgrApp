@@ -4,7 +4,7 @@
  * WHAT THIS FILE IS FOR
  *
  * Everything in native/ exists to sit between Android and the JavaFX code compiled into
- * libsubstrate.so. See docs/PLAN-M6.5B-HOST-LAYER.md. The short version: OpenJFX already
+ * libsubstrate.so. The short version: OpenJFX already
  * contains a complete Android backend and needs nothing from us except a window, a screen
  * density, and input. Our job is to hand it those and stay out of the way.
  *

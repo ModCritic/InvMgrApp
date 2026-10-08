@@ -19,9 +19,9 @@ class LauncherTest {
     @Test
     @DisplayName("a plain desktop launch asks for the graphics card")
     void theDefaultIsToAsk() {
-        // The whole point of M6.7's follow-up: a machine where Prism refuses the driver gets a
-        // working 3D view without anyone typing a flag. Once this is something you install and
-        // double-click there is nowhere to type one.
+        // The whole point of the 2026-09-15 launcher change: a machine where Prism refuses the
+        // driver gets a working 3D view without anyone typing a flag. Once this is something you
+        // install and double-click there is nowhere to type one.
         assertTrue(Launcher.shouldForceGpu(null, null, false));
     }
 
@@ -56,9 +56,9 @@ class LauncherTest {
     @Test
     @DisplayName("a phone is left alone")
     void androidIsNotForced() {
-        // Android reaches 3D through OpenJFX's own backend and has never needed this; M6.5b and
-        // M6.5c got the room running on real hardware without it. Bypassing a safety check on a
-        // platform that does not need it is risk bought for nothing.
+        // Android reaches 3D through OpenJFX's own backend and has never needed this; the room
+        // runs on real hardware without it. Bypassing a safety check on a platform that does not
+        // need it is risk bought for nothing.
         assertFalse(Launcher.shouldForceGpu(null, null, true));
         assertFalse(Launcher.shouldForceGpu("false", null, true));
     }

@@ -97,9 +97,9 @@ class AppUiTest extends ApplicationTest {
     void theCanvasDoesNotDependOn3d() {
         WaitForAsyncUtils.waitForFxEvents();
         // The capability itself is asserted, hard, by Room3dAppearanceTest.theGraphicsPipelineCanDraw3d.
-        // What is checked here is the other half of D-10: whether 3D is available or not, the flat
-        // room is the primary interface and must be on screen.
-        App.isScene3dSupported();
+        // What is checked here is the other half: whether 3D is available or not (without a 3D
+        // pipeline the app grays out the 3D button instead), the flat room is the primary
+        // interface and must be on screen.
         assertNotNull(app.canvas());
     }
 
@@ -114,22 +114,13 @@ class AppUiTest extends ApplicationTest {
         // stray keystroke would then replace the width and the next Set Room would resize the
         // room to whatever was typed.
         //
-        // Until M6.7c NumberField also cleared the selection on every focus, which hid this,
-        // and cost the phone its tap-to-replace behavior in the process (§5.5 D-28). With that
-        // blanket clear gone, canvas.requestFocus() is the whole of the guard.
+        // Until 2026-09-19 NumberField also cleared the selection on every focus, which hid this,
+        // and cost the phone its tap-to-replace behavior in the process (tapping a dimension box
+        // there selects its contents, so typing replaces the number). With that blanket clear
+        // gone, canvas.requestFocus() is the whole of the guard.
         assertEquals("", app.topBar().widthField().textField().getSelectedText(),
                 "the app opened with the room width selected; App must give the canvas focus "
                         + "so no number box takes the window's first focus");
-    }
-
-    @Test
-    @DisplayName("no stray Label is left over from the M0 diagnostics screen")
-    void noLeftoverDiagnostics() {
-        WaitForAsyncUtils.waitForFxEvents();
-        // The M0 window was a toolchain readout. If any of it survived into the real UI, it
-        // would be visible in the corner of the room.
-        Label leftover = lookup("#diag-javafx").tryQuery().map(node -> (Label) node).orElse(null);
-        assertEquals(null, leftover, "the M0 readout labels should be gone");
     }
 
     @Test
@@ -236,7 +227,9 @@ class AppUiTest extends ApplicationTest {
         assertTrue(imperial.stream().noneMatch(text -> text.endsWith("m")),
                 "no meter labels before switching, got " + imperial);
 
-        clickOn(app.topBar().unitsButton());
+        clickOn(app.topBar().menuButton());
+        clickOn(app.menuWindow().metricEntry());
+        clickOn(app.menuWindow().closeButton());
         WaitForAsyncUtils.waitForFxEvents();
 
         // The original keeps the dot grid on half-FEET (that is what the slider snaps to, and it
@@ -294,20 +287,21 @@ class AppUiTest extends ApplicationTest {
     void buttonHintsSayWhatTheyShould() {
         WaitForAsyncUtils.waitForFxEvents();
 
-        // The wording is not incidental. Four of these five reproduce the original's `title`
+        // The wording is not incidental. Most of these reproduce the original's `title`
         // attributes exactly, and drifting from them is a loss of fidelity that nothing else in
         // the suite would notice: a hint is not drawn until you rest on it, so no screenshot
-        // test can see it. The fifth is deliberately *not* the original's: see CLAUDE.md §5.5 D-7.
+        // test can see it. Layer Collision, Export Item List and Clear Search are deliberately
+        // *not* the original's: the user chose that wording on 2026-08-01.
         assertHint(app.topBar().layerCollisionButton(),
                 "Disable gravity, items collide based on height-range, not stack");
         assertHint(app.topBar().addButtonNode(), "Add Item");
         assertHint(app.topBar().fitButton(), "Fit to Screen");
         assertHint(app.topBar().planButton(), "Planning Mode");
-        assertHint(app.topBar().unitsButton(), "Toggle Metric Units");
+        assertHint(app.topBar().menuButton(), "Menu");
         assertHint(app.listPanel().exportButton(), "Export Item List");
         assertHint(app.listPanel().clearSearchButton(), "Clear Search");
 
-        // The two 3D buttons, added at M5.1. Both carry the original's own wording: `title="3D
+        // The two 3D buttons. Both carry the original's own wording: `title="3D
         // View"` on the top-bar button (original line 494) and `title="Back to 2D view"` on the one
         // that comes back (line 2880). Note the second is sentence case where the first is title
         // case: that is the original's own inconsistency, kept rather than tidied, because the

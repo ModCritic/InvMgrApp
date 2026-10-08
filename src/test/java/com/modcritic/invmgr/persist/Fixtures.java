@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
  * <p><b>Public because five other test classes had grown their own copy of it.</b> It lives in
  * the persistence package because that is where it was first needed, but the engine and 3D
  * differential tests read goldens the same way, and a package-private class is invisible to
- * them. M6.7c deleted the five copies and widened this instead.
+ * them. A code review on 2026-09-19 deleted the five copies and widened this instead.
  */
 public final class Fixtures {
 

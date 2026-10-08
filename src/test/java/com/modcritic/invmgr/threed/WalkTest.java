@@ -12,11 +12,11 @@ import org.junit.jupiter.api.Test;
 /**
  * Walking and looking around the 3D room.
  *
- * <p><b>Every movement test asks which direction, not merely how far.</b> That is the lesson
- * CLAUDE.md §5.7 item 2 was bought with: M5.1's tests all aimed the camera at the thing they were
- * checking and asked whether it was on screen, so every one of them passed against a room that was
- * reflected east to west. A test that walks nine feet and checks it traveled nine feet cannot see
- * a sign error either. So each case here names the axis <em>and</em> the sign, and the ones that
+ * <p><b>Every movement test asks which direction, not merely how far.</b> That lesson was bought
+ * once already: the first 3D tests all aimed the camera at the thing they were checking and asked
+ * whether it was on screen, so every one of them passed against a room that was reflected east to
+ * west. A test that walks nine feet and checks it traveled nine feet cannot see a sign error
+ * either. So each case here names the axis <em>and</em> the sign, and the ones that
  * could be satisfied by moving the wrong way are written to fail if it does.
  */
 class WalkTest {
@@ -118,7 +118,7 @@ class WalkTest {
 
         assertEquals(15 - 18, boosted.z, TOLERANCE, "boosted must cover 18 ft, not 9");
 
-        // Bounded on both sides, per the lesson from M4's autosave test that passed on the
+        // Bounded on both sides, per the lesson from an earlier autosave test that passed on the
         // broken code as well as the working one: assert it is exactly twice, not merely more.
         assertEquals(2.0, (15 - boosted.z) / (15 - plain.z), TOLERANCE,
                 "boost must be exactly BOOST_MULT, not just faster");
@@ -339,8 +339,8 @@ class WalkTest {
 
     // ---------------------------------------------------- panning and dollying
     //
-    // The two-finger gestures. Pan is the original's (lines 3186-3195); the dolly is CLAUDE.md
-    // §5.5 D-15 and is new behavior, so its rules are pinned here rather than differentially.
+    // The two-finger gestures. Pan is the original's (lines 3186-3195); the dolly is new behavior,
+    // since the original ignores a pinch, so its rules are pinned here rather than differentially.
 
     @Test
     @DisplayName("facing north, panning right slides east and up rises, with no turn")
@@ -421,7 +421,7 @@ class WalkTest {
 
         // Bound to walking rather than to a copy of the arithmetic: one second of W at 9 ft/s must
         // land in exactly the same place. That is what "one idea of forward, shared with the
-        // keyboard and the joystick" means, and it is D-15's stated reason for flat forward.
+        // keyboard and the joystick" means, and it is the reason the pinch moves flat forward.
         CameraPose walked = middle();
         walked.yaw = Math.PI / 2;
         Walk.step(walked, 1, 0, 0, Walk.MOVE_SPEED_FT_PER_S, false, 1, room());
@@ -439,7 +439,7 @@ class WalkTest {
 
         Walk.dolly(cam, 10, room());
 
-        // This is the whole of D-15's second sentence and the user's own choice between two
+        // This is the whole of the flat-forward rule and the user's own choice between two
         // options. Flying along the aim point (the obvious alternative, and what "dolly" means
         // in most cameras) would give y + 9.97 and z - 0.71 here. Both halves are asserted, so
         // neither can be quietly reintroduced.
@@ -459,7 +459,7 @@ class WalkTest {
     }
 
     @Test
-    @DisplayName("panning and dollying compose: the pan is kept and the pinch adds to it")
+    @DisplayName("a pan then a dolly keep both moves: neither undoes the other")
     void panAndDollyCompose() {
         CameraPose cam = middle();
         cam.yaw = Math.PI / 2;                  // facing east: forward is +x, right is +z
@@ -467,8 +467,9 @@ class WalkTest {
         Walk.pan(cam, 3, 0, room());
         Walk.dolly(cam, 4, room());
 
-        // D-15 keeps the original's pan and adds the dolly on top of the same gesture, so the two
-        // must be independent: 3 ft right and 4 ft forward, not one instead of the other.
+        // The two moves must be independent: 3 ft right and 4 ft forward, not one instead of the
+        // other. A two-finger gesture only ever does one of them (see WalkGesture), but the
+        // functions themselves must still add up when called in turn.
         assertEquals(15 + 3, cam.z, TOLERANCE, "the pan's 3 ft south survives the dolly");
         assertEquals(10 + 4, cam.x, TOLERANCE, "the dolly's 4 ft east survives the pan");
     }
@@ -511,8 +512,9 @@ class WalkTest {
         assertTrue(input.set(Control.FORWARD, false), "letting go is an edge");
         assertFalse(input.set(Control.FORWARD, false), "a second key-up is not");
 
-        // This is what D-11's "a fresh press lands the transition, an auto-repeat does not"
-        // is built on, so it is a rule rather than an implementation detail.
+        // The rule that a fresh press lands the 3D entry or exit animation immediately and an
+        // auto-repeat does not is built on this, so it is a rule rather than an implementation
+        // detail.
     }
 
     @Test
@@ -521,7 +523,7 @@ class WalkTest {
         // Found by the mutation sweep: reversing strafe() and vertical() left everything above
         // green, because the only tests touching them held BOTH keys, and a canceled pair
         // cancels whichever way round the axis is. Holding one key is the question that can see
-        // it, and it is the same shape of blind spot as M5.1's "is the box on screen".
+        // it, and it is the same kind of blind spot as asking only whether the box is on screen.
         assertEquals(1, single(Control.FORWARD).forward(), TOLERANCE, "forward alone is +1");
         assertEquals(-1, single(Control.BACK).forward(), TOLERANCE, "back alone is -1");
         assertEquals(1, single(Control.RIGHT).strafe(), TOLERANCE, "right alone is +1");

@@ -11,12 +11,12 @@ import org.junit.jupiter.api.Test;
  * The descent and the ascent: how long they take, which curve each channel travels along, and
  * where they start and finish.
  *
- * <p><b>The per-channel curves are the point of this class.</b> {@code SPEC-3D-VIEW.md} §3 says
- * the original needed several attempts to learn that position and orientation must not share a
- * curve, and that unifying them makes the descent read as front-loaded even when the numbers are
- * in step. That is invisible to a screenshot and invisible to any test that only checks the camera
- * arrived, so the tests below compare two channels <em>at the same instant</em>, which is the
- * only question that can tell the difference.
+ * <p><b>The per-channel curves are the point of this class.</b> The original app needed several
+ * attempts to learn that position and orientation must not share a curve, and that unifying them
+ * makes the descent read as front-loaded even when the numbers are in step. That is invisible to
+ * a screenshot and invisible to any test that only checks the camera arrived, so the tests below
+ * compare two channels <em>at the same instant</em>, which is the only question that can tell the
+ * difference.
  */
 class TransitionsTest {
 

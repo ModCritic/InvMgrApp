@@ -6,10 +6,10 @@ package com.modcritic.invmgr.threed;
  *
  * <p><b>Why this exists.</b> Nothing in the app printed the camera's position or heading, so the
  * only way to know where you were standing in the 3D room was to look at the picture and guess.
- * That cost a round of the M6.7c device test: three boxes were hunted for by dragging at random
- * when all three were 0.75 to 3.75 ft in front of the camera and simply below the bottom of the
- * frame, because a 6 ft eye looking level clears a 1 ft box four feet away by about 53 degrees.
- * One line saying "facing N, level" would have settled it immediately.
+ * That cost a round of a device test on the phone (2026-09-19): three boxes were hunted for by
+ * dragging at random when all three were 0.75 to 3.75 ft in front of the camera and simply below
+ * the bottom of the frame, because a 6 ft eye looking level clears a 1 ft box four feet away by
+ * about 53 degrees. One line saying "facing N, level" would have settled it immediately.
  *
  * <p><b>It watches the camera, not the controls.</b> That is the whole design. Movement arrives
  * from the keys, the joystick, a mouse-look drag, a two-finger pan, a pinch and the landing at
@@ -114,8 +114,8 @@ public final class CameraRest {
     }
 
     /**
-     * The compass point a yaw is nearest, as {@code SPEC-3D-VIEW.md} §1 defines them: yaw 0 faces
-     * north and a positive turn takes the view toward east.
+     * The compass point a yaw is nearest, using the original's convention: yaw 0 faces north and
+     * a positive turn takes the view toward east.
      */
     static String compass(double yawRadians) {
         return COMPASS[((int) Math.round(degreesInACircle(yawRadians) / 45)) % 8];

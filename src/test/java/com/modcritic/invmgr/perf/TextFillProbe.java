@@ -12,7 +12,7 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * Does {@code setTextFill} survive being called before the label is in a scene?
  *
- * <p>M6.7b's virtualized item list turned up a color that had been wrong since the list was
+ * <p>Virtualizing the item list turned up a color that had been wrong since the list was
  * written: every row's text renders white, where the original gives white only to the selected row
  * and {@code #ccc} to the rest. The old panel built each row and called {@code restyle()} in the
  * constructor, before the node was anywhere; the new one binds most rows while they are already on

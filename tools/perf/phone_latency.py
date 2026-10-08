@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-M6.7b's phone lane: how long the real phone takes to show the result of a real finger.
+The phone lane of the optimization suite: how long the real phone takes to show the result of a
+real finger.
 
 WHY THE PHONE NEEDS ITS OWN HARNESS AND ITS OWN NUMBERS
 =======================================================
@@ -14,7 +15,12 @@ the two desktop lanes write. One measuring implementation, three screens, one re
 HOW THE FLAG GETS ONTO A PHONE THAT HAS NO COMMAND LINE
 =======================================================
 
-    adb shell am start -n com.modcritic.invmgr/.android.InvMgrActivity --es verbose latency
+    adb shell am start -n \
+        com.asterkazika.invmgr/com.modcritic.invmgr.android.InvMgrActivity --es verbose latency
+
+The two halves are different strings, and were the same until 2026-09-22. The first is the
+app ID Play files this app under; the second is the activity's Java class name, which did
+not move. A leading dot would mean "relative to the app ID" and would miss.
 
 InvMgrActivity.verboseTopicsFromTheIntent copies that extra into the argument vector the native
 image starts with, after checking it against the topics Verbose knows. It is the only launch
@@ -33,7 +39,7 @@ invisible here and shows up on the desktop work arm instead.
 ⚠ A FINGER ARRIVES TWICE
 ========================
 
-CLAUDE.md §5.8 item 5: every touch is delivered as a touch event AND as a synthesized mouse event.
+On Android every touch is delivered as a touch event AND as a synthesized mouse event.
 Both are recorded, with the type on the line. perfstat.py counts the touch family alone when one is
 present, so the phone's median is not a blend of a finger and its shadow.
 
@@ -154,7 +160,7 @@ def swipe(x1, y1, x2, y2, ms):
 # guesses missed every box: the app does not start in fit mode, so a 20 ft room is drawn at its
 # full 96 pixels to the foot and every box sits off the right-hand edge. The screen showed an empty
 # grid and the numbers that came back were perfectly good measurements of tapping bare floor.
-# CLAUDE.md §7, on a part of the app §7 never covered.
+# The lesson, learned again here: reading the code is not looking at the screen.
 SMALL_BOXES = [
     (336, 891), (590, 891), (843, 891),
     (336, 1144), (590, 1144), (843, 1144),
@@ -183,7 +189,7 @@ def launch_measuring():
         sys.exit("the app did not report a scene within 45 s")
     log = phone.adb("logcat", "-d")
     if "verbose logging asked for: latency" not in log:
-        sys.exit("the phone did not take the verbose extra. Is this build older than M6.7b?\n"
+        sys.exit("the phone did not take the verbose extra. Is this build older than M6.7.2?\n"
                  "Look for 'verbose logging asked for' in: adb logcat -d | grep InvMgr")
     time.sleep(SETTLE_AFTER_LAUNCH)
 
@@ -251,7 +257,7 @@ def scenario_open_drawers(reps):
 
 
 def scenario_scroll_list(reps):
-    """Fling the item list. §5.8 item 5: this is the synthesized mouse copy doing the work."""
+    """Fling the item list. The synthesized mouse copy of the finger is what scrolls the list."""
     phone.tap(*phone.UI.ITEMS_TAB, settle=1.2)
     for rep in range(reps):
         if rep % 2 == 0:

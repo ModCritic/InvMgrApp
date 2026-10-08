@@ -13,12 +13,12 @@ import org.testfx.framework.junit5.ApplicationTest;
 import org.testfx.util.WaitForAsyncUtils;
 
 /**
- * A throwaway probe for M6.7 item 3: <b>the 3D view is laggy on weak graphics.</b>
+ * A throwaway probe for the report that <b>the 3D view is laggy on weak graphics.</b>
  *
- * <p>The milestone row says to start by re-running M5.2b's measurement rather than guessing, and
- * that measurement was about the way <em>in</em>: the descent, which {@code TransitionCostProbe}
- * still times. This is the other half, the one item 3 is actually about: what a frame costs once
- * you are standing in the room and turning around.
+ * <p>The plan was to start from the earlier measurement rather than guess, and that measurement
+ * was about the way <em>in</em>: the descent, which {@code TransitionCostProbe} still times. This
+ * is the other half, the one the report is actually about: what a frame costs once you are
+ * standing in the room and turning around.
  *
  * <p>It does not propose a fix. It asks where the time goes, across four things that could each
  * account for it and that call for completely different answers:
@@ -30,15 +30,15 @@ import org.testfx.util.WaitForAsyncUtils;
  *       {@code WritableImage} on every call and {@code boxView} calls it once per box, so a room
  *       of 500 boxes holds 500 textures even when they are all the same color. If this is what
  *       costs, the fix is a cache keyed by color and it is cheap.
- *   <li><b>The vignette layer.</b> M6.7 added a transparent quad over every surface, which is
+ *   <li><b>The vignette layer.</b> A transparent quad sits over every surface, which is
  *       overdraw across the whole window. It measured at about 2% on this machine and a real
  *       integrated chip may weigh blending differently.
  *   <li><b>Plain fill rate.</b> If the same room at twice the pixels costs twice as much, the
  *       answer is about pixels and not about the scene at all.
  * </ul>
  *
- * <p><b>Round robin in short slices, and that is not decoration.</b> Two earlier probes in this
- * milestone reported a different winner on consecutive runs because the machine drifts more than
+ * <p><b>Round robin in short slices, and that is not decoration.</b> Two earlier probes of this
+ * problem reported a different winner on consecutive runs because the machine drifts more than
  * the differences being measured. Arms are interleaved and pooled.
  *
  * <p>Run it deliberately: {@code mvn -B test -Dtest=ThreeDFrameProbe}.
@@ -117,10 +117,9 @@ class ThreeDFrameProbe extends ApplicationTest {
             long start = System.nanoTime();
             renderer.build(state);
             if (!arm.vignette()) {
-                // Prices the layer M6.7 added: one transparent quad over every surface, which is
+                // Prices the vignette layer: one transparent quad over every surface, which is
                 // overdraw across the whole window. Removing it is not a proposal, the design
                 // system asks for the darkening; this is only how much of the frame it is.
-                renderer.node().getRoot().getChildrenUnmodifiable();
                 ((javafx.scene.Group) renderer.node().getRoot()).getChildren()
                         .removeIf(n -> n.getId() != null && n.getId().endsWith("-vignette"));
             }

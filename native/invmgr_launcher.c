@@ -7,15 +7,13 @@
  *   2. Starting the application inside the native image.
  *   3. The keyboard, which JavaFX asks for and only the Activity can provide.
  *
- * See docs/PLAN-M6.5B-HOST-LAYER.md for why this exists at all. It replaces Gluon's
- * launcher.c, which is GPL-3.0-or-later and cannot ship in a 0BSD app.
+ * It replaces Gluon's launcher.c, which is GPL-3.0-or-later and cannot ship in a 0BSD app.
  */
 
 #include "invmgr_host.h"
 
 #include <android/log.h>
 #include <stdlib.h>
-#include <string.h>
 
 JavaVM *invmgr_vm = NULL;
 jclass invmgr_activity_class = NULL;
@@ -51,9 +49,10 @@ int __svm_vm_is_static_binary __attribute__((weak)) = 1;
  *                                 the single most useful line when 3D silently draws nothing
  *
  * ⚠ com.sun.javafx.gestures.scroll=true is kept deliberately, even though it is the source
- * of the platform fling that M6.4a's B9 had to suppress in ui/PanMomentum. M6.5b's bar is
- * that behavior does not change, so this list matches what the app has shipped with. It is
- * now ours to change, which is worth remembering when M6.7 revisits scrolling.
+ * of the platform fling that ui/PanMomentum has to suppress (the room coasts on its own
+ * momentum instead). Replacing Gluon's host code was meant to change no behavior, so this list
+ * matches what the app had shipped with. It is now ours to change. The item list's scrolling
+ * was rebuilt later and left this flag alone.
  *
  * argv[0] is a program name and is not used for anything.
  */
@@ -119,8 +118,8 @@ static void cache_activity(JNIEnv *env, jobject activity)
     /*
      * The class, not the instance. Everything the native side calls on the Activity is
      * static (see invmgr_bridge.c), so the instance is never needed after this point.
-     * A global reference to it was taken here until M6.7c and read by nothing, which
-     * pinned the Activity for the life of the process to no purpose.
+     * A global reference to it was taken here until a code review on 2026-09-19 and read by
+     * nothing, which pinned the Activity for the life of the process to no purpose.
      */
     jclass local = (*env)->GetObjectClass(env, activity);
     invmgr_activity_class = (jclass) (*env)->NewGlobalRef(env, local);
