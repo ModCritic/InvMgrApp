@@ -49,6 +49,17 @@ org.intellij            | Apache-2.0 | Same package family, same reason.
 org.jspecify            | Apache-2.0 | Nullness annotations, pulled in by androidx.
 com.google.common       | Apache-2.0 | Guava's listenablefuture stub only, pulled in transitively.
 
+# One class that no library carries: android.os.flagging.AconfigStorageReadException. The real
+# one exists only on Android 16 and up, and androidx.core's AconfigPackageCompat catches it,
+# while this app runs on Android 5 and up. Android's own compiler (D8, which turns Java bytecode
+# into the phone's format) writes a stand-in under that name for the older phones. Read with
+# dexdump on 2026-10-28: marked synthetic, no source file, extends RuntimeException, and its only
+# method throws NoClassDefFoundError; it sits beside androidx.core's
+# Profiling$$ExternalSyntheticApiModelOutline0, D8's own helper for calling the newer API. No jar
+# or aar on this machine carries the class except Android's compile-only android.jar. So it holds
+# no one's code, only the name of an Android API (Apache-2.0). Shipped in 1.0.0 as well.
+android.os.flagging     | Apache-2.0 | A stand-in D8 writes for an Android 16 exception androidx.core catches. No code in it.
+
 # The one native library we produce. Since this project replaced Gluon's Android host code
 # (the C that starts the Java VM on the phone and hands JavaFX the screen and touches) with
 # its own, it contains our own host layer (0BSD),

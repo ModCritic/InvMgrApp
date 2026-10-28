@@ -1,8 +1,10 @@
 package com.modcritic.invmgr.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.modcritic.invmgr.App;
 import com.modcritic.invmgr.model.Item;
@@ -13,6 +15,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
+import javafx.geometry.VerticalDirection;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -272,6 +275,54 @@ class LongItemListTest extends ApplicationTest {
     }
 
     @Test
+    @DisplayName("a lifted row keeps its drag when the list scrolls under it")
+    void aLiftedRowKeepsItsDragWhenTheListScrollsUnderIt() {
+        fill();
+        interact(() -> {
+            Item plan = app.state().items.get(ITEMS / 2);
+            plan.planned = true;
+            app.listPanel().rebuild();
+            app.canvas().rebuildItems();
+        });
+        WaitForAsyncUtils.waitForFxEvents();
+        settle(300);
+        scrollTo(0.5);
+
+        Item plan = app.state().items.get(ITEMS / 2);
+        Region row = app.listPanel().rowFor(plan.id);
+        assertNotNull(row, "the planned row should be on screen half way down the list");
+        Point2D from = middleOf(row);
+
+        moveTo(from);
+        press(MouseButton.PRIMARY);
+        moveTo(new Point2D(from.getX() - 40, from.getY()));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(app.dragGhost().isShowing(), "the drag should have lifted a card");
+
+        // On a phone a finger that drifts up or down while carrying the card scrolls the list
+        // under it: Android turns the movement into a scroll gesture, which the list's ScrollPane
+        // follows even though the row is taking the drag itself. A mouse never does that, so the
+        // scroll is made here by hand. It makes the list hand out its rows again, which is what
+        // used to take the carried row out of the scene and leave the card stuck.
+        scrollTo(0.45);
+
+        Point2D later = new Point2D(from.getX() - 60, from.getY() - 100);
+        moveTo(later);
+        WaitForAsyncUtils.waitForFxEvents();
+        Bounds card = WaitForAsyncUtils.waitForAsyncFx(5000,
+                () -> app.dragGhost().node().localToScreen(app.dragGhost().node().getBoundsInLocal()));
+        assertTrue(card.contains(later),
+                "the card should still follow the pointer after the list scrolled; the pointer "
+                        + "is at " + later + " and the card at " + card);
+
+        release(MouseButton.PRIMARY);
+        WaitForAsyncUtils.waitForFxEvents();
+        settle(400);
+        assertFalse(app.dragGhost().isShowing(),
+                "letting go must take the card away; one left showing stays on screen for good");
+    }
+
+    @Test
     @DisplayName("the heights the spacers are built from are the heights the rows come out as")
     void theMeasuredHeightsMatchTheRealOnes() {
         fill();
@@ -361,6 +412,29 @@ class LongItemListTest extends ApplicationTest {
     }
 
     @Test
+    @DisplayName("a row clicked and then wheeled far past leaves no gap in the list")
+    void aClickedRowScrolledPastLeavesNoGap() {
+        fill();
+        scrollTo(0.0);
+
+        // The row clicked keeps its node for a double-click, however far the list goes. It used
+        // to be laid out straight after the top spacer, with nothing standing in for the rows
+        // between it and the ones on screen, so the rows drew too high and ran out early.
+        Node clicked = rowsOnScreen().get(1);
+        clickOn(middleOf(clicked));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        // Checked after every wheel step, because a broken layout shifts with each one and can
+        // happen to end up covered.
+        for (int step = 1; step <= 40; step++) {
+            scroll(1, VerticalDirection.DOWN);
+            WaitForAsyncUtils.waitForFxEvents();
+            assertRowsReachTheBottom("after clicking a row and scrolling " + step
+                    + " wheel steps past it");
+        }
+    }
+
+    @Test
     @DisplayName("rowCount counts the rows in the list, not the handful of nodes built for them")
     void rowCountCountsRowsNotNodes() {
         fill();
@@ -441,6 +515,43 @@ class LongItemListTest extends ApplicationTest {
             found.sort((a, b) -> Double.compare(
                     a.getBoundsInParent().getMinY(), b.getBoundsInParent().getMinY()));
             return found;
+        });
+    }
+
+    /**
+     * Fails unless row nodes cover the viewport from its top edge to its bottom edge with no gap,
+     * measured from where the rows are drawn rather than from anything the panel reports.
+     */
+    private void assertRowsReachTheBottom(String when) {
+        WaitForAsyncUtils.waitForAsyncFx(5000, () -> {
+            Bounds viewport = scroller().getViewportBounds();
+            Bounds inScene = scroller().localToScene(new javafx.geometry.BoundingBox(
+                    scroller().snappedLeftInset(), scroller().snappedTopInset(),
+                    viewport.getWidth(), viewport.getHeight()));
+            List<Bounds> rows = new ArrayList<>();
+            for (Node child : ((Region) scroller().getContent()).getChildrenUnmodifiable()) {
+                if (child.isVisible() && nameOn(child) != null) {
+                    rows.add(child.localToScene(child.getBoundsInLocal()));
+                }
+            }
+            rows.sort((a, b) -> Double.compare(a.getMinY(), b.getMinY()));
+
+            double coveredTo = inScene.getMinY();
+            for (Bounds row : rows) {
+                if (row.getMaxY() <= coveredTo) {
+                    continue;
+                }
+                if (row.getMinY() > coveredTo + 0.5) {
+                    break;
+                }
+                coveredTo = row.getMaxY();
+                if (coveredTo >= inScene.getMaxY()) {
+                    return null;
+                }
+            }
+            fail(when + ": the rows stop " + String.format("%.1f", inScene.getMaxY() - coveredTo)
+                    + " px short of the bottom of the viewport, and the list below them is blank");
+            return null;
         });
     }
 

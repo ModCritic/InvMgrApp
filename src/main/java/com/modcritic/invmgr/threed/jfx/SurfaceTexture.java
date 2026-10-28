@@ -37,9 +37,9 @@ import javafx.scene.paint.Stop;
  *
  * <p>The order they go on in is not arbitrary either. The original paints the grid and <em>then</em>
  * the darkening, so the lines fade into the corners along with everything else rather than staying
- * bright over a darkened surface. Two quads reproduce that by putting the vignette a hair nearer
- * the room than the grid; {@code JfxRenderer3D.surfaceQuads} owns that offset and the measurement
- * behind it.
+ * bright over a darkened surface. Two quads reproduce that by drawing the vignette over the grid,
+ * on the same corners, with the depth test off; {@code JfxRenderer3D.surfaceQuads} owns that
+ * arrangement and says why it is safe.
  */
 public final class SurfaceTexture {
 

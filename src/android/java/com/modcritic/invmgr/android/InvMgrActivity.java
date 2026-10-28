@@ -257,6 +257,11 @@ public class InvMgrActivity extends Activity implements SurfaceHolder.Callback, 
                             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         }
 
+        // ⚠ Google Play reports both setters as deprecated edge-to-edge APIs, and they are, from
+        // API 35. Do not drop them to quiet that report. Measured on the Android 15 and 16
+        // emulators 2026-10-28 with three-button navigation: without them Android 15 drew
+        // exactly the same, but Android 16 drew the back, home and recents buttons dim gray
+        // (#666666) instead of white. The status bar setter made no difference on either.
         window.setStatusBarColor(Color.TRANSPARENT);
         window.setNavigationBarColor(Color.TRANSPARENT);
 

@@ -27,7 +27,7 @@ class AppInfoTest {
                 .matcher(pom);
         assertTrue(project.find(), "could not find the project's own version in pom.xml");
         assertEquals(project.group(1).strip(), AppInfo.VERSION);
-        assertEquals("1.0.0", AppInfo.VERSION, "the user's first version, 2026-09-24");
+        assertEquals("1.0.1", AppInfo.VERSION, "the first update, 2026-10-27");
     }
 
     @Test

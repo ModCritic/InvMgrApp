@@ -47,6 +47,10 @@ public final class Launcher {
      * be tested from a desktop. {@code RoomCanvasView} therefore also consumes any scroll event
      * carrying the inertia flag, which works whatever this line does. This one costs nothing and
      * stops the events being manufactured at all when it works.
+     *
+     * <p><b>⚠ It switches the fling off for every node, not only the room</b>, so the item list lost
+     * its momentum along with it and stopped dead after every flick. {@code ListCoast} gives the
+     * list the room's coast instead.
      */
     private static final String PLATFORM_FLING = "com.sun.javafx.gestures.scroll.inertia";
 

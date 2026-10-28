@@ -137,6 +137,10 @@ class TouchScrollingTest extends ApplicationTest {
         listPanel.setOnSelect(item -> selected[0] = item);
 
         Region row = listPanel.rowFor(placed.id);
+        // The press first, at the same spot, as a finger's tap always does. The row ignores a click
+        // from a finger that moved since it went down, and with no press there is nowhere it went
+        // down, so a click on its own would read as a swipe.
+        reachedThePanel(row, MouseEvent.MOUSE_PRESSED, 40, 10);
         reachedThePanel(row, MouseEvent.MOUSE_CLICKED, 40, 10);
 
         // A tap on a row arrives as a synthesized click and nothing else. The original relies on

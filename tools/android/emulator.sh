@@ -66,7 +66,10 @@ running_pid() {
 ns_adb() {
     local api=$1; shift
     local pid; pid=$(running_pid "$api") || die "API $api is not running; start it first"
-    nsenter --target "$pid" --user --net --preserve-credentials "$ADB" "$@"
+    # A network namespace hides the network but not USB, so with the test phone plugged in this
+    # adb sees the phone as well and refuses to guess. Each emulator is alone in its namespace,
+    # so it takes the first console port and is always emulator-5554.
+    ANDROID_SERIAL=emulator-5554 nsenter --target "$pid" --user --net --preserve-credentials "$ADB" "$@"
 }
 
 install() {

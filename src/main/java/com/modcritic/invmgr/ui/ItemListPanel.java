@@ -5,8 +5,10 @@ import com.modcritic.invmgr.model.AppState;
 import com.modcritic.invmgr.model.Item;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
@@ -103,6 +105,9 @@ public final class ItemListPanel extends VBox {
      */
     private final VBox rowBox = new VBox();
     private final ScrollPane scroller = new ScrollPane(rowBox);
+
+    /** What keeps the list moving after a flick. */
+    private final ListCoast coast;
 
     /** Stands in for the rows above the viewport, so the list is its full height. */
     private final Region topSpacer = new Region();
@@ -217,6 +222,9 @@ public final class ItemListPanel extends VBox {
         // back (the user, 2026-09-26; see ScrollEnds). It moves only the skin's own bar, which
         // refill never reads: the list's vvalue is clamped either way.
         ScrollEnds.install(scroller);
+        // And it carries on after a flick, with the room's coast; see ListCoast for why the list
+        // needs one of its own.
+        coast = ListCoast.install(scroller);
 
         // The two things that change which rows are on screen. Both fire synchronously, so a
         // caller that sets the scroll position can read the rows back on the next line.
@@ -463,7 +471,9 @@ public final class ItemListPanel extends VBox {
      *
      * <p>⚠ <b>A row in the middle of a gesture is never taken back</b>, whatever has scrolled where.
      * See {@link Row#pinned}: that rule is what keeps this change from breaking the one thing
-     * {@code ItemListPanel}'s class documentation warns about.
+     * {@code ItemListPanel}'s class documentation warns about. Nor is a row that stays ever lifted
+     * out of the scroller and put back, which would cost it the press it is in; see
+     * {@link #showChildren}.
      */
     private void refill() {
         if (refilling || visible.isEmpty()) {
@@ -507,7 +517,7 @@ public final class ItemListPanel extends VBox {
                 }
             }
 
-            // Rebuild the child list in row order: spacer, rows top to bottom, spacer.
+            // The child list in row order: spacer, rows top to bottom, spacer.
             List<Row> showing = new ArrayList<>(liveById.values());
             showing.sort((a, b) -> Integer.compare(indexOf(a.item.id), indexOf(b.item.id)));
             List<javafx.scene.Node> children = new ArrayList<>();
@@ -515,13 +525,18 @@ public final class ItemListPanel extends VBox {
             int firstShown = visible.size();
             int lastShown = -1;
             for (Row row : showing) {
-                children.add(row.node);
                 int at = indexOf(row.item.id);
+                // ⚠ A busy row is kept however far it has scrolled, so the row before it here need
+                // not be the item just above it. The rows between have no nodes, and without this
+                // margin standing in for them every row below would draw that much too high and the
+                // list would come up that much short: blank rows at the bottom of the viewport.
+                setGapAbove(row.node, lastShown < 0 ? 0 : rowTop[at] - rowTop[lastShown + 1]);
+                children.add(row.node);
                 firstShown = Math.min(firstShown, at);
                 lastShown = Math.max(lastShown, at);
             }
             children.add(bottomSpacer);
-            rowBox.getChildren().setAll(children);
+            showChildren(children);
 
             double above = lastShown < 0 ? 0 : rowTop[firstShown];
             double below = lastShown < 0 ? total : total - rowTop[lastShown + 1];
@@ -529,6 +544,48 @@ public final class ItemListPanel extends VBox {
             setSpacer(bottomSpacer, below);
         } finally {
             refilling = false;
+        }
+    }
+
+    /**
+     * Makes the scroller hold exactly {@code wanted}, in that order, without ever taking out a
+     * node that stays.
+     *
+     * <p><b>⚠ Not {@code setAll}, and that is the fix for a real bug.</b> {@code setAll} takes every
+     * child out of the scene and puts it back, and JavaFX drops a node that leaves the scene from the
+     * press it is part of: the rest of the gesture, release included, goes to its parent instead.
+     * This runs on every scroll step, and on a phone every swipe starts with a finger on a row, so
+     * that row never heard the finger lift. It stayed pressed, which counts as busy, so it was never
+     * recycled, and each swipe kept one more node for good.
+     *
+     * <p>Only the new rows are inserted. {@link #recycle} has already taken out the rows that
+     * scrolled off, so what is left is rows still showing the item they showed before, and those
+     * are already in order: both lists are sorted by place in the list, and an item's place does
+     * not change between two {@link #rebuild}s.
+     */
+    private void showChildren(List<javafx.scene.Node> wanted) {
+        List<javafx.scene.Node> current = rowBox.getChildren();
+        Set<javafx.scene.Node> keep = new HashSet<>(wanted);
+        current.removeIf(node -> !keep.contains(node));
+        for (int i = 0; i < wanted.size(); i++) {
+            if (i >= current.size() || current.get(i) != wanted.get(i)) {
+                current.add(i, wanted.get(i));
+            }
+        }
+    }
+
+    /**
+     * Leaves {@code height} of empty space above a row, for rows that have no node.
+     *
+     * <p>Zero for nearly every row: they sit right under the row above. Only a busy row kept
+     * outside the window, or the first row after one, has a run of missing rows next to it.
+     * Set only when it changes, since a new margin asks for a fresh layout pass.
+     */
+    private static void setGapAbove(Region row, double height) {
+        Insets now = VBox.getMargin(row);
+        double current = now == null ? 0 : now.getTop();
+        if (current != height) {
+            VBox.setMargin(row, height > 0 ? new Insets(height, 0, 0, 0) : null);
         }
     }
 
@@ -555,6 +612,11 @@ public final class ItemListPanel extends VBox {
         }
         liveById.remove(row.item.id);
         row.unbind();
+        // Out of the scroller now, before it can be pointed at another item somewhere else in the
+        // list. That leaves only rows still showing their own item behind, already in order, which
+        // is what showChildren counts on. A row that gets here is not busy, so nothing is
+        // pressing on it to lose.
+        rowBox.getChildren().remove(row.node);
         pool.add(row);
     }
 
@@ -632,6 +694,11 @@ public final class ItemListPanel extends VBox {
         return row == null ? null : row.node;
     }
 
+    /** For tests: whether the list is coasting after a flick. */
+    public boolean isCoasting() {
+        return coast.isCoasting();
+    }
+
     /**
      * For tests: how many rows the list is showing.
      *
@@ -689,6 +756,12 @@ public final class ItemListPanel extends VBox {
 
         /** True while the mouse is down on this row, so a stray release still finds its start. */
         private boolean pressed;
+
+        /**
+         * Whether the pointer has gone further than a tap from where it was pressed. A finger that
+         * has is scrolling, and its click at the end does not choose this row.
+         */
+        private boolean pastTap;
 
         /**
          * Whether this row is busy and must not be pointed at another item.
@@ -757,6 +830,7 @@ public final class ItemListPanel extends VBox {
             this.dragging = false;
             this.decided = false;
             this.pressed = false;
+            this.pastTap = false;
 
             dot.setFill(Tokens.parseHsl(showing.color));
             label.setText(showing.displayName() + (showing.planned ? " [plan]" : ""));
@@ -865,8 +939,17 @@ public final class ItemListPanel extends VBox {
                 if (acting == null || event.getButton() != MouseButton.PRIMARY) {
                     return;
                 }
+                // A finger that moved more than a tap's worth was scrolling the list, so the row
+                // it started on is not chosen. JavaFX sends a click whenever the press and the
+                // release land on the same node, and a swipe that starts on a row ends on it,
+                // because the row travels with the finger. Only the finger's copy of the mouse
+                // (flagged synthesized); a desktop click is untouched, the same rule DragCancelsTap
+                // applies to buttons.
+                if (event.isSynthesized() && pastTap) {
+                    return;
+                }
                 // JavaFX reports the second click of a double-click as click 1 and then
-                // click 2, so a single click still fires first -- which is exactly what the
+                // click 2, so a single click still fires first, which is exactly what the
                 // original does too: select, then edit.
                 if (event.getClickCount() >= 2) {
                     onEdit.handle(acting);
@@ -909,6 +992,7 @@ public final class ItemListPanel extends VBox {
                 // node being recycled between the two halves of a double-click.
                 lastPressed = this;
                 pressed = true;
+                pastTap = false;
                 pressedAt[0] = event.getSceneX();
                 pressedAt[1] = event.getSceneY();
                 dragging = false;
@@ -918,6 +1002,11 @@ public final class ItemListPanel extends VBox {
             });
 
             node.setOnMouseDragged(event -> {
+                // Noted for every row, planned or not, for the click handler. Nothing is consumed.
+                if (Math.hypot(event.getSceneX() - pressedAt[0],
+                        event.getSceneY() - pressedAt[1]) > Tokens.TAP_SLOP) {
+                    pastTap = true;
+                }
                 Item carrying = item;
                 if (carrying == null || !carrying.planned) {
                     return;

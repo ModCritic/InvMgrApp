@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import javafx.scene.AmbientLight;
+import javafx.scene.DepthTest;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.SceneAntialiasing;
@@ -43,17 +44,6 @@ import javafx.scene.transform.Translate;
  * would add a highlight nothing asked for.
  */
 public final class JfxRenderer3D implements Renderer3D {
-
-    /**
-     * How far the vignette floats above the grid it darkens, in feet.
-     *
-     * <p>An eighth of an inch, and both bounds on it were measured by {@code RoomSharpnessProbe}.
-     * Below it: laid exactly coplanar the two lose about 12% of the overlay to the depth buffer
-     * across a 200 ft room, while 0.001 ft already wins cleanly, so this has a tenfold margin.
-     * Above it: the vignette is a gradient spanning tens of feet, so shifting it an eighth of an
-     * inch out of the plane it darkens cannot be seen.
-     */
-    private static final double LAYER_LIFT_FT = 0.01;
 
     /** How close to the camera something can be before it is clipped away, in feet. */
     private static final double NEAR_CLIP_FT = 0.05;
@@ -124,11 +114,12 @@ public final class JfxRenderer3D implements Renderer3D {
         // Keep the light; drop everything else. Rebuilding is how a changed room gets on screen.
         world.getChildren().removeIf(node -> !(node instanceof AmbientLight));
 
+        // Surfaces before boxes, always: each vignette is drawn without the depth test, so
+        // anything already on screen where it lands gets darkened. See surfaceQuads.
         GridTile tile = GridTile.forGrid(appState.metricMode);
         Image gridTile = SurfaceTexture.gridTile(appState.metricMode);
-        float[] center = RoomGeometry.centerOf(appState.room);
         for (RoomGeometry.Surface surface : RoomGeometry.surfacesOf(appState.room)) {
-            for (MeshView view : surfaceQuads(surface, tile, gridTile, center)) {
+            for (MeshView view : surfaceQuads(surface, tile, gridTile)) {
                 // Without this, a ray cast to find out what you are pointing at hits the floor
                 // before it ever reaches a box, and nothing in the room is ever pickable.
                 view.setMouseTransparent(true);
@@ -276,17 +267,32 @@ public final class JfxRenderer3D implements Renderer3D {
     /**
      * The two quads one wall or floor is made of: the grid, and the darkening over it.
      *
-     * <p>They are returned in the order they must be added in, and that order is load bearing. The
-     * vignette is nearer the camera, so if it went into the scene first it would write its depth
-     * and the grid would fail the depth test behind it: the room would come out as five gray
-     * gradients with no grid at all.
+     * <p><b>The darkening (the vignette) is drawn with the depth test off</b>, on exactly the same
+     * corners as the grid. It used to float an eighth of an inch nearer the room and take its
+     * chances with the depth buffer, which could not keep the two apart in a big room. The depth
+     * buffer stores distance in fixed steps that grow with the square of the distance: with the
+     * near clip at {@value #NEAR_CLIP_FT} ft, one step of a 24-bit buffer is about a twentieth of a
+     * foot at 200 ft, almost five times the gap, and one step of the 16-bit buffer JavaFX gives a
+     * phone is wider than the gap from about 6 ft. Where the gap fell inside one step, the grid won
+     * some pixels and the vignette others, and which won changed as the camera moved, so the walls
+     * flickered.
+     *
+     * <p>Switching the test off for the vignette is safe because of the room's shape: seen from
+     * anywhere the camera can go, a pixel shows the front of at most one surface, since every
+     * surface faces into a box with an open top and the backs are culled. So the vignette can
+     * only ever land on its own grid. With the test off it also writes no depth, and the boxes
+     * drawn afterwards still meet the grid's depth, which is the surface's real position.
+     *
+     * <p>That makes the order load bearing twice over. The grid has to go in first, or it is drawn
+     * over the darkening. And every surface has to go in before any box, or a vignette is painted
+     * over the boxes in front of it. They are returned in the order they must be added in.
      *
      * <p>The grid quad asks for the tile {@code span} times over rather than once, which is the
      * whole of the sharpness fix; see {@link GridTile}. The vignette quad asks for its picture
      * exactly once, stretched over the surface, which is what it has always done.
      */
     private List<MeshView> surfaceQuads(RoomGeometry.Surface surface, GridTile tile,
-            Image gridTile, float[] center) {
+            Image gridTile) {
         double spanX = tile.span(surface.widthFt);
         double spanY = tile.span(surface.heightFt);
         double originX = tile.originX(surface.widthFt, surface.mirroredGridX);
@@ -294,10 +300,10 @@ public final class JfxRenderer3D implements Renderer3D {
         MeshView grid = quad(surface.corners, gridTile, originX, 0, spanX, spanY);
         grid.setId(surface.name);
 
-        MeshView vignette = quad(
-                RoomGeometry.liftedTowards(surface.corners, center, LAYER_LIFT_FT),
+        MeshView vignette = quad(surface.corners,
                 SurfaceTexture.vignette(surface.widthFt, surface.heightFt), 0, 0, 1, 1);
         vignette.setId(surface.name + "-vignette");
+        vignette.setDepthTest(DepthTest.DISABLE);
 
         return List.of(grid, vignette);
     }

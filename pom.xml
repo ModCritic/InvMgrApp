@@ -21,8 +21,9 @@
     <!-- THE app's version, and the only place it is written. The About page reads it through
          com/modcritic/invmgr/app.properties, filtered below, and Substrate writes it into the
          Android manifest as versionName through <releaseConfiguration>, so About and the Play
-         Store cannot disagree. 1.0.0 since 2026-09-24, the user's choice. -->
-    <version>1.0.0</version>
+         Store cannot disagree. 1.0.0 from 2026-09-24, and 1.0.1 from 2026-10-27 for the first
+         update; the user's choice both times. -->
+    <version>1.0.1</version>
     <name>InvMgr</name>
     <description>Top-down room inventory manager with a walkable 3D view</description>
 
@@ -333,10 +334,10 @@
                          versionCode: Play's own counter, which must go up by at least one
                          with every upload, whatever versionName says. Substrate writes it into
                          src/android/AndroidManifest.xml in place, the same way as versionName.
-                         1 is the first upload. -->
+                         1 was the first upload, 1.0.0, and 2 is 1.0.1. -->
                     <releaseConfiguration>
                         <versionName>${project.version}</versionName>
-                        <versionCode>1</versionCode>
+                        <versionCode>2</versionCode>
                     </releaseConfiguration>
 
                     <!-- JavaFX builds the App object reflectively, via

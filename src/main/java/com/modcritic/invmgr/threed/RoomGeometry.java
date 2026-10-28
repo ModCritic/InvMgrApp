@@ -134,60 +134,6 @@ public final class RoomGeometry {
         };
     }
 
-    /** The middle of the room, in the same coordinates {@link #surfacesOf} builds its corners in. */
-    public static float[] centerOf(Room room) {
-        return new float[] {(float) (room.w / 2), (float) (-room.h / 2), (float) (-room.l / 2)};
-    }
-
-    /**
-     * The same four corners, moved {@code distanceFt} off the surface towards a point.
-     *
-     * <p>Used to float one layer of a surface just clear of another: a wall is a grid quad with a
-     * vignette quad over it, and two quads in exactly the same plane fight over the depth buffer
-     * instead of stacking.
-     *
-     * <p><b>Which way is off the surface comes from the corners themselves</b>, rather than from a
-     * list of which surface is which. The cross product of two edges gives the plane's normal, and
-     * pointing it at {@code target} settles the sign. A surface added later gets this right without
-     * anyone remembering to add a case for it.
-     *
-     * <p>Lives here rather than in the renderer because it is arithmetic about a room, with no
-     * JavaFX in it, which is also what lets {@code RoomGeometryTest} check it without a window and
-     * what stops the probes keeping their own copy that quietly disagrees.
-     *
-     * @param corners twelve floats, four corners of three coordinates each
-     * @param target the point to move towards, usually {@link #centerOf}
-     */
-    public static float[] liftedTowards(float[] corners, float[] target, double distanceFt) {
-        float[] edge1 = {corners[3] - corners[0], corners[4] - corners[1], corners[5] - corners[2]};
-        float[] edge2 = {corners[9] - corners[0], corners[10] - corners[1],
-            corners[11] - corners[2]};
-        float nx = edge1[1] * edge2[2] - edge1[2] * edge2[1];
-        float ny = edge1[2] * edge2[0] - edge1[0] * edge2[2];
-        float nz = edge1[0] * edge2[1] - edge1[1] * edge2[0];
-        double length = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (length == 0) {
-            return corners.clone();
-        }
-        nx /= (float) length;
-        ny /= (float) length;
-        nz /= (float) length;
-        if (nx * (target[0] - corners[0]) + ny * (target[1] - corners[1])
-                + nz * (target[2] - corners[2]) < 0) {
-            nx = -nx;
-            ny = -ny;
-            nz = -nz;
-        }
-
-        float[] lifted = corners.clone();
-        for (int i = 0; i < 4; i++) {
-            lifted[i * 3] += nx * distanceFt;
-            lifted[i * 3 + 1] += ny * distanceFt;
-            lifted[i * 3 + 2] += nz * distanceFt;
-        }
-        return lifted;
-    }
-
     private static Surface surface(String name, double widthFt, double heightFt,
             boolean mirroredGridX, double... spec) {
         // Negate y and z, and leave the corners in the order they were written. A half turn about

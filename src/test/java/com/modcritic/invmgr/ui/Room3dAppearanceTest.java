@@ -118,25 +118,8 @@ class Room3dAppearanceTest extends ApplicationTest {
                 "there should be exactly five grid surfaces and no ceiling, got " + ids);
         assertEquals(5, ids.stream().filter(id -> id.endsWith("-vignette")).count(),
                 "and one vignette over each of them, got " + ids);
-
-        // And each vignette floats clear of the grid it darkens. Laid in exactly the same plane
-        // the two fight over the depth buffer and the room speckles; there is no pixel test that
-        // catches that reliably, because which of the two wins is decided per pixel and can go
-        // either way from one frame to the next. This asks the geometry instead.
-        for (String name : new String[] {"room-floor", "room-north", "room-east"}) {
-            javafx.scene.shape.TriangleMesh grid =
-                    (javafx.scene.shape.TriangleMesh) ((javafx.scene.shape.MeshView)
-                            find(name)).getMesh();
-            javafx.scene.shape.TriangleMesh over =
-                    (javafx.scene.shape.TriangleMesh) ((javafx.scene.shape.MeshView)
-                            find(name + "-vignette")).getMesh();
-            double apart = 0;
-            for (int i = 0; i < grid.getPoints().size(); i++) {
-                apart = Math.max(apart,
-                        Math.abs(grid.getPoints().get(i) - over.getPoints().get(i)));
-            }
-            assertTrue(apart > 0, name + "'s vignette is in exactly the same plane as its grid");
-        }
+        // How each vignette is kept on top of its grid (the depth test, the order) is pinned by
+        // VignetteLayerTest, with pixels, in the biggest room the app allows.
     }
 
     @Test

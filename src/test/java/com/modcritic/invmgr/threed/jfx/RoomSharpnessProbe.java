@@ -14,6 +14,7 @@ import java.util.List;
 import javafx.animation.AnimationTimer;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.AmbientLight;
+import javafx.scene.DepthTest;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.Scene;
@@ -60,7 +61,7 @@ import org.testfx.util.WaitForAsyncUtils;
  * written to {@code target/screenshots/}. The answer was that the sharp one is six times steadier.
  *
  * <p>It also asks what each costs, whether a small offset between coplanar layers survives the
- * depth buffer at room distances (the vignette needs a second quad and the far clip is 2000 ft),
+ * depth buffer at room distances (on the floor only, which turned out to be the easy case),
  * and photographs the shipped renderer itself, which is where the crease shot comes from.
  *
  * <p>Run it deliberately: {@code mvn -B test -Dtest=RoomSharpnessProbe}.
@@ -261,13 +262,12 @@ class RoomSharpnessProbe extends ApplicationTest {
         List<Long> frames = new ArrayList<>();
         interact(() -> {
             world.getChildren().removeIf(node -> !(node instanceof AmbientLight));
-            float[] center = RoomGeometry.centerOf(room);
             long start = System.nanoTime();
             for (RoomGeometry.Surface s : RoomGeometry.surfacesOf(room)) {
                 if (arm == Arm.OLD) {
                     world.getChildren().add(shippedQuad(s));
                 } else {
-                    world.getChildren().addAll(tiledQuads(s, center, arm.cap()));
+                    world.getChildren().addAll(tiledQuads(s, arm.cap()));
                 }
             }
             arm.builds.add(System.nanoTime() - start);
@@ -322,10 +322,9 @@ class RoomSharpnessProbe extends ApplicationTest {
         for (boolean tiled : new boolean[] {false, true}) {
             interact(() -> {
                 world.getChildren().removeIf(node -> !(node instanceof AmbientLight));
-                float[] center = RoomGeometry.centerOf(room);
                 for (RoomGeometry.Surface s : RoomGeometry.surfacesOf(room)) {
                     if (tiled) {
-                        world.getChildren().addAll(tiledQuads(s, center));
+                        world.getChildren().addAll(tiledQuads(s));
                     } else {
                         world.getChildren().add(shippedQuad(s));
                     }
@@ -395,7 +394,7 @@ class RoomSharpnessProbe extends ApplicationTest {
      * <p>The interesting reading is the small room. There the old picture was already close to 96
      * pixels to the foot, so the grid barely moves and <b>whatever difference is left is the
      * vignette</b>: it used to be painted into the same picture as the grid and is now blended
-     * from a quad floating a hair above it. A small number here is the evidence that splitting the
+     * from a second quad laid over it. A small number here is the evidence that splitting the
      * picture in two did not change how the room looks.
      */
     private static String howDifferent(WritableImage a, WritableImage b) {
@@ -447,10 +446,9 @@ class RoomSharpnessProbe extends ApplicationTest {
         for (boolean tiled : new boolean[] {false, true}) {
             interact(() -> {
                 world.getChildren().removeIf(node -> !(node instanceof AmbientLight));
-                float[] center = RoomGeometry.centerOf(room);
                 for (RoomGeometry.Surface s : RoomGeometry.surfacesOf(room)) {
                     if (tiled) {
-                        world.getChildren().addAll(tiledQuads(s, center));
+                        world.getChildren().addAll(tiledQuads(s));
                     } else {
                         world.getChildren().add(shippedQuad(s));
                     }
@@ -535,25 +533,25 @@ class RoomSharpnessProbe extends ApplicationTest {
 
     /**
      * The same surface as the app draws it now: the shipped tile laid down span times over, with
-     * the vignette on its own quad a hair nearer the room.
+     * the vignette on its own quad on the same corners, drawn with the depth test off.
      *
      * <p>Both quads, not just the grid, because half the reason to keep this probe is the
      * question the sharpness does not answer: <b>did splitting the picture in two change how the
      * darkening looks?</b> A small room should come out of both arms as very nearly the same
      * photograph, and {@link #howDifferent} is where that is read as a number.
      */
-    private static List<MeshView> tiledQuads(RoomGeometry.Surface s, float[] center) {
-        return tiledQuads(s, center, SurfaceMetrics.MAX_TEXTURE_PX);
+    private static List<MeshView> tiledQuads(RoomGeometry.Surface s) {
+        return tiledQuads(s, SurfaceMetrics.MAX_TEXTURE_PX);
     }
 
-    private static List<MeshView> tiledQuads(RoomGeometry.Surface s, float[] center,
-            double vignetteCapPx) {
+    private static List<MeshView> tiledQuads(RoomGeometry.Surface s, double vignetteCapPx) {
         GridTile tile = GridTile.forGrid(false);
         MeshView grid = quad(s.corners, SurfaceTexture.gridTile(false),
                 tile.span(s.widthFt), tile.span(s.heightFt),
                 tile.originX(s.widthFt, s.mirroredGridX), 0);
-        MeshView vignette = quad(RoomGeometry.liftedTowards(s.corners, center, 0.01),
+        MeshView vignette = quad(s.corners,
                 SurfaceTexture.vignette(s.widthFt, s.heightFt, vignetteCapPx), 1, 1, 0, 0);
+        vignette.setDepthTest(DepthTest.DISABLE);
         return List.of(grid, vignette);
     }
 
@@ -579,9 +577,13 @@ class RoomSharpnessProbe extends ApplicationTest {
     /**
      * Whether a second quad a hair above the floor survives the depth buffer.
      *
-     * <p>Keeping the vignette on top of a tiled grid needs one, and the far clip is 2000 ft, so
-     * the depth buffer is spread thin. This lays a bright patch over the floor at several heights
-     * and several distances and reads back whether the patch actually won.
+     * <p>This lays a bright patch over the floor at several heights and several distances and
+     * reads back whether the patch actually won. It found that 0.001 ft already won, and the
+     * vignette floated 0.01 ft over its grid on the strength of that until 2026-10-26, when
+     * {@code WallFlickerProbe} showed the walls losing from about 100 ft. <b>The floor seen from
+     * eye height is the easy case</b>: the line of sight meets it at a shallow angle, which
+     * stretches the gap between the two layers along it many times over, so a wall seen face-on
+     * gets none of the margin this measured. The vignette now skips the depth test instead.
      */
     private void reportLayerOffsets() {
         Room room = new Room();

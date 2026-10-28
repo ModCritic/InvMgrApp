@@ -12,6 +12,10 @@
 #     the keystore is wrong;
 #   - the APK and the bundle are both signed with the key in the keystore, compared by
 #     fingerprint;
+#   - the bundle carries the same code as the APK, file by file, so a check of one holds
+#     for the other;
+#   - nothing ships that tools/shipped-origins.allow has no record of, read out of the
+#     APK's own classes and native libraries by tools/check-shipped-licenses.sh;
 #
 # and then deletes every file under target/ that holds either password. Substrate writes
 # them in plain text into the Gradle project it generates, and this cleans up whatever
@@ -22,7 +26,8 @@
 #
 # For a dry run against a throwaway key, set INVMGR_KEYSTORE and INVMGR_KEY_ALIAS. The
 # output then goes to target/release-TEST-KEY/ instead, so it cannot be mistaken for the
-# real thing.
+# real thing. Name the key file .jks or .keystore: Substrate checks the extension, and any
+# other name makes it build Debug, which the debuggable check below then stops.
 
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -125,10 +130,41 @@ if [ "$APK_SHA" != "$KEY_SHA" ] || [ "$AAB_SHA" != "$KEY_SHA" ]; then
     exit 1
 fi
 
+# The license check reads the APK, and Play gets the bundle. Both come out of one Gradle run;
+# this holds them to it for every class file and native library, compared by hash.
+if ! python3 - "$APK" "$AAB" <<'EOF'
+import hashlib, sys, zipfile
+
+def code(path, prefix):
+    found = {}
+    with zipfile.ZipFile(path) as z:
+        for name in z.namelist():
+            if name.startswith(prefix) and name.endswith((".dex", ".so")):
+                inside = name[len(prefix):]
+                inside = inside[len("dex/"):] if inside.startswith("dex/") else inside
+                found[inside] = hashlib.sha256(z.read(name)).hexdigest()
+    return found
+
+apk, aab = code(sys.argv[1], ""), code(sys.argv[2], "base/")
+sys.exit(0 if apk and apk == aab else 1)
+EOF
+then
+    echo "FAILED: the bundle's code is not the APK's, so the APK's checks say nothing about it." >&2
+    exit 1
+fi
+
+# Run here because a release is the one build that leaves this machine, and 1.0.0 went out
+# without it: the check would have failed then, on a class nobody had recorded.
+if ! tools/check-shipped-licenses.sh "$APK" > target/release-licenses.log 2>&1; then
+    echo "FAILED: the license check found code it has no record of. Do not upload this build." >&2
+    grep "NOT ALLOWED" target/release-licenses.log >&2 || tail -20 target/release-licenses.log >&2
+    exit 1
+fi
+
 VERSION="$(printf '%s\n' "$BADGING" | sed -n "s/^package: .*versionCode='\([0-9]*\)' versionName='\([^']*\)'.*/\2-\1/p")"
 mkdir -p "$OUT"
 cp "$AAB" "$OUT/InvMgr-$VERSION.aab"
 cp "$APK" "$OUT/InvMgr-$VERSION.apk"
-echo "OK: release build, not debuggable, signed with \"$ALIAS\" ($KEY_SHA)."
+echo "OK: release build, not debuggable, signed with \"$ALIAS\" ($KEY_SHA), licenses checked."
 printf '%s\n' "$BADGING" | grep "^package:"
 echo "Upload this one: $OUT/InvMgr-$VERSION.aab"
