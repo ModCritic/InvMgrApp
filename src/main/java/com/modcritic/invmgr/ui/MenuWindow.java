@@ -1,7 +1,10 @@
 package com.modcritic.invmgr.ui;
 
 import com.modcritic.invmgr.model.AppState;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -38,10 +41,12 @@ import javafx.scene.text.Font;
  * <h2>Pages</h2>
  *
  * <p>About opens a page inside this same square, and it has two of its own: Privacy policy and
- * Credits. Settings is a page too. Each page below the Menu has a {@code ‹} in its title row that
- * goes back one page, and Escape and the phone's Back do the same, which is what Back means
- * everywhere else on a phone. On the Menu itself they close the window. The {@code ×} and a tap
- * outside close it from any page, and it always opens on the Menu.
+ * Licenses. Licenses opens one page per license text, and one for the Java class library's list
+ * of the smaller licenses it brings, whose entries open texts too. Settings is a page too. Each
+ * page below the Menu has a {@code ‹} in its title row that goes back one page, and Escape, the
+ * phone's Back and a tap outside the window do the same, which is what Back means everywhere else
+ * on a phone. On the Menu itself they close the window. The {@code ×} closes it from any page, and
+ * it always opens on the Menu.
  *
  * <h2>One box, always the same size</h2>
  *
@@ -57,8 +62,8 @@ import javafx.scene.text.Font;
  * <h2>Closing it</h2>
  *
  * <p>Four ways, and none of them loses anything, because the window holds no half-filled form: the
- * {@code ×} in the title row, a tap on the darkened room outside it, Escape, and the phone's Back
- * button, which {@code InvMgrActivity} already delivers as Escape.
+ * {@code ×} in the title row, and on the Menu itself a tap on the darkened room outside it, Escape,
+ * and the phone's Back button, which {@code InvMgrActivity} already delivers as Escape.
  */
 public final class MenuWindow extends ModalDialog {
 
@@ -87,7 +92,14 @@ public final class MenuWindow extends ModalDialog {
         FEEDBACK("Feedback", MENU),
         ABOUT("About", MENU),
         PRIVACY("Privacy policy", ABOUT),
-        CREDITS("Credits", ABOUT);
+        LICENSES("Licenses", ABOUT),
+        /** A group of license texts. Its title is the group's own, kept in {@code groupTitle}. */
+        LICENSE_GROUP(null, LICENSES),
+        /**
+         * One license text, titled with its name. It goes back to whichever page opened it,
+         * Licenses or a group, which {@code textParent} remembers.
+         */
+        LICENSE_TEXT(null, LICENSES);
 
         final String title;
         final Page parent;
@@ -111,7 +123,7 @@ public final class MenuWindow extends ModalDialog {
 
     private final Button feedback;
     private final Button feedbackOk = pageButton("OK", Dialogs.ButtonKind.CONFIRM);
-    private final TextArea feedbackText = new SkinnedTextArea();
+    private final SkinnedTextArea feedbackText = new SkinnedTextArea();
     private final Button byEmail = pageButton("Email", Dialogs.ButtonKind.CONFIRM);
     private final Button byIssue = pageButton("GitHub", Dialogs.ButtonKind.CONFIRM);
     /** What happened to the last message: handed to which app, or why not. */
@@ -123,14 +135,24 @@ public final class MenuWindow extends ModalDialog {
 
     private final Button sourceCode;
     private final Button privacy;
-    private final Button credits;
+    private final Button licenses;
+    /** The Licenses page's link to this version's source. */
+    private final Button releaseSource;
+    /** Every license entry built so far, by its title, for the tests to press. */
+    private final Map<String, Button> licenseEntries = new LinkedHashMap<>();
 
     /** Each page's body, built once. Privacy's words arrive from the app; see setPrivacyPolicy. */
     private final Node menuBody;
     private final Node aboutBody;
     private final VBox privacyText = new VBox(Tokens.MENU_ENTRY_GAP);
     private final Node privacyBody;
-    private final Node creditsBody;
+    private final Node licensesBody;
+    /** The open group's and the open text's pages, built when they are opened. */
+    private Node groupBody;
+    private Node textBody;
+    private String groupTitle;
+    private String textTitle;
+    private Page textParent = Page.LICENSES;
     private final Node settingsBody;
     private final Node feedbackNoticeBody;
     private final Node feedbackBody;
@@ -206,6 +228,13 @@ public final class MenuWindow extends ModalDialog {
                 + Tokens.hex(Tokens.DIALOG_INPUT_BG) + ";"
                 + "-fx-background-insets: 0, 1; -fx-background-radius: 0;");
         Dialogs.limitLength(feedbackText, AppInfo.FEEDBACK_MAX_LENGTH);
+        // Past four lines the box scrolls its own text. That scroll pane stops at its ends rather
+        // than stretching past them, and coasts after a flick, like the page around it (the
+        // user's rules, 2026-09-26 and 2026-10-31).
+        feedbackText.onScrollPane(inside -> {
+            ScrollEnds.install(inside);
+            ListCoast.install(inside);
+        });
         byEmail.setOnAction(event -> sendFeedback(onFeedbackByEmail, message -> true,
                 "Opened in your mail app. Send it from there."));
         byIssue.setOnAction(event -> sendFeedback(onFeedbackByIssue, AppInfo::fitsInIssueUrl,
@@ -231,26 +260,44 @@ public final class MenuWindow extends ModalDialog {
                 Tokens.TEXT_ID_LABEL));
         refreshHideBars();
 
-        // The one link out of the app. Its arrow is drawn in the math face, the only bundled face
-        // that has it; see Fonts.SYMBOL_FAMILY.
-        sourceCode = plainEntry("Source code", "↗");
-        noteOf(sourceCode).setFont(Fonts.symbol(TouchType.menuFont()));
-        sourceCode.setOnAction(event -> onOpenLink.accept(AppInfo.SOURCE_URL));
+        sourceCode = linkEntry("Source code", AppInfo.RELEASE_URL);
         privacy = plainEntry("Privacy policy", "›");
         privacy.setOnAction(event -> showPage(Page.PRIVACY));
-        credits = plainEntry("Credits", "›");
-        credits.setOnAction(event -> showPage(Page.CREDITS));
+        licenses = plainEntry("Licenses", "›");
+        licenses.setOnAction(event -> showPage(Page.LICENSES));
 
         Label version = new Label("InvMgr " + AppInfo.VERSION);
         version.setFont(Font.font(Tokens.FONT_FAMILY, TouchType.menuFont()));
         textColor(version, Tokens.TEXT_INPUT);
         Label description = prose(AppInfo.DESCRIPTION, Tokens.TEXT_ID_LABEL);
         aboutBody = scrolling(Tokens.MENU_ABOUT_GAP, version, description,
-                new VBox(Tokens.MENU_ENTRY_GAP, sourceCode, privacy, credits));
+                new VBox(Tokens.MENU_ENTRY_GAP, sourceCode, privacy, licenses));
 
         privacyBody = scrolling(Tokens.MENU_PROSE_GAP, privacyText);
-        creditsBody = scrolling(Tokens.MENU_PROSE_GAP, AppInfo.CREDITS.stream()
-                .map(line -> prose(line, Tokens.TEXT_DIALOG_LABEL)).toArray(Node[]::new));
+
+        // The Licenses page: what its index says above the list, then the list. The source link
+        // and the written offer under it are what the GPL asks of an app handed out where its
+        // source is not, which is how the Play Store hands it out.
+        LicenseNotices notices = LicenseNotices.load(Device.isAndroid(), AppInfo.VERSION);
+        List<Node> licensesPage = new ArrayList<>();
+        Button source = null;
+        for (LicenseNotices.Block block : notices.blocks()) {
+            switch (block.kind()) {
+                case PARAGRAPH, CREDIT -> licensesPage.add(prose(block.text(), Tokens.TEXT_DIALOG_LABEL));
+                case NOTE -> licensesPage.add(prose(block.text(), Tokens.TEXT_ID_LABEL));
+                case SOURCE -> {
+                    source = linkEntry(block.text(), AppInfo.RELEASE_URL);
+                    licensesPage.add(source);
+                }
+            }
+        }
+        releaseSource = source;
+        VBox licenseList = new VBox(Tokens.MENU_ENTRY_GAP);
+        for (LicenseNotices.Entry entry : notices.entries()) {
+            licenseList.getChildren().add(licenseEntry(entry, Page.LICENSES));
+        }
+        licensesPage.add(licenseList);
+        licensesBody = scrolling(Tokens.MENU_PROSE_GAP, licensesPage.toArray(Node[]::new));
 
         refresh();
         showPage(Page.MENU);
@@ -479,12 +526,18 @@ public final class MenuWindow extends ModalDialog {
      */
     private void showPage(Page next) {
         page = next;
-        pageTitle.setText(next.title);
+        pageTitle.setText(switch (next) {
+            case LICENSE_GROUP -> groupTitle;
+            case LICENSE_TEXT -> textTitle;
+            default -> next.title;
+        });
         Node body = switch (next) {
             case MENU -> menuBody;
             case ABOUT -> aboutBody;
             case PRIVACY -> privacyBody;
-            case CREDITS -> creditsBody;
+            case LICENSES -> licensesBody;
+            case LICENSE_GROUP -> groupBody;
+            case LICENSE_TEXT -> textBody;
             case SETTINGS -> settingsBody;
             case FEEDBACK_NOTICE -> feedbackNoticeBody;
             case FEEDBACK -> feedbackBody;
@@ -539,9 +592,59 @@ public final class MenuWindow extends ModalDialog {
     }
 
     private void goBack() {
-        if (page.parent != null) {
+        if (page == Page.LICENSE_TEXT) {
+            showPage(textParent);
+        } else if (page.parent != null) {
             showPage(page.parent);
         }
+    }
+
+    /**
+     * An entry on the Licenses page or in a group: a text opens its page, a group its list.
+     *
+     * @param from the page the entry is on, which a text's {@code ‹} returns to
+     */
+    private Button licenseEntry(LicenseNotices.Entry entry, Page from) {
+        Button button = plainEntry(entry.title(), "›");
+        button.setOnAction(event -> {
+            if (entry.isGroup()) {
+                showGroup(entry);
+            } else {
+                showText(entry, from);
+            }
+        });
+        licenseEntries.put(entry.title(), button);
+        return button;
+    }
+
+    /** A group's page: what it is, then one entry per text in it. */
+    private void showGroup(LicenseNotices.Entry group) {
+        VBox items = new VBox(Tokens.MENU_ENTRY_GAP);
+        for (LicenseNotices.Entry item : group.items()) {
+            items.getChildren().add(licenseEntry(item, Page.LICENSE_GROUP));
+        }
+        groupBody = scrolling(Tokens.MENU_PROSE_GAP, prose(group.intro(), Tokens.TEXT_ID_LABEL), items);
+        groupTitle = group.title();
+        showPage(Page.LICENSE_GROUP);
+    }
+
+    /**
+     * A license text's page: what uses it, in the dimmer gray, then the text a paragraph to a
+     * label. Built when opened rather than up front, since nobody reads most of them and the
+     * longest runs to 19 KB.
+     */
+    private void showText(LicenseNotices.Entry text, Page from) {
+        List<Node> nodes = new ArrayList<>();
+        if (text.usedBy() != null) {
+            nodes.add(prose(text.usedBy(), Tokens.TEXT_ID_LABEL));
+        }
+        for (String paragraph : LicenseNotices.paragraphs(text.resource())) {
+            nodes.add(prose(paragraph, Tokens.TEXT_DIALOG_LABEL));
+        }
+        textBody = scrolling(Tokens.MENU_PROSE_GAP, nodes.toArray(Node[]::new));
+        textTitle = text.title();
+        textParent = from;
+        showPage(Page.LICENSE_TEXT);
     }
 
     /**
@@ -620,6 +723,17 @@ public final class MenuWindow extends ModalDialog {
         return button;
     }
 
+    /**
+     * An entry that opens an address in the browser, marked {@code ↗}. The arrow is drawn in the
+     * math face, the only bundled face that has it; see {@link Fonts#SYMBOL_FAMILY}.
+     */
+    private Button linkEntry(String name, String url) {
+        Button button = plainEntry(name, "↗");
+        noteOf(button).setFont(Fonts.symbol(TouchType.menuFont()));
+        button.setOnAction(event -> onOpenLink.accept(url));
+        return button;
+    }
+
     /** The label at the right-hand end of an entry. */
     private static Label noteOf(Button entry) {
         HBox inside = (HBox) entry.getGraphic();
@@ -658,6 +772,9 @@ public final class MenuWindow extends ModalDialog {
         // stops at its ends rather than stretching past them and springing back.
         DragCancelsTap.install(scroller);
         ScrollEnds.install(scroller);
+        // And it carries on after a flick, with the item list's coast and the room's (the user,
+        // 2026-10-31); see ListCoast for why a list on a phone needs one of its own.
+        ListCoast.install(scroller);
         // On a phone, a scrollbar that shows: ScrollHint's, because JavaFX's own appears there only
         // while a finger is already scrolling (the user's rule, 2026-09-25).
         Node body = ScrollHint.around(scroller);
@@ -839,8 +956,18 @@ public final class MenuWindow extends ModalDialog {
         return privacy;
     }
 
-    public Button creditsEntry() {
-        return credits;
+    public Button licensesEntry() {
+        return licenses;
+    }
+
+    /** The Licenses page's source link. */
+    public Button releaseSourceEntry() {
+        return releaseSource;
+    }
+
+    /** The license entry of that title, on the Licenses page or the group last opened. */
+    public Button licenseEntry(String title) {
+        return licenseEntries.get(title);
     }
 
     public Button backButton() {

@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * What the About pages say: the version, the description, the source link, the privacy policy
- * and the credits.
+ * What the About pages say: the version, the description, the source link and the privacy
+ * policy. The Licenses page's words are in {@link LicenseNotices}.
  *
  * <p>Gathered here, away from the window that shows them, for two reasons. The words are the
  * user's and Google's business as much as the interface's, so they belong somewhere they can be
@@ -36,8 +36,19 @@ public final class AppInfo {
     public static final String DESCRIPTION = "A top-down inventory manager for keeping track of"
             + " boxes in a 2D simulation of your space.";
 
-    /** Where the source lives. The About page's one link out of the app. */
+    /** The repository. Feedback's GitHub button opens a new issue there. */
     public static final String SOURCE_URL = "https://github.com/ModCritic/InvMgrApp";
+
+    /**
+     * This version's Release page, which About's Source code entry and the Licenses page's source
+     * link both open.
+     *
+     * <p>The Release, not the repository's front page, because the repository moves on and a
+     * Release stays put: it holds the source of exactly this version and the source of the
+     * GPL-licensed code inside it, which the GPL asks to be available. Every Release is tagged
+     * {@code v} and the version, as {@code v1.0.1} was.
+     */
+    public static final String RELEASE_URL = SOURCE_URL + "/releases/tag/v" + VERSION;
 
     /** Where Feedback's Email button addresses the message: the user's choice, 2026-09-25. */
     public static final String FEEDBACK_EMAIL = "contact@asterkazika.com";
@@ -156,18 +167,6 @@ public final class AppInfo {
      */
     static final String FEEDBACK_POLICY = "Feedback you choose to send leaves through your own mail"
             + " app or your own GitHub account, not through InvMgr.";
-
-    /**
-     * The FreeType credit, in the wording the FreeType Project License itself prefers.
-     *
-     * <p>⚠ Strictly it is the phone build that owes it: the APK carries FreeType itself
-     * ({@code lib/arm64-v8a/libfreetype.so}), while the desktop jar carries only JavaFX's glue to
-     * whatever FreeType the computer has. It is shown on both, as the user's spec lists it.
-     */
-    public static final List<String> CREDITS = List.of(
-            "This software is based in part on the work of the FreeType Team.",
-            "Portions of this software are copyright © 2025 The FreeType Project"
-                    + " (https://freetype.org). All rights reserved.");
 
     /**
      * Reads the version out of the file the build filled in.

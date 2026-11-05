@@ -861,7 +861,7 @@ public final class Tokens {
     public static final double MENU_DIALOG_BUTTON_HEIGHT_TOUCH = 36;
 
     /**
-     * The sentences on the About, Privacy policy and Credits pages: the dialogs' own 13 px
+     * The sentences on the About, Privacy policy and Licenses pages: the dialogs' own 13 px
      * on a phone, one smaller than the Reset Room window's 14.
      *
      * <p>Measured into place when the About pages were added (2026-09-25). At 14 the privacy
@@ -875,7 +875,7 @@ public final class Tokens {
     public static final double FONT_MENU_PAGE_PROSE = 12;
     public static final double FONT_MENU_PAGE_PROSE_TOUCH = 13;
 
-    /** The gap between two paragraphs on the Privacy policy and Credits pages. */
+    /** The gap between two paragraphs on the Privacy policy and Licenses pages. */
     public static final double MENU_PROSE_GAP = 10;
 
     /**

@@ -26,10 +26,10 @@ import org.testfx.util.WaitForAsyncUtils;
 /**
  * Checks that the room actually renders in the documented colors, by sampling pixels.
  *
- * <p>The design workflow in {@code .claude/skills/invmgr-design/SKILL.md} is explicit that
- * "looks close" is not a result and that dark grays must be sampled rather than eyeballed;
- * {@code #1a1a1a} and {@code #181818} are both in use and are indistinguishable by eye. So this
- * renders the real window at the reference resolution and reads the pixels back.
+ * <p>This project's rule for checking its look is that "looks close" is not a result, and that
+ * dark grays must be sampled rather than eyeballed; {@code #1a1a1a} and {@code #181818} are both
+ * in use and are indistinguishable by eye. So this renders the real window at the reference
+ * resolution and reads the pixels back.
  *
  * <p>The expected values are not invented. Each was measured from
  * {@code reference/desktop-04-item-on-canvas.png} with an image tool, and the derived ones (a

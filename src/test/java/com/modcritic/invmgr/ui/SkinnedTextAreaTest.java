@@ -2,6 +2,7 @@ package com.modcritic.invmgr.ui;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +22,7 @@ import com.sun.javafx.css.StyleManager;
 import javafx.application.Platform;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.skin.TextAreaSkin;
@@ -150,6 +153,23 @@ class SkinnedTextAreaTest extends ApplicationTest {
             assertEquals(CssSkin.class, area.getSkin().getClass(),
                     "the skin is not the one the platform's stylesheet asks for");
             assertNull(area.getScene(), "the throwaway scene is still attached");
+        });
+    }
+
+    @Test
+    void onScrollPaneReachesTheSkinsScrollPaneAndTheNextSkinsToo() {
+        interact(() -> {
+            SkinnedTextArea area = new SkinnedTextArea();
+            List<ScrollPane> handed = new ArrayList<>();
+            area.onScrollPane(handed::add);
+            assertEquals(1, handed.size(), "the skin it already has should hand over its scroll pane");
+            assertTrue(area.getChildrenUnmodifiable().contains(handed.get(0)));
+
+            // A new skin builds a new scroll pane, and that one needs the same treatment.
+            area.setSkin(new TextAreaSkin(area));
+            assertEquals(2, handed.size(), "a replacement skin should hand over its scroll pane too");
+            assertNotSame(handed.get(0), handed.get(1));
+            assertTrue(area.getChildrenUnmodifiable().contains(handed.get(1)));
         });
     }
 

@@ -5,13 +5,14 @@ This file is where that is acknowledged. **It is part of the distribution
 documentation**: keep it with the app, and carry its contents into a store listing or an
 about screen wherever one exists.
 
-## InvMgr's icon
+## InvMgr's icons
 
-**The app's icon is not under 0BSD: it is copyright Asterkazika LLC, all rights reserved.** That covers
-`assets/icons/icon-source.png`, `assets/icons/icon-play-512.png` and the launcher images in
-`src/android/res/`. They are in this repository so the app builds the way it ships; using them
-for anything else needs permission, and a fork or a build of your own should use an icon of its
-own. `tools/icon/make_icons.py`, which draws the launcher images from the source, is 0BSD like
+**The app's icons are not under 0BSD: they are copyright Asterkazika LLC, all rights reserved.** That covers
+`assets/icons/icon-source.png`, `assets/icons/icon-play-512.png`, the launcher images in
+`src/android/res/`, and the HTML version's install icons `assets/icons/icon-192.png`,
+`icon-512.png` and `icon-512-maskable.png`. They are in this repository so the app builds the way
+it ships; using them for anything else needs permission, and a fork or a build of your own should
+use icons of its own. `tools/icon/make_icons.py`, which draws the launcher images from the source, is 0BSD like
 the rest of the code.
 
 ## FreeType

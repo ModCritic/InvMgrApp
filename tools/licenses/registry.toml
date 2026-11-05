@@ -1,0 +1,1126 @@
+# Every origin of code or data that ships in InvMgr, with its license, where that license was
+# read, and what the license asks of whoever distributes it.
+#
+# tools/licenses/check.py breaks each shipped file into leaves and proves where every leaf came
+# from by matching its bytes against the inputs listed here. A leaf no origin claims fails the
+# check. So does an obligation that is not met, unless the obligation records a gap with the
+# decision behind it.
+#
+# FIELDS
+#
+#   id, name, version, url       what it is
+#   license                      an SPDX expression (https://spdx.org/licenses/)
+#   evidence                     where the license was read, never from memory or a summary
+#   targets                      which shipped things it can appear in: jar, apk, repo
+#   inputs                       where its bytes come from (see inputs.py for the forms)
+#   files                        optional: only leaves whose name matches one of these patterns.
+#                                An origin with `files` and `inside` takes those leaves from
+#                                the origin it is inside, because its author differs from the
+#                                package it arrived in
+#   inside                       the origin whose input carries this one's files
+#
+#   [[origin.component]]         third-party code built into one of this origin's files
+#                                (a library compiled into a native library, say), with its own
+#                                license and obligations; `in` says which leaves carry it
+#
+#   [[origin.obligation]]        kind: source, license-text, notice or credit
+#                                why: the license's own words for it, with section
+#                                met_by: what satisfies it, checked on every run
+#                                gap: when it is not fully met, the decision that accepted that,
+#                                with who and when; printed on every run
+#
+# met_by forms:
+#   artifact:<path>[~<text>]               the shipped file contains this path, and that file the text
+#                                          (on a phone, the files native-image copied into the library count)
+#   release:<file>!<member>=<sha256>       the release folder's <file> holds <member> with that hash
+#   repo:<path>~<text>                     the published file contains the text, word for word
+#   release-text~<text>                    the Release's own text contains it
+#
+# Placeholders in paths: {classes} our compiled classes, {repo} the source at the release commit,
+# {build} that build's target folder, {m2} the local Maven repository, {gluon} Gluon's download
+# folder, {graalvm} the GraalVM used, {release} the release folder, {version} its version.
+
+schema = 1
+
+# ---------------------------------------------------------------------------------------------
+# Our own
+
+[[origin]]
+id = "invmgr"
+name = "InvMgr itself"
+license = "0BSD"
+evidence = ["repo:LICENSE"]
+targets = ["jar", "apk", "repo"]
+inputs = [
+  "dir:{classes}", "file:{repo}/pom.xml",
+  "src:{repo}/src/android/java", "file:{repo}/src/android/AndroidManifest.xml",
+]
+# The Android app's own C, compiled by the build from native/*.c, and its Java, which
+# native-image compiles from the build's classes folder.
+native_inputs = ["{build}/gluonfx/aarch64-android/gvm/InvMgr/invmgr_*.o"]
+image_classpath = ["{build}/classes"]
+linked_libraries = ["libsubstrate.so"]
+# The published repository. The golden harness in tools/golden holds code taken from the HTML
+# version of InvMgr, which is our own work too.
+repo_paths = [
+  "src/main/java/**", "src/test/**", "src/android/java/**", "src/android/AndroidManifest.xml",
+  "src/main/resources/com/modcritic/invmgr/app.properties", "src/main/resources/com/modcritic/invmgr/ui/canvas.css",
+  "src/main/resources/com/modcritic/invmgr/ui/licenses/*.txt",
+  "native/**", "tools/**", "site/**", "assets/icons/btn-*.svg",
+  "pom.xml", "README.md", "LICENSE", "NOTICE.md", ".gitignore",
+]
+# License and copyright lines that belong in files we claim as our own, each with its reason.
+repo_markers = [
+  { path = "LICENSE", why = "the 0BSD license text itself" },
+  { path = "NOTICE.md", why = "the third-party notices file" },
+  { path = "README.md", why = "its License section" },
+  { path = "src/main/java/com/modcritic/invmgr/ui/AppInfo.java", why = "the credits the About screen showed until 2026-10-31" },
+  { path = "src/main/java/com/modcritic/invmgr/ui/LicenseNotices.java", why = "names what licenses ask for: a copy of the license, a copyright notice" },
+  { path = "src/test/java/com/modcritic/invmgr/ui/LicenseNoticesTest.java", why = "checks a notice's copyright line survives on the Licenses page" },
+  { path = "src/test/java/com/modcritic/invmgr/ui/MenuWindowAppTest.java", why = "checks the Licenses page shows the GPL's own first line" },
+  { path = "src/main/resources/com/modcritic/invmgr/ui/licenses/*.txt", why = "the Licenses page's index: the credits and license names the app shows, written by notices.py" },
+  { path = "tools/licenses/*", why = "the license check, which names licenses" },
+]
+
+[[origin]]
+id = "license-notice-texts"
+name = "The license and notice texts the Licenses page shows, copied unchanged from the code they came with"
+license = "LicenseRef-Each-Origins-Own-Notice"
+evidence = [
+  "tools/licenses/notices.py writes each file byte for byte from the source notices.toml names: the GPL from OpenJFX's LICENSE, the Apache license and two BSD notices from the Android NDK's NOTICE, the UPL from GraalVM's sdk/LICENSE.md, Mesa's notice from OpenJFX's legal folder, and eleven notices from the Java class library's legal folders",
+  "the user approved this origin on 2026-10-31",
+  "each is the license or notice of an origin in this registry that the app contains, carried because that origin's license asks for it; the GPL text's own header permits verbatim copies",
+]
+targets = ["jar", "apk", "repo"]
+inside = "invmgr"
+inputs = ["dir:{classes}"]
+files = ["*/ui/licenses/texts/*"]
+repo_paths = ["src/main/resources/com/modcritic/invmgr/ui/licenses/texts/**"]
+
+[[origin]]
+id = "invmgr-icon"
+name = "InvMgr's launcher icon"
+license = "LicenseRef-Asterkazika-All-Rights-Reserved"
+evidence = ["repo:NOTICE.md, section 'InvMgr's icons': copyright Asterkazika LLC, all rights reserved"]
+targets = ["apk", "repo"]
+inside = "invmgr"
+inputs = ["dir:{repo}/src/android/res"]
+repo_paths = ["assets/icons/icon-source.png", "assets/icons/icon-play-512.png", "src/android/res/**"]
+
+[[origin]]
+id = "pwa-icons"
+name = "The HTML version's app icons: icon-192.png, icon-512.png, icon-512-maskable.png"
+license = "LicenseRef-Asterkazika-All-Rights-Reserved"
+evidence = ["the user, 2026-10-31: theirs, on the same terms as the launcher icon", "repo:NOTICE.md, section 'InvMgr's icons': copyright Asterkazika LLC, all rights reserved. Published under the repository's 0BSD from 2026-07-31 until then. Packaged in neither app"]
+targets = ["repo"]
+inside = "invmgr"
+repo_paths = ["assets/icons/icon-192.png", "assets/icons/icon-512.png", "assets/icons/icon-512-maskable.png"]
+
+[[origin]]
+id = "noto-sans-mono"
+name = "Noto Sans Mono, the interface typeface"
+url = "https://github.com/notofonts"
+license = "OFL-1.1"
+evidence = ["artifact:com/modcritic/invmgr/ui/fonts/OFL.txt"]
+targets = ["jar", "apk", "repo"]
+inside = "invmgr"
+inputs = ["dir:{classes}"]
+files = ["*/fonts/NotoSansMono-*.ttf", "*/fonts/OFL.txt"]
+repo_paths = ["src/main/resources/com/modcritic/invmgr/ui/fonts/NotoSansMono-*.ttf", "src/main/resources/com/modcritic/invmgr/ui/fonts/OFL.txt"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "OFL-1.1 condition 2: the font may be bundled with software provided the copyright notice and this license accompany it, as a separate file"
+  met_by = ["artifact:com/modcritic/invmgr/ui/fonts/OFL.txt", "repo:src/main/resources/com/modcritic/invmgr/ui/fonts/OFL.txt~SIL OPEN FONT LICENSE"]
+
+[[origin]]
+id = "noto-sans-math"
+name = "Noto Sans Math, two glyphs Noto Sans Mono lacks"
+url = "https://github.com/notofonts"
+license = "OFL-1.1"
+evidence = ["artifact:com/modcritic/invmgr/ui/fonts/OFL.txt"]
+targets = ["jar", "apk", "repo"]
+inside = "invmgr"
+inputs = ["dir:{classes}"]
+files = ["*/fonts/NotoSansMath-*.ttf"]
+repo_paths = ["src/main/resources/com/modcritic/invmgr/ui/fonts/NotoSansMath-*.ttf"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "OFL-1.1 condition 2, as for Noto Sans Mono"
+  met_by = ["artifact:com/modcritic/invmgr/ui/fonts/OFL.txt", "repo:src/main/resources/com/modcritic/invmgr/ui/fonts/OFL.txt~SIL OPEN FONT LICENSE"]
+
+
+  [[origin.obligation]]
+  kind = "notice"
+  why = "OFL-1.1 condition 2: each copy must contain the above copyright notice. The font's own name table says Copyright 2022 Google LLC. All Rights Reserved., and OFL.txt credits only the Noto Project Authors"
+  met_by = ["artifact:com/modcritic/invmgr/ui/fonts/OFL.txt~Google LLC", "repo:src/main/resources/com/modcritic/invmgr/ui/fonts/OFL.txt~Google LLC"]
+[[origin]]
+id = "gluon-substrate-patch"
+name = "tools/substrate/: a patch to Gluon Substrate, with its license"
+license = "GPL-3.0-or-later"
+evidence = ["repo:tools/substrate/COPYING, the GNU General Public License version 3", "repo:tools/substrate/README.md"]
+targets = ["repo"]
+inside = "invmgr"
+repo_paths = ["tools/substrate/**"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPL-3.0 section 4 and 5: convey the modified source with the license text and a notice of the changes"
+  met_by = ["repo:tools/substrate/COPYING~GNU GENERAL PUBLIC LICENSE", "repo:tools/substrate/README.md~GNU General Public License, version 3"]
+
+# ---------------------------------------------------------------------------------------------
+# The desktop jar's JavaFX
+
+[[origin]]
+id = "openjfx-desktop"
+name = "OpenJFX 21, the build Gluon publishes on Maven Central (org.openjfx)"
+version = "21"
+url = "https://repo1.maven.org/maven2/org/openjfx/"
+license = "GPL-2.0-only WITH Classpath-exception-2.0"
+evidence = ["input:{m2}/org/openjfx/javafx/21/javafx-21.pom lines 240-247, <name>GPLv2+CE</name>"]
+targets = ["jar"]
+inputs = [
+  "maven:org.openjfx:javafx-base:21", "maven:org.openjfx:javafx-base:21:linux",
+  "maven:org.openjfx:javafx-base:21:win", "maven:org.openjfx:javafx-base:21:mac-aarch64",
+  "maven:org.openjfx:javafx-graphics:21", "maven:org.openjfx:javafx-graphics:21:linux",
+  "maven:org.openjfx:javafx-graphics:21:win", "maven:org.openjfx:javafx-graphics:21:mac-aarch64",
+  "maven:org.openjfx:javafx-controls:21", "maven:org.openjfx:javafx-controls:21:linux",
+  "maven:org.openjfx:javafx-controls:21:win", "maven:org.openjfx:javafx-controls:21:mac-aarch64",
+]
+
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPLv2 section 1, which section 3 applies to object code: give any other recipients of the Program a copy of this License along with the Program"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~The GNU General Public License (GPL)", "artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~CLASSPATH", "artifact:com/modcritic/invmgr/ui/licenses/desktop.txt~/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "GPLv2 section 3: accompany the binary with the complete corresponding source, including the scripts that control compilation"
+  met_by = [
+    "release:InvMgr-{version}-jar-third-party-source.zip!InvMgr-{version}-jar-third-party-source/openjfx-21-b31-source.tar.gz=f0d0e58fec31d58b099ffdb7b4ad35f6d18e7d7fb516be1ecf2e59adb004ac95",
+    "release:InvMgr-{version}-jar-third-party-source.zip!InvMgr-{version}-jar-third-party-source/javafx-graphics-21-sources.jar=599fa2b1c7dd343ab48bebb7b3da7f490d2420dc82f448e517345e182b94cc76",
+    "release:InvMgr-{version}-jar-third-party-source.zip!InvMgr-{version}-jar-third-party-source/javafx-base-21-sources.jar=26bf38febcdc7255961793ad9bdfb3c8ef6b07cf3c554e78bbed088960c2e4c0",
+    "release:InvMgr-{version}-jar-third-party-source.zip!InvMgr-{version}-jar-third-party-source/javafx-controls-21-sources.jar=9e79222828841332428a15964489f73bba293c75009f50e34aac5c62d01925df",
+  ]
+  gap = "Gluon builds these jars from a repository that is not public; the Java matches upstream 21+31 plus one line, the native code and build scripts are unconfirmed. The user decided to release without waiting (2026-10-29) and asked Gluon at https://github.com/gluonhq/substrate/issues/1369."
+
+  [[origin.component]]
+  name = "Independent JPEG Group's JPEG library 9e"
+  license = "IJG"
+  evidence = ["release-source:openjfx-21-b31-source.tar.gz!jfx-21-31/modules/javafx.graphics/src/main/legal/jpeg_fx.md"]
+  legal_file = "jpeg_fx.md"
+  in = ["*javafx_iio.dll", "*libjavafx_iio.so", "*libjavafx_iio.dylib"]
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "IJG README condition 2: if only executable code is distributed, the accompanying documentation must state that this software is based in part on the work of the Independent JPEG Group"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/desktop.txt~This software is based in part on the work of the Independent JPEG Group."]
+
+  [[origin.component]]
+  name = "Mesa 3-D Graphics Library 21.0.3 headers"
+  license = "MIT"
+  evidence = ["release-source:openjfx-21-b31-source.tar.gz!jfx-21-31/modules/javafx.graphics/src/main/legal/mesa3d.md"]
+  legal_file = "mesa3d.md"
+  in = ["*prism_es2*"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "MIT: the copyright notice and permission notice shall be included in all copies or substantial portions of the Software"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/mit-mesa.txt~Mesa", "artifact:com/modcritic/invmgr/ui/licenses/desktop.txt~/com/modcritic/invmgr/ui/licenses/texts/mit-mesa.txt"]
+
+[[origin]]
+id = "microsoft-vc-runtime"
+name = "Microsoft Visual C++ runtime 14.34.31938, from Visual Studio 2022 17.4"
+url = "https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution"
+license = "LicenseRef-Microsoft-VS2022-Distributable-Code"
+evidence = [
+  "Visual Studio 2022 Community license terms, section 4 'Distributable Code', the .docx embedded at https://visualstudio.microsoft.com/license-terms/vs2022-ga-community/ (last modified 2022-07-12, read 2026-10-29)",
+  "version info inside each DLL: CompanyName Microsoft Corporation, FileVersion 14.34.31938.0",
+]
+targets = ["jar"]
+pe_company = ["Microsoft Corporation"]
+inside = "openjfx-desktop"
+inputs = ["maven:org.openjfx:javafx-graphics:21:win"]
+files = ["msvcp140*.dll", "vcruntime140*.dll"]
+
+  [[origin.obligation]]
+  kind = "notice"
+  why = "Section 4: the developer who distributes Distributable Code must require distributors and end users to agree to terms that protect it at least as much as Microsoft's license"
+  met_by = []
+  gap = "That duty sits with Gluon, who compiled OpenJFX with Visual Studio and ships these files; Gluon's jars pass no terms on. Microsoft's redistribution page also says distributing these binaries is limited to licensed Visual Studio users. The user decided to ship them as they are (2026-10-29)."
+
+[[origin]]
+id = "microsoft-ucrt"
+name = "Microsoft Universal C Runtime 10.0.17763.132, from the Windows 10 SDK"
+url = "https://learn.microsoft.com/en-us/cpp/windows/universal-crt-deployment"
+license = "LicenseRef-Microsoft-Windows-SDK"
+evidence = ["version info inside each DLL: ProductName Microsoft Windows Operating System, FileVersion 10.0.17763.132"]
+targets = ["jar"]
+pe_company = ["Microsoft Corporation"]
+inside = "openjfx-desktop"
+inputs = ["maven:org.openjfx:javafx-graphics:21:win"]
+files = ["ucrtbase.dll", "api-ms-win-*.dll"]
+
+  [[origin.obligation]]
+  kind = "notice"
+  why = "the Windows SDK's Distributable Code terms (the closest text Microsoft publishes: the Enterprise WDK license for SDK 1809 / 17763, section 2.a): object code on the REDIST list, unmodified, Windows only; the developer must add significant functionality, require distributors and end users to agree to protective terms, show its own copyright notice and indemnify Microsoft. Which SDK edition Gluon used, and its exact terms, are not established"
+  met_by = []
+  gap = "The duties bind Gluon, who took these files from the Windows SDK; Gluon's jars pass no terms on. The user decided to ship the jar as it is (2026-10-29). Windows 10 and 11 load their own copy and ignore these."
+
+# ---------------------------------------------------------------------------------------------
+# Files the build tools write. They hold no one's code: each has a check of its content.
+
+[[origin]]
+id = "build-generated"
+name = "Files the build tools write from our own inputs"
+license = "0BSD"
+evidence = ["written by our build from our own sources; see each rule's check"]
+targets = ["jar", "apk"]
+
+  [[origin.generated]]
+  path = "META-INF/MANIFEST.MF"
+  tool = "maven-shade-plugin"
+  check = "manifest"
+
+  [[origin.generated]]
+  path = "META-INF/maven/com.modcritic/invmgr/pom.properties"
+  tool = "maven-archiver"
+  check = "pom-properties"
+
+  [[origin.generated]]
+  path = "META-INF/CERT.SF"
+  tool = "apksigner, signing with our key"
+  check = "manifest"
+
+  [[origin.generated]]
+  path = "META-INF/CERT.RSA"
+  tool = "apksigner, signing with our key"
+  check = "pkcs7"
+
+  [[origin.generated]]
+  path = "META-INF/com/android/build/gradle/app-metadata.properties"
+  tool = "the Android Gradle plugin"
+  check = "properties"
+
+  [[origin.generated]]
+  path = "META-INF/version-control-info.textproto"
+  tool = "the Android Gradle plugin"
+  check = "textproto"
+
+  [[origin.generated]]
+  path = "assets/dexopt/baseline.prof*"
+  tool = "the Android Gradle plugin, from the libraries' baseline-prof.txt"
+  check = "art-profile"
+
+  [[origin.generated]]
+  path = "META-INF/*.SF"
+  tool = "jarsigner, signing the bundle with our key"
+  check = "manifest"
+
+  [[origin.generated]]
+  path = "META-INF/*.RSA"
+  tool = "jarsigner, signing the bundle with our key"
+  check = "pkcs7"
+
+  [[origin.generated]]
+  path = "BundleConfig.pb"
+  tool = "bundletool"
+  check = "bundle-config"
+
+  [[origin.generated]]
+  path = "base/native.pb"
+  tool = "bundletool"
+  check = "native-pb"
+
+  [[origin.generated]]
+  path = "BUNDLE-METADATA/com.android.tools/d8.json"
+  tool = "the Android Gradle plugin, recording D8's settings"
+  check = "d8-json"
+
+  [[origin.generated]]
+  path = "BUNDLE-METADATA/com.android.tools.build.profiles/baseline.prof*"
+  tool = "the Android Gradle plugin, from the libraries' baseline-prof.txt"
+  check = "art-profile"
+
+  [[origin.generated]]
+  path = "BUNDLE-METADATA/com.android.tools.build.gradle/app-metadata.properties"
+  tool = "the Android Gradle plugin"
+  check = "properties"
+
+  [[origin.generated]]
+  class = "com/asterkazika/invmgr/R"
+  tool = "the Android Gradle plugin: the table of our resources' ids"
+
+  [[origin.generated]]
+  class = "com/asterkazika/invmgr/R$*"
+  tool = "the Android Gradle plugin: the table of our resources' ids"
+
+  [[origin.generated]]
+  native_input = "<internal>"
+  tool = "the linker: symbol tables, relocations and the other sections it writes from its inputs"
+
+# ---------------------------------------------------------------------------------------------
+# The Android app: libraries the Android build adds
+
+[[origin]]
+id = "androidx"
+name = "AndroidX libraries, which the generated Android project depends on"
+url = "https://developer.android.com/jetpack/androidx"
+license = "Apache-2.0"
+evidence = [
+  "each library's own POM <licenses>: The Apache Software License, Version 2.0 (read 2026-10-29 from the Gradle cache copies of the same versions)",
+  "the aars of activity, core, core-ktx, core-viewtree and profileinstaller carry META-INF/androidx/<group>/<name>/LICENSE.txt, the Apache-2.0 text",
+]
+targets = ["apk"]
+inputs = [
+  "gradle:androidx.activity:activity:1.11.0", "gradle:androidx.annotation:annotation-experimental:1.4.1",
+  "gradle:androidx.annotation:annotation-jvm:1.8.1", "gradle:androidx.arch.core:core-common:2.2.0",
+  "gradle:androidx.arch.core:core-runtime:2.2.0", "gradle:androidx.collection:collection-jvm:1.4.2",
+  "gradle:androidx.concurrent:concurrent-futures:1.1.0", "gradle:androidx.core:core-ktx:1.17.0",
+  "gradle:androidx.core:core-viewtree:1.0.0", "gradle:androidx.core:core:1.17.0",
+  "gradle:androidx.interpolator:interpolator:1.0.0", "gradle:androidx.lifecycle:lifecycle-common:2.6.2",
+  "gradle:androidx.lifecycle:lifecycle-livedata-core:2.6.2", "gradle:androidx.lifecycle:lifecycle-runtime:2.6.2",
+  "gradle:androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.2", "gradle:androidx.lifecycle:lifecycle-viewmodel:2.6.2",
+  "gradle:androidx.profileinstaller:profileinstaller:1.4.0", "gradle:androidx.savedstate:savedstate:1.2.1",
+  "gradle:androidx.startup:startup-runtime:1.1.1", "gradle:androidx.tracing:tracing:1.2.0",
+  "gradle:androidx.versionedparcelable:versionedparcelable:1.1.1",
+]
+# Kotlin-style umbrella entries the build lists, which hold no code: each points at a -jvm jar above.
+metadata_only = ["androidx.annotation:annotation:1.8.1", "androidx.collection:collection:1.4.2"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "Apache-2.0 section 4(a): give any other recipients of the Work a copy of this License"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt"]
+
+[[origin]]
+id = "kotlin"
+name = "Kotlin standard library, Kotlin coroutines and JetBrains annotations, which AndroidX needs"
+url = "https://kotlinlang.org"
+license = "Apache-2.0"
+evidence = ["each library's own POM <licenses>: The Apache License, Version 2.0 (read 2026-10-29 from the Gradle cache copies of the same versions)"]
+targets = ["apk"]
+inputs = [
+  "gradle:org.jetbrains.kotlin:kotlin-stdlib:2.0.21", "gradle:org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1",
+  "gradle:org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1", "gradle:org.jetbrains:annotations:23.0.0",
+]
+metadata_only = ["org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1", "org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.8.1"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "Apache-2.0 section 4(a): give any other recipients of the Work a copy of this License"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt"]
+
+[[origin]]
+id = "jspecify"
+name = "JSpecify nullness annotations, which AndroidX needs"
+license = "Apache-2.0"
+evidence = ["jspecify-1.0.0.pom <licenses>: The Apache License, Version 2.0 (read 2026-10-29)"]
+targets = ["apk"]
+inputs = ["gradle:org.jspecify:jspecify:1.0.0"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "Apache-2.0 section 4(a): give any other recipients of the Work a copy of this License"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt"]
+
+[[origin]]
+id = "guava-listenablefuture"
+name = "Guava's ListenableFuture interface, which AndroidX needs"
+license = "Apache-2.0"
+evidence = ["listenablefuture-1.0.pom declares no license and inherits from guava-parent-26.0-android.pom, whose <licenses> is The Apache Software License, Version 2.0 (read 2026-10-29)"]
+targets = ["apk"]
+inputs = ["gradle:com.google.guava:listenablefuture:1.0"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "Apache-2.0 section 4(a): give any other recipients of the Work a copy of this License"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt"]
+
+# ---------------------------------------------------------------------------------------------
+# The Android app: what Gluon Substrate, the tool that builds it, puts in
+
+[[origin]]
+id = "substrate-android-sources"
+name = "Gluon Substrate's template Android project sources"
+license = "GPL-3.0-or-later"
+evidence = ["their own headers, e.g. MainActivity.java in substrate-0.0.69.jar, native/android/android_project: GNU General Public License, version 3 or later"]
+targets = ["apk"]
+allowed = false
+why_not = "GPL-3.0 with no classpath exception: in the app it would put the whole app under the GPL. Our own InvMgrActivity replaced these."
+inputs = ["src:{m2}/com/gluonhq/substrate/0.0.69-invmgr3/substrate-0.0.69-invmgr3.jar!native/android/android_project/app/src/main/java"]
+
+[[origin]]
+id = "gluon-substrate-build-tool"
+name = "Gluon Substrate 0.0.69, patched: the tool that builds the Android app"
+license = "GPL-2.0-only"
+evidence = ["the repository's LICENSE (github.com/gluonhq/substrate, read 2026-10-29) and substrate-0.0.69.pom say GPL version 2, the pom's URL points at the LGPL 2.0 page, and its Java source headers say GPL-3.0-or-later: Gluon states three different things, and any of them is copyleft without a classpath exception"]
+targets = ["apk"]
+# native-image is given Substrate's jar on its classpath. Its code must not end up in the app;
+# the check proves that from the library's symbols on every run.
+image_classpath = ["{m2}/com/gluonhq/substrate/*/substrate-*.jar"]
+not_compiled_in = true
+
+[[origin]]
+id = "openjfx-keycode-from-substrate"
+name = "javafx.scene.input.KeyCode, an older OpenJFX source file Substrate copies into the Android project"
+license = "GPL-2.0-only WITH Classpath-exception-2.0"
+evidence = ["the file's own header: Copyright (c) 2008, 2014, Oracle; GPL version 2 only; Oracle designates this particular file as subject to the Classpath exception"]
+targets = ["apk"]
+inside = "substrate-android-sources"
+inputs = ["src:{m2}/com/gluonhq/substrate/0.0.69-invmgr3/substrate-0.0.69-invmgr3.jar!native/android/android_project/app/src/main/java"]
+classes = ["javafx/scene/input/KeyCode*"]
+
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPLv2 section 1, which section 3 applies to object code: give any other recipients of the Program a copy of this License along with the Program"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~The GNU General Public License (GPL)", "artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~CLASSPATH", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt"]
+
+  [[origin.obligation]]
+  kind = "source-offer"
+  why = "GPLv2 section 3: source counts as distributed alongside only when offered from the same place as the binary. The APK reaches people through Google Play, not the GitHub Release, so it needs the source accompanying it there or a written offer valid three years (3b)"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/android.txt~This is a written offer, good for at least three years", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~source\tSource for"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "GPLv2 section 3: accompany the binary with the complete corresponding source. This copy differs from OpenJFX 21+12's KeyCode.java, so neither OpenJFX archive in the bundle is its source; the file is in Substrate's jar on Maven Central"
+  met_by = ["release:InvMgr-{version}-apk-third-party-source.zip!InvMgr-{version}-apk-third-party-source/javafx/scene/input/KeyCode.java=992f8a05082ff43f165ceacfb492b0cc0890a36bd4958bc1ccb6e64b92511310"]
+
+[[origin]]
+id = "openjfx-android"
+name = "OpenJFX 21 for Android, Gluon's static SDK openjfx-21-ea+11.3-android-aarch64-static.zip"
+version = "21-ea+11.3"
+license = "GPL-2.0-only WITH Classpath-exception-2.0"
+evidence = ["the SDK's src.zip, e.g. javafx.graphics/javafx/scene/Node.java lines 6-8: GPL version 2 only, subject to the Classpath exception"]
+targets = ["apk"]
+native_inputs = ["{gluon}/javafxStaticSdk/21-ea+11.3/android-aarch64/sdk/lib/*.a"]
+image_classpath = ["{build}/gluonfx/aarch64-android/gvm/tmp/deps/javafx.*.jar"]
+legal_files = "{release}/openjfx-21-b12-source.tar.gz!jfx-21-12/modules/javafx.graphics/src/main/legal/*.md"
+
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPLv2 section 1, which section 3 applies to object code: give any other recipients of the Program a copy of this License along with the Program"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~The GNU General Public License (GPL)", "artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~CLASSPATH", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt"]
+
+  [[origin.obligation]]
+  kind = "source-offer"
+  why = "GPLv2 section 3: source counts as distributed alongside only when offered from the same place as the binary. The APK reaches people through Google Play, not the GitHub Release, so it needs the source accompanying it there or a written offer valid three years (3b)"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/android.txt~This is a written offer, good for at least three years", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~source\tSource for"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "GPLv2 section 3: accompany the binary with the complete corresponding source, including the scripts that control compilation"
+  met_by = [
+    "release:InvMgr-{version}-apk-third-party-source.zip!InvMgr-{version}-apk-third-party-source/openjfx-21-b12-source.tar.gz=c64e549810747507adf680d8207e540573edb93c100751a97f7a1de3f9a104f7",
+    "release:InvMgr-{version}-apk-third-party-source.zip!InvMgr-{version}-apk-third-party-source/javafx-21-ea-11.3-android-src.zip=24f01eb1396766fd00d24ce816f37e114b8788430174b7f4891791543fc193e0",
+  ]
+  gap = "Gluon builds this SDK from a repository that is not public; its build scripts, its copies of two Android-only classes and any C changes are unconfirmed. The user decided to release without waiting (2026-10-29) and asked Gluon at https://github.com/gluonhq/substrate/issues/1369."
+
+  [[origin.component]]
+  name = "Independent JPEG Group's JPEG library 9e (in libjavafx_iio.a)"
+  license = "IJG"
+  evidence = ["release-source:openjfx-21-b12-source.tar.gz!jfx-21-12/modules/javafx.graphics/src/main/legal/jpeg_fx.md"]
+  legal_file = "jpeg_fx.md"
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "IJG README condition 2: if only executable code is distributed, the accompanying documentation must state that this software is based in part on the work of the Independent JPEG Group"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/android.txt~This software is based in part on the work of the Independent JPEG Group."]
+
+  [[origin.component]]
+  name = "Mesa 3-D Graphics Library 21.0.3 headers (used by libprism_es2_monocle.a)"
+  license = "MIT"
+  evidence = ["release-source:openjfx-21-b12-source.tar.gz!jfx-21-12/modules/javafx.graphics/src/main/legal/mesa3d.md"]
+  legal_file = "mesa3d.md"
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "MIT: the copyright notice and permission notice shall be included in all copies or substantial portions of the Software"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/mit-mesa.txt~Mesa", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/mit-mesa.txt"]
+
+[[origin]]
+id = "freetype"
+name = "FreeType 2.14.1, prebuilt in the JavaFX static SDK"
+license = "FTL"
+evidence = [
+  "dual licensed FTL or GPLv2; this project elected the FTL on 2026-09-20",
+  "FTL.TXT section 2 (Arch's freetype2 package, /usr/share/licenses/freetype2/FTL.TXT lines 116-120): binary redistribution must state in the distribution documentation that the software is based in part on the work of the FreeType Team",
+  "build paths inside the library name freetype-2.14.1",
+]
+targets = ["apk"]
+inputs = ["file:{gluon}/javafxStaticSdk/21-ea+11.3/android-aarch64/sdk/lib/libfreetype.so"]
+
+  [[origin.obligation]]
+  kind = "credit"
+  why = "FTL section 2: redistribution in binary form must provide a disclaimer, in the distribution documentation, that the software is based in part on the work of the FreeType Team"
+  met_by = ["repo:NOTICE.md~Portions of this software are based in part on the work of the FreeType Team", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~This software is based in part on the work of the FreeType Team."]
+
+[[origin]]
+id = "gluon-static-jdk"
+name = "The JDK's C libraries for Android, Gluon's staticjdk-android-aarch64-gvm-18-ea+prep18-9.zip"
+version = "18-ea+prep18-9"
+license = "GPL-2.0-only WITH Classpath-exception-2.0"
+evidence = [
+  "the libraries are OpenJDK's: their JNI functions are OpenJDK's names (Java_java_io_FileInputStream_open0 and the rest)",
+  "OpenJDK's sources for them carry GPLv2 with the Classpath exception, e.g. src/java.base/unix/native/libjava/io_util_md.c lines 6-8 and src/java.base/share/native/libfdlibm/e_acos.c lines 6-8 in labs-openjdk-17",
+]
+targets = ["apk"]
+native_inputs = ["{gluon}/javaStaticSdk/18-ea+prep18-9/android-aarch64/staticjdk/lib/static/*.a"]
+
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPLv2 section 1, which section 3 applies to object code: give any other recipients of the Program a copy of this License along with the Program"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~The GNU General Public License (GPL)", "artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~CLASSPATH", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt"]
+
+  [[origin.obligation]]
+  kind = "source-offer"
+  why = "GPLv2 section 3: source counts as distributed alongside only when offered from the same place as the binary. The APK reaches people through Google Play, not the GitHub Release, so it needs the source accompanying it there or a written offer valid three years (3b)"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/android.txt~This is a written offer, good for at least three years", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~source\tSource for"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "GPLv2 section 3: accompany the binary with the complete corresponding source"
+  met_by = []
+  gap = "No public source matches 18-ea+prep18-9: gluonhq/mobile has tags prep18-2 to prep18-4 only (January 2022). The user decided to release without it (2026-10-29), and asked Gluon in https://github.com/gluonhq/substrate/issues/1369#issuecomment-6513177380."
+
+[[origin]]
+id = "graalvm-runtime"
+name = "GraalVM 22.1.0.1 Community, Gluon's build: the runtime native-image builds into the app"
+version = "22.1.0.1"
+license = "GPL-2.0-only WITH Classpath-exception-2.0"
+evidence = ["{graalvm}/LICENSE.txt lines 3-5: GraalVM Community Edition as a whole is released under version 2 of the GNU General Public License with the Classpath Exception"]
+targets = ["apk"]
+native_inputs = [
+  "{graalvm}/lib/svm/clibraries/27/android-aarch64/libjvm.a",
+  "{graalvm}/lib/svm/clibraries/27/android-aarch64/liblibchelper.a",
+]
+image_classpath = ["(graalvm runtime)"]
+
+  [[origin.component]]
+  name = "The GraalVM SDK (module org.graalvm.sdk): EconomicMap, ImageInfo, Isolates and others"
+  license = "UPL-1.0"
+  evidence = ["graalvm-gluon-22.1.0.1-source.tar.gz: every file under sdk/src starts with The Universal Permissive License (UPL), Version 1.0, e.g. sdk/src/org.graalvm.collections/src/org/graalvm/collections/EconomicMap.java line 5; sdk/LICENSE.md is the UPL text"]
+  module = "org.graalvm.sdk"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "UPL-1.0: the copyright notice and either this complete permission notice or at a minimum a reference to the UPL must be included in all copies or substantial portions of the Software"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/upl-1.0.txt~Universal Permissive License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/upl-1.0.txt"]
+
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPLv2 section 1, which section 3 applies to object code: give any other recipients of the Program a copy of this License along with the Program"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~The GNU General Public License (GPL)", "artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~CLASSPATH", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt"]
+
+  [[origin.obligation]]
+  kind = "source-offer"
+  why = "GPLv2 section 3: source counts as distributed alongside only when offered from the same place as the binary. The APK reaches people through Google Play, not the GitHub Release, so it needs the source accompanying it there or a written offer valid three years (3b)"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/android.txt~This is a written offer, good for at least three years", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~source\tSource for"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "GPLv2 section 3: accompany the binary with the complete corresponding source"
+  met_by = ["release:InvMgr-{version}-apk-third-party-source.zip!InvMgr-{version}-apk-third-party-source/graalvm-gluon-22.1.0.1-source.tar.gz=4b88926a684fd81da4c72e1f47984e0ed1038de60cf1910e576e124335682cde"]
+
+[[origin]]
+id = "openjdk-class-library"
+name = "The Java class library, GraalVM's labs-openjdk-17 17.0.3, compiled into the app by native-image"
+version = "17.0.3"
+license = "GPL-2.0-only WITH Classpath-exception-2.0"
+evidence = ["labs-openjdk-17 at jvmci-22.1-b06, each source file's header, e.g. src/java.base/share/native/libfdlibm/e_acos.c lines 6-8"]
+targets = ["apk"]
+image_classpath = ["(java class library)"]
+legal_files = "{release}/labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/*/*/legal/*.md"
+
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPLv2 section 1, which section 3 applies to object code: give any other recipients of the Program a copy of this License along with the Program"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~The GNU General Public License (GPL)", "artifact:com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt~CLASSPATH", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt"]
+
+  [[origin.obligation]]
+  kind = "source-offer"
+  why = "GPLv2 section 3: source counts as distributed alongside only when offered from the same place as the binary. The APK reaches people through Google Play, not the GitHub Release, so it needs the source accompanying it there or a written offer valid three years (3b)"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/android.txt~This is a written offer, good for at least three years", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~source\tSource for"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "GPLv2 section 3: accompany the binary with the complete corresponding source"
+  met_by = ["release:InvMgr-{version}-apk-third-party-source.zip!InvMgr-{version}-apk-third-party-source/labs-openjdk-17-jvmci-22.1-b06-source.tar.gz=f027ca8174e46e84071b5b684e6b7ea31d83234a1789484f3ffbeb027e4ef34e"]
+  gap = "GraalVM records the commit as 05e32d91e144+: its checkout had changed or untracked files when it was built, and Oracle's build scripts are not public. Recorded in the Release's source bundle README (2026-10-29)."
+
+  # The class library's own third-party code, one entry per file in the JDK's legal folders
+  # (labs-openjdk-17 src/<module>/share/legal/). Java code is in the app when its module is;
+  # native code when the link map shows the static archive it would come from.
+
+  [[origin.component]]
+  name = "Cryptix AES 3.2.0 (JDK module java.base)"
+  license = "LicenseRef-Cryptix"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/aes.md"]
+  legal_file = "aes.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/aes.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/aes.txt"]
+
+  [[origin.component]]
+  name = "ASM Bytecode Manipulation Framework 8.0.1 (JDK module java.base)"
+  license = "BSD-3-Clause"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/asm.md"]
+  legal_file = "asm.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/asm.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/asm.txt"]
+
+  [[origin.component]]
+  name = "Unicode CLDR 39 data (JDK module java.base)"
+  license = "Unicode-DFS-2016"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/cldr.md"]
+  legal_file = "cldr.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Unicode license: the copyright and permission notice must appear (a) with all copies of the Data Files or Software, or (b) in associated documentation"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/cldr.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/cldr.txt"]
+
+  [[origin.component]]
+  name = "c-libutl 20160225, in the Java launcher (JDK module java.base)"
+  license = "BSD-2-Clause"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/c-libutl.md lines 13-20: two conditions only"]
+  legal_file = "c-libutl.md"
+  native = ["*/libjli.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "BSD-2-Clause condition 2: redistributions in binary form must reproduce the copyright notice, conditions and disclaimer in the documentation"
+    met_by = []
+  [[origin.component]]
+  name = "ICU4J 67.1 (JDK module java.base)"
+  license = "Unicode-DFS-2016"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/icu.md line 6: COPYRIGHT AND PERMISSION NOTICE (ICU 58 and later), the Unicode license; the older ICU license further down covers ICU 1.8.1 to 57.1"]
+  legal_file = "icu.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Unicode license: the copyright and permission notice must appear (a) with all copies of the Data Files or Software, or (b) in associated documentation"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/icu.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/icu.txt"]
+  [[origin.component]]
+  name = "Mozilla Public Suffix List (JDK module java.base)"
+  license = "MPL-2.0"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/public_suffix.md"]
+  legal_file = "public_suffix.md"
+  module = "java.base"
+  # The list is data the class library loads from a file; the code naming the file is always
+  # compiled in, the list itself only when the image includes it. blogspot.com is one of its entries.
+  marker = "blogspot.com"
+
+    [[origin.component.obligation]]
+    kind = "source"
+    why = "MPL-2.0 section 3.2(a): the Covered Software's source must be available to recipients of the executable, and they must be told how to get it"
+    met_by = ["release:InvMgr-{version}-apk-third-party-source.zip!InvMgr-{version}-apk-third-party-source/labs-openjdk-17-jvmci-22.1-b06-source.tar.gz=f027ca8174e46e84071b5b684e6b7ea31d83234a1789484f3ffbeb027e4ef34e"]
+
+    [[origin.component.obligation]]
+    kind = "source-offer"
+    why = "MPL-2.0 sections 3.1 and 3.2(a): inform recipients of the executable how they can obtain the source, and that it is governed by the MPL"
+    met_by = []
+
+  [[origin.component]]
+  name = "Unicode Character Database 13.0.0 (JDK module java.base)"
+  license = "Unicode-DFS-2016"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/unicode.md"]
+  legal_file = "unicode.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Unicode license: the copyright and permission notice must appear (a) with all copies of the Data Files or Software, or (b) in associated documentation"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/unicode.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/unicode.txt"]
+
+  [[origin.component]]
+  name = "zlib 1.2.11, bundled in libzip (JDK module java.base)"
+  license = "Zlib"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/share/legal/zlib.md"]
+  legal_file = "zlib.md"
+  native = ["*/libzip.a(inflate*.o)", "*/libzip.a(deflate*.o)", "*/libzip.a(zutil.o)"]
+
+  [[origin.component]]
+  name = "Apache Commons BCEL 6.5.0 (JDK module java.xml)"
+  license = "Apache-2.0"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.xml/share/legal/bcel.md"]
+  legal_file = "bcel.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "Apache-2.0 section 4(a), and 4(d) for the NOTICE text the legal file reproduces"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt", "artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/bcel.txt~Apache"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/bcel.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/bcel.txt"]
+
+  [[origin.component]]
+  name = "W3C DOM Level 3 Core (JDK module java.xml)"
+  license = "W3C"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.xml/share/legal/dom.md"]
+  legal_file = "dom.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/dom.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/dom.txt"]
+
+  [[origin.component]]
+  name = "CUP Parser Generator 0.11b (JDK module java.xml)"
+  license = "LicenseRef-CUP"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.xml/share/legal/jcup.md"]
+  legal_file = "jcup.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/jcup.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/jcup.txt"]
+
+  [[origin.component]]
+  name = "Apache Xalan 2.7.2 (JDK module java.xml)"
+  license = "Apache-2.0"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.xml/share/legal/xalan.md"]
+  legal_file = "xalan.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "Apache-2.0 section 4(a), and 4(d) for the NOTICE text the legal file reproduces"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt", "artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/xalan.txt~Apache"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/xalan.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/xalan.txt"]
+
+  [[origin.component]]
+  name = "Apache Xerces 2.12.1 (JDK module java.xml)"
+  license = "Apache-2.0"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.xml/share/legal/xerces.md"]
+  legal_file = "xerces.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "Apache-2.0 section 4(a), and 4(d) for the NOTICE text the legal file reproduces"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt", "artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/xerces.txt~Apache"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/xerces.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/xerces.txt"]
+
+  [[origin.component]]
+  name = "Eastman Kodak color management portions (JDK module java.desktop)"
+  license = "NOASSERTION"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/colorimaging.md: a single line, Portions Copyright Eastman Kodak Company 1991-2003, and no license text; it reached OpenJDK under OpenJDK's own GPL with the Classpath exception"]
+  legal_file = "colorimaging.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "no license of its own; GPLv2 section 1, under which it arrives, asks that existing copyright notices be kept intact"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/colorimaging.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/colorimaging.txt"]
+  [[origin.component]]
+  name = "FreeType, in the JDK's font library (JDK module java.desktop)"
+  license = "FTL"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/freetype.md"]
+  legal_file = "freetype.md"
+  native = ["*/libfontmanager.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "its license asks the documentation of a binary distribution to credit it; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "giflib, in the JDK's image libraries (JDK module java.desktop)"
+  license = "MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/giflib.md"]
+  legal_file = "giflib.md"
+  native = ["*/libsplashscreen.a(*)", "*/libawt*.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "HarfBuzz, in the JDK's font library (JDK module java.desktop)"
+  license = "LicenseRef-HarfBuzz-Old-MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/harfbuzz.md line 9: the so-called Old MIT license, not the SPDX MIT text"]
+  legal_file = "harfbuzz.md"
+  native = ["*/libfontmanager.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "harfbuzz.md lines 30-34: the copyright notice and the two disclaimer paragraphs must appear in all copies of this software"
+    met_by = []
+  [[origin.component]]
+  name = "IJG JPEG, in the JDK's image library (JDK module java.desktop)"
+  license = "IJG"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/jpeg.md"]
+  legal_file = "jpeg.md"
+  native = ["*/libjavajpeg.a(*)", "*/libsplashscreen.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "its license asks the documentation of a binary distribution to credit it; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "Little CMS (JDK module java.desktop)"
+  license = "MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/lcms.md"]
+  legal_file = "lcms.md"
+  native = ["*/liblcms.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "libpng 1.6.37, in the JDK's splash screen (JDK module java.desktop)"
+  license = "libpng-2.0"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/libpng.md line 9: PNG Reference Library License version 2; its conditions bind source distributions only, and acknowledgment in documentation is appreciated but not required"]
+  legal_file = "libpng.md"
+  native = ["*/libsplashscreen.a(*)"]
+  [[origin.component]]
+  name = "Mesa headers, in the JDK's graphics (JDK module java.desktop)"
+  license = "MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/share/legal/mesa3d.md"]
+  legal_file = "mesa3d.md"
+  native = ["*/libawt*.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "Apache Santuario (JDK module java.xml.crypto)"
+  license = "Apache-2.0"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.xml.crypto/share/legal/santuario.md"]
+  legal_file = "santuario.md"
+  module = "java.xml.crypto"
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "Apache-2.0 section 4(a), and 4(d) for the NOTICE text the legal file reproduces"
+    met_by = []
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "PKCS #11 Cryptographic Token Interface (JDK module jdk.crypto.cryptoki)"
+  license = "LicenseRef-OASIS-PKCS11"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.crypto.cryptoki/share/legal/pkcs11cryptotoken.md"]
+  legal_file = "pkcs11cryptotoken.md"
+  module = "jdk.crypto.cryptoki"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "IAIK PKCS #11 Wrapper (JDK module jdk.crypto.cryptoki)"
+  license = "LicenseRef-IAIK-PKCS11-Wrapper"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.crypto.cryptoki/share/legal/pkcs11wrapper.md lines 11-33: five conditions, including an acknowledgment and a naming restriction; no SPDX id found"]
+  legal_file = "pkcs11wrapper.md"
+  module = "jdk.crypto.cryptoki"
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "condition 3: the end-user documentation must include the acknowledgment This product includes software developed by IAIK of Graz University of Technology; condition 2 also asks the binary to reproduce the notice and disclaimer"
+    met_by = []
+  [[origin.component]]
+  name = "Dynalink (JDK module jdk.dynalink)"
+  license = "BSD-3-Clause"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.dynalink/share/legal/dynalink.md"]
+  legal_file = "dynalink.md"
+  module = "jdk.dynalink"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "JLine (JDK module jdk.internal.le)"
+  license = "BSD-3-Clause"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.internal.le/share/legal/jline.md"]
+  legal_file = "jline.md"
+  module = "jdk.internal.le"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "jopt-simple (JDK module jdk.internal.opt)"
+  license = "MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.internal.opt/share/legal/jopt-simple.md"]
+  legal_file = "jopt-simple.md"
+  module = "jdk.internal.opt"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "jQuery, in javadoc's pages (JDK module jdk.javadoc)"
+  license = "MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.javadoc/share/legal/jquery.md"]
+  legal_file = "jquery.md"
+  module = "jdk.javadoc"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "jQuery UI, in javadoc's pages (JDK module jdk.javadoc)"
+  license = "MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.javadoc/share/legal/jqueryUI.md"]
+  legal_file = "jqueryUI.md"
+  module = "jdk.javadoc"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "wepoll 1.5.8, epoll for Windows in the JDK's NIO library (Windows only)"
+  license = "BSD-2-Clause"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.base/windows/legal/wepoll.md"]
+  legal_file = "wepoll.md"
+  native = ["*/libnio.a(wepoll.o)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "xwd 1.0.7 portions, in the JDK's X11 library (Unix desktops only)"
+  license = "LicenseRef-xwd"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.desktop/unix/legal/xwd.md"]
+  legal_file = "xwd.md"
+  native = ["*/libawt_xawt.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "PC/SC Lite 1.8.26 headers, in the JDK's smart card library"
+  license = "BSD-3-Clause"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/java.smartcardio/unix/legal/pcsclite.md"]
+  legal_file = "pcsclite.md"
+  native = ["*/libj2pcsc.a(*)"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the text is in the JDK's legal file"
+    met_by = []
+
+  [[origin.component]]
+  name = "Unicode CLDR 39 data (JDK module jdk.localedata)"
+  license = "Unicode-DFS-2016"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.localedata/share/legal/cldr.md"]
+  legal_file = "cldr.md"
+  module = "jdk.localedata"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Unicode license: the copyright and permission notice must appear (a) with all copies of the Data Files or Software, or (b) in associated documentation"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/jdk/cldr.txt", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/jdk/cldr.txt"]
+
+  [[origin.component]]
+  name = "Thai Dictionary (JDK module jdk.localedata)"
+  license = "MIT"
+  evidence = ["release-source:labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/jdk.localedata/share/legal/thaidict.md lines 6-30: the MIT permission text"]
+  legal_file = "thaidict.md"
+  module = "jdk.localedata"
+  # Data the class library loads as a resource named thai_dict: present only if the library holds it.
+  marker = "thai_dict"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "MIT: the copyright notice and this permission notice shall be included in all copies or substantial portions of the Software"
+    met_by = []
+[[origin]]
+id = "native-image-output"
+name = "The Java of the app, compiled ahead of time by native-image into one object file"
+license = "NOASSERTION"
+evidence = ["made by native-image from the classpath in the build's compile log; its contents are the origins counted under 'image classpath entries', each with its own license"]
+targets = ["apk"]
+native_inputs = ["{build}/gluonfx/aarch64-android/gvm/tmp/SVM-*/*.o"]
+
+[[origin]]
+id = "android-ndk-crt"
+name = "crtbegin_so.o, the start-up code the Android NDK's compiler adds to every shared library"
+license = "BSD-2-Clause AND Apache-2.0"
+evidence = [
+  "NDK r28c (28.2.13676358) sysroot/usr/lib/aarch64-linux-android/21/crtbegin_so.o; its source is Android's bionic, not in the NDK",
+  "bionic libc/arch-common/bionic/crtbegin_so.c and the __dso_handle_so.h and atexit.h it includes: Copyright (C) 2012 The Android Open Source Project, the two-condition BSD license (https://android.googlesource.com/platform/bionic/+/refs/heads/main/libc/arch-common/bionic/, read 2026-10-29 on the main branch, not at the revision this NDK was built from)",
+  "pthread_atfork.h, also included: Copyright (C) 2015 The Android Open Source Project, Apache License 2.0 (same folder, same date)",
+  "the same at bionic tag ndk-r28c, the revision this NDK was built from (crtbegin_so.c blob 2f3b1189); crtend_so.S, the source of crtend_so.o, is the same two-condition BSD license, Copyright 2013 (read 2026-10-29)",
+]
+targets = ["apk"]
+native_inputs = ["{gluon}/Android/ndk/*/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/*/crtbegin_so.o",
+                 "{gluon}/Android/ndk/*/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/*/crtend_so.o"]
+
+  [[origin.obligation]]
+  kind = "notice"
+  why = "BSD-2-Clause condition 2: redistributions in binary form must reproduce the copyright notice, this list of conditions and the disclaimer in the documentation and/or other materials provided with the distribution"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/bsd-android-ndk.txt~Redistributions in binary form", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/bsd-android-ndk.txt"]
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "Apache-2.0 section 4(a), for pthread_atfork.h: give any other recipients of the Work a copy of this License"
+  met_by = ["artifact:com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt~Apache License", "artifact:com/modcritic/invmgr/ui/licenses/android.txt~/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt"]
+
+[[origin]]
+id = "d8-stand-in"
+name = "android.os.flagging.AconfigStorageReadException, a stand-in Android's compiler D8 writes"
+license = "NOASSERTION"
+evidence = ["dexdump, 2026-10-28 and again 2026-10-29: marked synthetic, no source file, extends RuntimeException, its only method throws NoClassDefFoundError. A class name and four instructions: no copyrightable content, so no license applies (two independent readers, 2026-10-29). It names an Android API that androidx.core catches and only Android 16 has"]
+targets = ["apk"]
+
+  [[origin.generated]]
+  class = "android/os/flagging/AconfigStorageReadException"
+  tool = "D8"

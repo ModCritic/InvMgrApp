@@ -8,11 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.modcritic.invmgr.App;
+import com.modcritic.invmgr.model.Preset;
+import javafx.event.Event;
+import javafx.event.EventType;
 import javafx.geometry.Bounds;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Button;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Region;
 import javafx.stage.Stage;
 import org.junit.jupiter.api.AfterAll;
@@ -341,6 +345,71 @@ class TouchLayoutTest extends ApplicationTest {
                 "and going back to the long line does not move it either");
     }
 
+    @Test
+    @DisplayName("a sideways flick leaves the Add dialog's preset row coasting past where the finger left it")
+    void aFlickLeavesThePresetRowCoasting() {
+        // Forty more presets, far wider than a phone, so the row has somewhere to coast to. On the
+        // desktop the dialog grows to fit them all, so only a phone-sized window can test this.
+        for (int i = 0; i < 40; i++) {
+            app.state().presets.add(new Preset("p" + (i % 10), 12, 12, 12));
+        }
+        clickOn(app.island().addButton());
+        WaitForAsyncUtils.waitForFxEvents();
+        ScrollPane row = enclosingScrollPane(app.addDialog().presetSlots());
+        double overflow = row.getContent().getLayoutBounds().getWidth()
+                - row.getViewportBounds().getWidth();
+        assertTrue(overflow > 0, "the row should be wider than the dialog, by " + overflow);
+        interact(() -> row.setHvalue(0));
+
+        // The whole flick, and the reading of where it landed, in one pass on the JavaFX thread,
+        // for ListCoastTest's reason: a round trip per step spaces the steps wider than the
+        // coast's sampling window, and nothing would coast.
+        double[] landedAt = new double[1];
+        interact(() -> {
+            Event.fireEvent(row, fingerScroll(ScrollEvent.SCROLL_STARTED));
+            for (int i = 0; i < 8; i++) {
+                row.setHvalue(Math.min(1, row.getHvalue() + 0.01));
+            }
+            Event.fireEvent(row, fingerScroll(ScrollEvent.SCROLL_FINISHED));
+            landedAt[0] = row.getHvalue();
+        });
+        double landed = landedAt[0];
+        assertTrue(landed < 0.5, "the flick itself should not reach the end, landed at " + landed);
+        sleep(2200);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(row.getHvalue() > landed + 0.01,
+                "the row should carry on past where the finger left it, went from " + landed
+                        + " to " + row.getHvalue());
+        assertEquals(0, row.getVvalue(), 0.0, "and it coasts sideways only");
+
+        // And as far as the finger's speed says, which pins the conversion between hvalue and
+        // pixels: with the wrong one the row still coasts, at a speed the finger never had. Steps
+        // microseconds apart put the release at PanMomentum's ceiling, and from there the coast
+        // runs a fixed distance until it drops under the stop speed (1236 px when measured).
+        double expected = (PanMomentum.MAX_FLING_SPEED - PanMomentum.STOP_SPEED)
+                / -Math.log(PanMomentum.SPEED_LEFT_AFTER_A_SECOND);
+        double coasted = (row.getHvalue() - landed) * overflow;
+        assertEquals(expected, coasted, expected * 0.05,
+                "the coast should run the distance the flick's speed gives");
+    }
+
+    /** The scroll pane a node sits in, however deep. */
+    private static ScrollPane enclosingScrollPane(Node node) {
+        for (Node up = node.getParent(); up != null; up = up.getParent()) {
+            if (up instanceof ScrollPane found) {
+                return found;
+            }
+        }
+        throw new AssertionError("not inside a scroll pane");
+    }
+
+    /** A scroll event as a finger's gesture sends it, marked direct. */
+    private static ScrollEvent fingerScroll(EventType<ScrollEvent> type) {
+        return new ScrollEvent(type, 50, 50, 50, 50, false, false, false, false,
+                true, false, 0, 0, 0, 0, ScrollEvent.HorizontalTextScrollUnits.NONE, 0,
+                ScrollEvent.VerticalTextScrollUnits.NONE, 0, 1, null);
+    }
+
     /** Plan mode on, one ghost added through the app's own dialog. Returns its id. */
     private String aPlannedItem() {
         clickOn(app.island().planButton());
@@ -470,6 +539,36 @@ class TouchLayoutTest extends ApplicationTest {
             menu.hide();
             return null;
         });
+    }
+
+    @Test
+    @DisplayName("on a phone, Licenses lists the Java class library, and Back from one of its texts lands on that list")
+    void theLicensesPagesOnAPhone() {
+        clickOn(app.island().menuButton());
+        layOut();
+        MenuWindow menu = app.menuWindow();
+        clickOn(menu.aboutEntry());
+        clickOn(menu.licensesEntry());
+        layOut();
+        assertTrue(menu.pageText().contains("OpenJFX, the Java class library and the GraalVM runtime are"
+                + " under the GNU GPL, version 2, with the Classpath Exception. Their complete source code"
+                + " for InvMgr " + AppInfo.VERSION + " is on its release page:"), menu.pageText().toString());
+
+        // Pressed directly: the list is below the fold on a phone.
+        interact(() -> menu.licenseEntry("Java class library").fire());
+        layOut();
+        assertEquals("Java class library", menu.pageTitle().getText());
+        interact(() -> menu.licenseEntry("ASM").fire());
+        layOut();
+        assertEquals("ASM", menu.pageTitle().getText());
+        assertTrue(menu.pageText().stream().anyMatch(line -> line.contains("ASM")), menu.pageText().toString());
+
+        clickOn(menu.backButton());
+        layOut();
+        assertEquals("Java class library", menu.pageTitle().getText(), "a text goes back to the list it was opened from");
+        clickOn(menu.backButton());
+        layOut();
+        assertEquals("Licenses", menu.pageTitle().getText());
     }
 
     @Test

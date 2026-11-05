@@ -75,6 +75,16 @@ import zipfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 APK = os.path.join(REPO, "target/gluonfx/aarch64-android/gvm/InvMgr.apk")
+
+
+def app_version():
+    """The version the build wrote into the app, from the same file About reads it from."""
+    path = os.path.join(REPO, "target/classes/com/modcritic/invmgr/app.properties")
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if line.startswith("version="):
+                return line.split("=", 1)[1].strip()
+    raise SystemExit("no version in %s: build first" % path)
 # The adb command, as a list. INVMGR_ADB replaces it with another command line, which is how
 # the suite drives an emulator: tools/android/emulator.sh runs each one in a network namespace
 # of its own, and only an adb started inside that namespace can reach it. `emulator.sh suite`
@@ -1687,10 +1697,11 @@ def about_back_steps_back():
     expect(shell("pidof " + PKG).strip() != "", "without closing the app")
 
 
-@case("about: Source code opens the repository in the phone's browser")
+@case("about: Source code opens this version's Release page in the phone's browser")
 def about_source_code():
-    """The one link out of the app. It opens github.com/ModCritic/InvMgrApp in whatever
-    browser the phone uses, which then loads it: the browser's connection, not this app's.
+    """About's link out of the app. It opens this version's Release page,
+    github.com/ModCritic/InvMgrApp/releases/tag/v<version>, in whatever browser the phone uses,
+    which then loads it: the browser's connection, not this app's.
 
     ⚠ It comes back with `am start`, not Back. Brave keeps a tab for an address it has already
     been sent, and Back from a reused tab stays in Brave (seen 2026-09-25, on the suite's second
@@ -1708,8 +1719,9 @@ def about_source_code():
            "Android asked which app to open the link with instead of opening a browser")
     if on_test_phone():
         address = [text for text in window_text() if "github.com" in text]
-        expect("github.com/ModCritic/InvMgrApp" in address,
-               "the browser's address bar should show the repository; it shows %r" % address)
+        release = "github.com/ModCritic/InvMgrApp/releases/tag/v" + app_version()
+        expect(release in address,
+               "the browser's address bar should show %s; it shows %r" % (release, address))
     else:
         expect(link_started("github.com"), "no browser was started on github.com")
         put_away_other_apps()

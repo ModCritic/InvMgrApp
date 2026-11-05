@@ -1,7 +1,10 @@
 package com.modcritic.invmgr.ui;
 
+import java.util.function.Consumer;
 import javafx.scene.Group;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextArea;
 
 /**
@@ -47,5 +50,30 @@ public class SkinnedTextArea extends TextArea {
         new Scene(stand);
         applyCss();
         stand.getChildren().clear();
+    }
+
+    /**
+     * Runs {@code action} on the scroll pane this box scrolls its text with, now and again for any
+     * skin that replaces the current one.
+     *
+     * <p>That scroll pane belongs to the skin, so it exists only once there is a skin, and a new
+     * skin brings a new one. This is how a long message gets what every other scroll pane in the
+     * app has: {@code ScrollEnds}, so it stops at its ends, and {@code ListCoast}, so it coasts
+     * after a flick.
+     */
+    public void onScrollPane(Consumer<ScrollPane> action) {
+        forScrollPaneOfSkin(action);
+        skinProperty().addListener((observable, before, after) -> forScrollPaneOfSkin(action));
+    }
+
+    private void forScrollPaneOfSkin(Consumer<ScrollPane> action) {
+        if (getSkin() == null) {
+            return;
+        }
+        for (Node child : getChildrenUnmodifiable()) {
+            if (child instanceof ScrollPane inside) {
+                action.accept(inside);
+            }
+        }
     }
 }

@@ -162,6 +162,74 @@ class MenuWindowAppTest extends ApplicationTest {
     }
 
     @Test
+    @DisplayName("a drag that starts on a page and lets go outside the window is not a tap outside")
+    void aDragThatEndsOutsideIsNotATap() {
+        open();
+        clickOn(menu().aboutEntry());
+        clickOn(menu().licensesEntry());
+        WaitForAsyncUtils.waitForFxEvents();
+        Bounds panel = menu().panel().localToScreen(menu().panel().getLayoutBounds());
+
+        // On the page's words, then down past the window's bottom edge, the way a finger scrolls.
+        drag(new Point2D(panel.getCenterX(), panel.getMinY() + 120))
+                .dropTo(new Point2D(panel.getCenterX(), panel.getMaxY() + 60));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertTrue(menu().isShowing());
+        assertEquals("Licenses", menu().pageTitle().getText(), "letting go outside after a drag is no tap");
+    }
+
+    @Test
+    @DisplayName("a page carries on after a flick, with the item list's coast")
+    void aPageCoasts() {
+        open();
+        clickOn(menu().aboutEntry());
+        clickOn(menu().licensesEntry());
+        WaitForAsyncUtils.waitForFxEvents();
+        javafx.scene.control.ScrollPane page = scrollPaneIn(menu().panel());
+        interact(() -> page.setVvalue(0.1));
+
+        // The whole flick in one pass on the JavaFX thread, as ListCoastTest does and for its reason:
+        // a round trip per step would space the steps wider than the coast's sampling window. Where
+        // it landed is read in the same pass: read after it, the coast may already have run to the
+        // end of this short page, which it did once in a full run (1.0 against 1.0).
+        double[] landedAt = new double[1];
+        interact(() -> {
+            javafx.event.Event.fireEvent(page, fingerScroll(javafx.scene.input.ScrollEvent.SCROLL_STARTED));
+            for (int i = 0; i < 8; i++) {
+                page.setVvalue(Math.min(1, page.getVvalue() + 0.01));
+            }
+            javafx.event.Event.fireEvent(page, fingerScroll(javafx.scene.input.ScrollEvent.SCROLL_FINISHED));
+            landedAt[0] = page.getVvalue();
+        });
+        double landed = landedAt[0];
+        assertTrue(landed < 0.5, "the flick itself should not reach the end, landed at " + landed);
+        sleep(2200);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(page.getVvalue() > landed + 0.01,
+                "the page should carry on past where the finger left it, went from " + landed
+                        + " to " + page.getVvalue());
+    }
+
+    @Test
+    @DisplayName("a press outside that drags before letting go is not a tap either")
+    void aDragOutsideIsNotATap() {
+        open();
+        clickOn(menu().aboutEntry());
+        WaitForAsyncUtils.waitForFxEvents();
+        Bounds panel = menu().panel().localToScreen(menu().panel().getLayoutBounds());
+
+        drag(new Point2D(panel.getMinX() - 60, panel.getMinY() + 40))
+                .dropTo(new Point2D(panel.getMinX() - 60, panel.getMinY() + 140));
+        WaitForAsyncUtils.waitForFxEvents();
+
+        assertEquals("About", menu().pageTitle().getText());
+        clickOn(new Point2D(panel.getMinX() - 60, panel.getMinY() + 40));
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals("Menu", menu().pageTitle().getText(), "while a tap there still goes back one page");
+    }
+
+    @Test
     @DisplayName("a desktop's Menu has no Settings: its one option only means anything on a phone")
     void noSettingsOnADesktop() {
         open();
@@ -180,6 +248,61 @@ class MenuWindowAppTest extends ApplicationTest {
         open();
         clickOn(menu().feedbackEntry());
         WaitForAsyncUtils.waitForFxEvents();
+    }
+
+    @Test
+    @DisplayName("a long message in the Feedback box coasts after a flick, as the page around it does")
+    void theFeedbackBoxCoasts() {
+        openFeedback(new java.util.ArrayList<>(), new java.util.ArrayList<>());
+        clickOn(menu().feedbackOkButton());
+        WaitForAsyncUtils.waitForFxEvents();
+        // Sixty lines in a box four lines tall, so the box's own scroll pane has somewhere to go.
+        interact(() -> menu().feedbackText().setText("line\n".repeat(60)));
+        WaitForAsyncUtils.waitForFxEvents();
+        javafx.scene.control.ScrollPane box = scrollPaneIn(menu().feedbackText());
+        assertNotNull(box, "the box's skin should hold a scroll pane");
+        interact(() -> box.setVvalue(0.1));
+
+        // In one pass on the JavaFX thread, as aPageCoasts does and for its reason.
+        double[] landedAt = new double[1];
+        interact(() -> {
+            javafx.event.Event.fireEvent(box, fingerScroll(javafx.scene.input.ScrollEvent.SCROLL_STARTED));
+            for (int i = 0; i < 8; i++) {
+                box.setVvalue(Math.min(1, box.getVvalue() + 0.01));
+            }
+            javafx.event.Event.fireEvent(box, fingerScroll(javafx.scene.input.ScrollEvent.SCROLL_FINISHED));
+            landedAt[0] = box.getVvalue();
+        });
+        double landed = landedAt[0];
+        assertTrue(landed < 0.5, "the flick itself should not reach the end, landed at " + landed);
+        sleep(2200);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertTrue(box.getVvalue() > landed + 0.01,
+                "the message should carry on past where the finger left it, went from " + landed
+                        + " to " + box.getVvalue());
+    }
+
+    @Test
+    @DisplayName("a long message in the Feedback box stops at its ends rather than stretching past them")
+    void theFeedbackBoxStopsAtItsEnds() {
+        openFeedback(new java.util.ArrayList<>(), new java.util.ArrayList<>());
+        clickOn(menu().feedbackOkButton());
+        WaitForAsyncUtils.waitForFxEvents();
+        interact(() -> menu().feedbackText().setText("line\n".repeat(60)));
+        WaitForAsyncUtils.waitForFxEvents();
+        javafx.scene.control.ScrollPane box = scrollPaneIn(menu().feedbackText());
+        java.util.List<javafx.scene.control.ScrollBar> bars = new java.util.ArrayList<>();
+        ScrollEnds.forEachBar(box, bars::add);
+        javafx.scene.control.ScrollBar bar = bars.stream()
+                .filter(found -> found.getOrientation() == javafx.geometry.Orientation.VERTICAL)
+                .findFirst().orElseThrow();
+
+        // What the phone's skin does to its bar under a finger dragging past the end, started from
+        // the end itself, for ScrollEndsTest's reason: pushed from anywhere else, the desktop skin
+        // clamps it by itself and the test passes without ScrollEnds.
+        interact(() -> bar.setValue(bar.getMax()));
+        interact(() -> bar.setValue(bar.getMax() + 0.4));
+        assertEquals(bar.getMax(), bar.getValue(), 1e-9, "the message should stop at its last line");
     }
 
     @Test
@@ -402,19 +525,75 @@ class MenuWindowAppTest extends ApplicationTest {
     }
 
     @Test
-    @DisplayName("Credits carries the FreeType wording")
-    void theCreditsPage() {
+    @DisplayName("Licenses shows the desktop's licenses, the source link and the written offer")
+    void theLicensesPage() {
         open();
         clickOn(menu().aboutEntry());
-        clickOn(menu().creditsEntry());
+        clickOn(menu().licensesEntry());
         WaitForAsyncUtils.waitForFxEvents();
-        assertEquals("Credits", menu().pageTitle().getText());
-        assertTrue(menu().pageText().containsAll(AppInfo.CREDITS), menu().pageText().toString());
+        assertEquals("Licenses", menu().pageTitle().getText());
+        java.util.List<String> text = menu().pageText();
+        for (String expected : java.util.List.of(
+                "InvMgr's own code is 0BSD. It also contains other people's work, under the"
+                        + " licenses listed below.",
+                "OpenJFX is under the GNU GPL, version 2, with the Classpath Exception. Its complete"
+                        + " source code for InvMgr " + AppInfo.VERSION + " is on its release page:",
+                "This is a written offer, good for at least three years after " + AppInfo.VERSION
+                        + " was last available: if that page is ever gone, write to"
+                        + " contact@asterkazika.com for a copy.",
+                "This software is based in part on the work of the FreeType Team.",
+                "This software is based in part on the work of the Independent JPEG Group.")) {
+            assertTrue(text.contains(expected), "missing: " + expected + "\nshown: " + text);
+        }
+        for (String license : java.util.List.of("GPL 2 + Classpath", "Open Font License", "MIT (Mesa)")) {
+            assertNotNull(menu().licenseEntry(license), license);
+        }
+        assertEquals(null, menu().licenseEntry("Java class library"),
+                "the desktop jar carries no Java class library of its own");
     }
 
     @Test
-    @DisplayName("Source code hands the repository's address to whatever opens links")
-    void sourceCodeOpensTheRepository() {
+    @DisplayName("a license opens its full text, and Back returns to Licenses, then About")
+    void aLicenseText() {
+        open();
+        clickOn(menu().aboutEntry());
+        clickOn(menu().licensesEntry());
+        // Below the fold, where a click would land on whatever is drawn at its coordinates, so the
+        // button is pressed directly. The page's scrolling is tested on its own elsewhere.
+        interact(() -> menu().licenseEntry("GPL 2 + Classpath").fire());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals("GPL 2 + Classpath", menu().pageTitle().getText());
+        java.util.List<String> text = menu().pageText();
+        assertTrue(text.contains("Used by OpenJFX, the toolkit that draws the whole interface."), text.toString());
+        assertTrue(text.contains("The GNU General Public License (GPL)"), "the license's own first line");
+        assertTrue(text.stream().anyMatch(line -> line.startsWith("\"CLASSPATH\" EXCEPTION TO THE GPL")),
+                "and its exception, a paragraph to itself");
+
+        clickOn(menu().backButton());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals("Licenses", menu().pageTitle().getText());
+        push(KeyCode.ESCAPE);
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals("About", menu().pageTitle().getText());
+    }
+
+    @Test
+    @DisplayName("the Licenses page's source link opens this version's Release page")
+    void theReleaseSourceLink() {
+        java.util.List<String> opened = new java.util.ArrayList<>();
+        interact(() -> menu().setOnOpenLink(opened::add));
+        open();
+        clickOn(menu().aboutEntry());
+        clickOn(menu().licensesEntry());
+        WaitForAsyncUtils.waitForFxEvents();
+        assertEquals("Source for " + AppInfo.VERSION, labelOf(menu().releaseSourceEntry()));
+        interact(() -> menu().releaseSourceEntry().fire());
+        assertEquals(java.util.List.of(AppInfo.RELEASE_URL), opened);
+    }
+
+    @Test
+    @DisplayName("Source code hands this version's Release page to whatever opens links")
+    void sourceCodeOpensTheRelease() {
         // A stand-in for the app's own opener, which on this machine would start a real browser.
         java.util.List<String> opened = new java.util.ArrayList<>();
         interact(() -> menu().setOnOpenLink(opened::add));
@@ -422,7 +601,8 @@ class MenuWindowAppTest extends ApplicationTest {
         clickOn(menu().aboutEntry());
         clickOn(menu().sourceCodeEntry());
         WaitForAsyncUtils.waitForFxEvents();
-        assertEquals(java.util.List.of("https://github.com/ModCritic/InvMgrApp"), opened);
+        assertEquals(java.util.List.of("https://github.com/ModCritic/InvMgrApp/releases/tag/v"
+                + AppInfo.VERSION), opened);
     }
 
     @Test
@@ -461,6 +641,36 @@ class MenuWindowAppTest extends ApplicationTest {
     private static Label noteOf(javafx.scene.control.Button entry) {
         HBox inside = (HBox) entry.getGraphic();
         return (Label) inside.getChildren().get(2);
+    }
+
+    /** The first scroll pane inside {@code node}: a Menu page's body. */
+    private static javafx.scene.control.ScrollPane scrollPaneIn(Node node) {
+        if (node instanceof javafx.scene.control.ScrollPane found) {
+            return found;
+        }
+        if (node instanceof javafx.scene.Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                javafx.scene.control.ScrollPane found = scrollPaneIn(child);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** A scroll event as a finger's gesture sends it, marked direct. */
+    private static javafx.scene.input.ScrollEvent fingerScroll(
+            javafx.event.EventType<javafx.scene.input.ScrollEvent> type) {
+        return new javafx.scene.input.ScrollEvent(type, 50, 50, 50, 50, false, false, false, false,
+                true, false, 0, 0, 0, 0, javafx.scene.input.ScrollEvent.HorizontalTextScrollUnits.NONE, 0,
+                javafx.scene.input.ScrollEvent.VerticalTextScrollUnits.NONE, 0, 1, null);
+    }
+
+    /** The left-hand label of an entry: its name. */
+    private static String labelOf(javafx.scene.control.Button entry) {
+        HBox inside = (HBox) entry.getGraphic();
+        return ((Label) inside.getChildren().get(0)).getText();
     }
 
     /** What color a label's words actually come out, after JavaFX has had its say. */

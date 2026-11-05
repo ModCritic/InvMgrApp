@@ -43,7 +43,7 @@
   Check after every build with `aapt dump permissions`.
 -->
 <manifest xmlns:android='http://schemas.android.com/apk/res/android'
-          android:versionCode='2' android:versionName='1.0.1'>
+          android:versionCode='3' android:versionName='1.0.2'>
     <supports-screens android:xlargeScreens="true"/>
     <application android:label='InvMgr' android:icon="@mipmap/ic_launcher"
                  android:allowBackup="false">

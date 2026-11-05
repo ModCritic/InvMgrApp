@@ -4,6 +4,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
@@ -39,6 +40,16 @@ public abstract class ModalDialog {
     private final VBox box = Dialogs.box();
 
     private boolean showing;
+
+    /** Where the last press on this dialog landed, in the scene. */
+    private double pressX;
+    private double pressY;
+
+    /**
+     * Whether the press under way can still end as a tap outside the panel: it landed on the
+     * darkened area itself and has not moved further than {@link Tokens#TAP_SLOP} since.
+     */
+    private boolean tapOutside;
 
     /**
      * The strip around the window this dialog keeps clear of, usually nothing.
@@ -100,6 +111,22 @@ public abstract class ModalDialog {
         // click outside the panel would be a real annoyance. A dialog with no form in it can ask
         // to; see closesOnOutsideTap.
         overlay.setOnMousePressed(event -> event.consume());
+        // Only a press that lands outside the panel and stays put is a tap outside. Found on the
+        // phone on 2026-10-31: a finger that scrolled a Menu page and lifted past the panel's edge
+        // went back a page. JavaFX sends a release that ends on a different node from its press a
+        // CLICKED aimed at the nearest node holding both, and for a press inside the panel and a
+        // release outside it that node is the overlay. Watched in filters, so the panel's own
+        // nodes still see every event.
+        overlay.addEventFilter(MouseEvent.MOUSE_PRESSED, event -> {
+            pressX = event.getSceneX();
+            pressY = event.getSceneY();
+            tapOutside = event.getTarget() == overlay;
+        });
+        overlay.addEventFilter(MouseEvent.MOUSE_DRAGGED, event -> {
+            if (Math.hypot(event.getSceneX() - pressX, event.getSceneY() - pressY) > Tokens.TAP_SLOP) {
+                tapOutside = false;
+            }
+        });
         // On CLICKED, not PRESSED, so the whole press and release land on the overlay before it
         // goes away. On a desktop the two measured the same (MenuWindowAppTest's click-outside
         // case passes with either), so this is a precaution rather than a fix: on a phone the
@@ -108,7 +135,7 @@ public abstract class ModalDialog {
         // pressed on has gone. The target test is what keeps a click on the panel itself, or on
         // a button in it, from counting as outside.
         overlay.setOnMouseClicked(event -> {
-            if (event.getTarget() == overlay && closesOnOutsideTap()) {
+            if (event.getTarget() == overlay && tapOutside && closesOnOutsideTap()) {
                 cancel();
             }
             event.consume();

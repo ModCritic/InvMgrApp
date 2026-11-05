@@ -1,0 +1,26 @@
+# Written by tools/licenses/notices.py from tools/licenses/notices.toml. Edit those and run it.
+para	InvMgr's own code is 0BSD. It also contains other people's work, under the licenses listed below.
+para	OpenJFX, the Java class library and the GraalVM runtime are under the GNU GPL, version 2, with the Classpath Exception. Their complete source code for InvMgr {version} is on its release page:
+source	Source for {version}
+note	This is a written offer, good for at least three years after {version} was last available: if that page is ever gone, write to contact@asterkazika.com for a copy.
+credit	This software is based in part on the work of the FreeType Team.
+credit	Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org). All rights reserved.
+credit	This software is based in part on the work of the Independent JPEG Group.
+text	GPL 2 + Classpath	/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt	Used by OpenJFX, the toolkit that draws the whole interface; by the Java class library, in its Java and its C parts; and by the GraalVM runtime.
+text	Apache 2.0	/com/modcritic/invmgr/ui/licenses/texts/apache-2.0.txt	Used by AndroidX, Kotlin, JSpecify and Guava's ListenableFuture; by part of the start-up code the Android NDK adds to the app; and by three parts of the Java class library: Xerces, Xalan and BCEL.
+text	Open Font License	/com/modcritic/invmgr/ui/fonts/OFL.txt	Used by Noto Sans Mono, the app's typeface, and Noto Sans Math, which draws two symbols.
+group	Java class library	GPL 2 + Classpath, like OpenJFX. It contains these, each under its own terms as well:
+item	Cryptix AES	/com/modcritic/invmgr/ui/licenses/texts/jdk/aes.txt
+item	ASM	/com/modcritic/invmgr/ui/licenses/texts/jdk/asm.txt
+item	Unicode CLDR	/com/modcritic/invmgr/ui/licenses/texts/jdk/cldr.txt
+item	ICU4J	/com/modcritic/invmgr/ui/licenses/texts/jdk/icu.txt
+item	Unicode data	/com/modcritic/invmgr/ui/licenses/texts/jdk/unicode.txt
+item	Apache BCEL	/com/modcritic/invmgr/ui/licenses/texts/jdk/bcel.txt
+item	W3C DOM	/com/modcritic/invmgr/ui/licenses/texts/jdk/dom.txt
+item	CUP Parser	/com/modcritic/invmgr/ui/licenses/texts/jdk/jcup.txt
+item	Apache Xalan	/com/modcritic/invmgr/ui/licenses/texts/jdk/xalan.txt
+item	Apache Xerces	/com/modcritic/invmgr/ui/licenses/texts/jdk/xerces.txt
+item	Kodak color imaging	/com/modcritic/invmgr/ui/licenses/texts/jdk/colorimaging.txt
+text	UPL 1.0 (GraalVM)	/com/modcritic/invmgr/ui/licenses/texts/upl-1.0.txt	Used by the GraalVM SDK, part of the GraalVM runtime. Copyright (c) Oracle and/or its affiliates.
+text	MIT (Mesa)	/com/modcritic/invmgr/ui/licenses/texts/mit-mesa.txt	Used by OpenJFX's 3D drawing, which includes headers from the Mesa 3-D Graphics Library.
+text	BSD (Android NDK)	/com/modcritic/invmgr/ui/licenses/texts/bsd-android-ndk.txt	Used by the start-up code the Android NDK's compiler adds to every library, which is linked into the app.

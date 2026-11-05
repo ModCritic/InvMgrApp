@@ -21,9 +21,9 @@
     <!-- THE app's version, and the only place it is written. The About page reads it through
          com/modcritic/invmgr/app.properties, filtered below, and Substrate writes it into the
          Android manifest as versionName through <releaseConfiguration>, so About and the Play
-         Store cannot disagree. 1.0.0 from 2026-09-24, and 1.0.1 from 2026-10-27 for the first
-         update; the user's choice both times. -->
-    <version>1.0.1</version>
+         Store cannot disagree. 1.0.0 from 2026-09-24, 1.0.1 from 2026-10-27 for the first
+         update, and 1.0.2 from 2026-11-04; the user's choice each time. -->
+    <version>1.0.2</version>
     <name>InvMgr</name>
     <description>Top-down room inventory manager with a walkable 3D view</description>
 
@@ -334,10 +334,10 @@
                          versionCode: Play's own counter, which must go up by at least one
                          with every upload, whatever versionName says. Substrate writes it into
                          src/android/AndroidManifest.xml in place, the same way as versionName.
-                         1 was the first upload, 1.0.0, and 2 is 1.0.1. -->
+                         1 was the first upload, 1.0.0, 2 is 1.0.1, and 3 is 1.0.2. -->
                     <releaseConfiguration>
                         <versionName>${project.version}</versionName>
-                        <versionCode>2</versionCode>
+                        <versionCode>3</versionCode>
                     </releaseConfiguration>
 
                     <!-- JavaFX builds the App object reflectively, via
@@ -533,6 +533,11 @@
                         <list>com/modcritic/invmgr/ui/fonts/.*</list>
                         <list>com/modcritic/invmgr/ui/canvas\\.css$</list>
                         <list>com/modcritic/invmgr/ui/icons/.*\\.svg$</list>
+                        <!-- The Licenses page's index and texts, which the licenses of
+                             code inside the app require it to carry. Missing here, the
+                             phone build would have none of them and About's Licenses
+                             entry would fail to open. -->
+                        <list>com/modcritic/invmgr/ui/licenses/.*</list>
                         <!-- The app's version, read by AppInfo. Missing here, the phone
                              build would find no file and About would fail to open. -->
                         <list>com/modcritic/invmgr/app\\.properties$</list>
@@ -553,6 +558,17 @@
                         <arg>-J-XX:ActiveProcessorCount=2</arg>
                         <arg>-J-Xmx10g</arg>
                         <arg>-J-XX:ParallelGCThreads=2</arg>
+                        <!-- This one fixes the app. Substrate tells native-image to embed
+                             every .png, .json, .xml and seventeen more file types from
+                             every jar on its classpath, and it puts its own jar there too.
+                             So Gluon's own app icons for Android, iOS and macOS and its
+                             build config files were compiled into libsubstrate.so: 55
+                             files of someone else's GPL-licensed work, which nothing in
+                             the app uses. Those are the only things in these four folders
+                             of any classpath entry; JavaFX and this app keep nothing
+                             there. tools/licenses/check.py fails the build if any come
+                             back. -->
+                        <arg>-H:ExcludeResources=(native|config|thirdparty|com/gluonhq)/.*</arg>
                     </nativeImageArgs>
 
                     <!-- Deliberately NOT set: enableSWRendering. Turning it on would
@@ -803,7 +819,7 @@
                  the app or linked into the APK. That is the test-only exception
                  to the no-copyleft rule, the same standing as TestFX. Verify the
                  usual way rather than trusting this line: the shipped
-                 artifact is what ./tools/check-shipped-licenses.sh reads.
+                 artifact is what tools/licenses/check.py reads.
                  ============================================================ -->
             <id>coverage</id>
 

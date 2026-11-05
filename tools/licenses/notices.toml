@@ -1,0 +1,112 @@
+# What the app's Licenses page says, on the desktop and on the phone.
+#
+# tools/licenses/notices.py turns this file into the files the app reads, under
+# src/main/resources/com/modcritic/invmgr/ui/licenses/: one index per platform, and the license
+# texts the index points at, copied byte for byte from the files named in `source`. Edit this
+# file, run `python3 tools/licenses/notices.py`, and commit both. `--check` fails when the
+# committed files no longer match, and check.py fails a build whose Licenses page leaves an
+# obligation in registry.toml unmet.
+#
+# {version} in any sentence is filled in by the app with its own version when the page opens.
+#
+# A source is a path, or an archive and a member inside it joined by "!". {sources} is the folder
+# holding the third-party source archives (see notices.py), {gluon} is ~/.gluon/substrate.
+
+[platform.desktop]
+intro = "InvMgr's own code is 0BSD. It also contains other people's work, under the licenses listed below."
+gpl = "OpenJFX is under the GNU GPL, version 2, with the Classpath Exception. Its complete source code for InvMgr {version} is on its release page:"
+source = "Source for {version}"
+offer = "This is a written offer, good for at least three years after {version} was last available: if that page is ever gone, write to contact@asterkazika.com for a copy."
+credits = [
+  "This software is based in part on the work of the FreeType Team.",
+  "Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org). All rights reserved.",
+  "This software is based in part on the work of the Independent JPEG Group.",
+]
+licenses = ["gpl", "ofl", "mesa"]
+
+[platform.android]
+intro = "InvMgr's own code is 0BSD. It also contains other people's work, under the licenses listed below."
+gpl = "OpenJFX, the Java class library and the GraalVM runtime are under the GNU GPL, version 2, with the Classpath Exception. Their complete source code for InvMgr {version} is on its release page:"
+source = "Source for {version}"
+offer = "This is a written offer, good for at least three years after {version} was last available: if that page is ever gone, write to contact@asterkazika.com for a copy."
+credits = [
+  "This software is based in part on the work of the FreeType Team.",
+  "Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org). All rights reserved.",
+  "This software is based in part on the work of the Independent JPEG Group.",
+]
+licenses = ["gpl", "apache", "ofl", "jdk", "upl", "mesa", "bsd"]
+
+[[license]]
+id = "gpl"
+title = "GPL 2 + Classpath"
+file = "gpl-2.0-classpath.txt"
+# Oracle's GPL version 2 with its Classpath Exception. OpenJDK and GraalVM ship the same text.
+source = "{sources}/openjfx-21-b31-source.tar.gz!jfx-21-31/LICENSE"
+used_by.desktop = "Used by OpenJFX, the toolkit that draws the whole interface."
+used_by.android = "Used by OpenJFX, the toolkit that draws the whole interface; by the Java class library, in its Java and its C parts; and by the GraalVM runtime."
+
+[[license]]
+id = "apache"
+title = "Apache 2.0"
+file = "apache-2.0.txt"
+# The NDK's own NOTICE opens with the license, up to its last line of terms.
+source = "{gluon}/Android/ndk/28.2.13676358/NOTICE"
+from_line = "Apache License"
+through_line = "END OF TERMS AND CONDITIONS"
+used_by.android = "Used by AndroidX, Kotlin, JSpecify and Guava's ListenableFuture; by part of the start-up code the Android NDK adds to the app; and by three parts of the Java class library: Xerces, Xalan and BCEL."
+
+[[license]]
+id = "ofl"
+title = "Open Font License"
+# Shipped beside the fonts already, so the page points at that copy instead of a second one.
+resource = "/com/modcritic/invmgr/ui/fonts/OFL.txt"
+used_by.desktop = "Used by Noto Sans Mono, the app's typeface, and Noto Sans Math, which draws two symbols."
+used_by.android = "Used by Noto Sans Mono, the app's typeface, and Noto Sans Math, which draws two symbols."
+
+[[license]]
+id = "jdk"
+title = "Java class library"
+group = "GPL 2 + Classpath, like OpenJFX. It contains these, each under its own terms as well:"
+source = "{sources}/labs-openjdk-17-jvmci-22.1-b06-source.tar.gz!labs-openjdk-17-jvmci-22.1-b06/src/{module}/share/legal/{legal_file}"
+# The parts check.py finds inside the 1.0.1 APK. One it finds that is missing here leaves its
+# obligation unmet, and the check fails until it is added.
+items = [
+  { name = "Cryptix AES", module = "java.base", legal_file = "aes.md" },
+  { name = "ASM", module = "java.base", legal_file = "asm.md" },
+  { name = "Unicode CLDR", module = "java.base", legal_file = "cldr.md" },
+  { name = "ICU4J", module = "java.base", legal_file = "icu.md" },
+  { name = "Unicode data", module = "java.base", legal_file = "unicode.md" },
+  { name = "Apache BCEL", module = "java.xml", legal_file = "bcel.md" },
+  { name = "W3C DOM", module = "java.xml", legal_file = "dom.md" },
+  { name = "CUP Parser", module = "java.xml", legal_file = "jcup.md" },
+  { name = "Apache Xalan", module = "java.xml", legal_file = "xalan.md" },
+  { name = "Apache Xerces", module = "java.xml", legal_file = "xerces.md" },
+  { name = "Kodak color imaging", module = "java.desktop", legal_file = "colorimaging.md" },
+]
+
+[[license]]
+id = "upl"
+title = "UPL 1.0 (GraalVM)"
+file = "upl-1.0.txt"
+source = "{sources}/graalvm-gluon-22.1.0.1-source.tar.gz!graal-gluon-22.1.0.1-Final/sdk/LICENSE.md"
+used_by.android = "Used by the GraalVM SDK, part of the GraalVM runtime. Copyright (c) Oracle and/or its affiliates."
+
+[[license]]
+id = "mesa"
+title = "MIT (Mesa)"
+file = "mit-mesa.txt"
+source = "{sources}/openjfx-21-b31-source.tar.gz!jfx-21-31/modules/javafx.graphics/src/main/legal/mesa3d.md"
+used_by.desktop = "Used by OpenJFX's 3D drawing, which includes headers from the Mesa 3-D Graphics Library."
+used_by.android = "Used by OpenJFX's 3D drawing, which includes headers from the Mesa 3-D Graphics Library."
+
+[[license]]
+id = "bsd"
+title = "BSD (Android NDK)"
+file = "bsd-android-ndk.txt"
+# Two notices from the NDK's NOTICE, which separates its notices with lines of dashes: the ones
+# for crtbegin_so.c (2012) and crtend_so.S (2013), the start-up code linked into the app.
+source = "{gluon}/Android/ndk/28.2.13676358/NOTICE"
+blocks = ["Copyright (C) 2012 The Android Open Source Project\nAll rights reserved.",
+          "Copyright (C) 2013 The Android Open Source Project\nAll rights reserved."]
+block_contains = "Redistribution and use"
+used_by.android = "Used by the start-up code the Android NDK's compiler adds to every library, which is linked into the app."

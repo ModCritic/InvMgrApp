@@ -19,7 +19,8 @@ patch is too; `COPYING` is that license. It was modified from Gluon's `0.0.69` r
 2026-10-01, and the patch's own header carries the date and author.
 
 Nothing from Substrate, patched or not, ends up in the app. Substrate is a build tool that runs on
-the developer's machine; `tools/check-shipped-licenses.sh` checks the built APK for it.
+the developer's machine; `tools/licenses/check.py` checks the built APK for it, down to the classes
+compiled into its native library.
 
 ## Using it
 

@@ -14,8 +14,8 @@
 #     fingerprint;
 #   - the bundle carries the same code as the APK, file by file, so a check of one holds
 #     for the other;
-#   - nothing ships that tools/shipped-origins.allow has no record of, read out of the
-#     APK's own classes and native libraries by tools/check-shipped-licenses.sh;
+#   - every file in the APK and the bundle has one proven origin in tools/licenses/registry.toml,
+#     and every license obligation is met or carries a recorded decision (tools/licenses/check.py);
 #
 # and then deletes every file under target/ that holds either password. Substrate writes
 # them in plain text into the Gradle project it generates, and this cleans up whatever
@@ -56,6 +56,10 @@ done
 [ -d "$GRAALVM_HOME" ] || { echo "No GraalVM at $GRAALVM_HOME" >&2; exit 1; }
 [ -f "$KEYSTORE" ] || { echo "No keystore at $KEYSTORE" >&2; exit 1; }
 export GRAALVM_HOME
+
+# The Licenses page's files are written by a script and committed. Stale ones would ship a page
+# that no longer says what notices.toml says, so stop before the long build rather than after it.
+python3 tools/licenses/notices.py --check || exit 1
 
 read -rsp "Keystore password: " INVMGR_STORE_PASSWORD
 echo
@@ -102,6 +106,9 @@ fi
 KEY_SHA="$(printf '%s' "$KEY_SHA" | tr -d ':' | tr 'A-F' 'a-f')"
 echo "Key \"$ALIAS\" found. Building; this takes a few minutes."
 
+# The license check below reads this build's own link and compile logs; this marks which are new.
+mkdir -p target
+touch target/.release-build-start
 if ! "$MVN" -B -Pandroid,release -Dinvmgr.keystore="$KEYSTORE" -Dinvmgr.keyAlias="$ALIAS" \
         gluonfx:build gluonfx:package > "$LOG" 2>&1; then
     echo "The build failed. Its last lines:" >&2
@@ -153,11 +160,40 @@ then
     exit 1
 fi
 
+# The license check proves where every byte of the APK and the bundle came from. For the native
+# library that takes the linker's map, which the build does not write. So the link is rerun from
+# this build's own log with -Wl,-Map added, and the result has to be byte-identical to the library
+# the build made; otherwise the map would describe something else.
+LINK_LOG="$(find target/gluonfx/log -name 'process-link-*.log' -newer target/.release-build-start | sort | tail -1)"
+COMPILE_LOG="$(find target/gluonfx/log -name 'process-compile-*.log' -newer target/.release-build-start | sort | tail -1)"
+LINKED="$PWD/target/gluonfx/aarch64-android/libInvMgr.so"
+BOM=target/release-bom
+if [ -z "$LINK_LOG" ] || [ -z "$COMPILE_LOG" ]; then
+    echo "FAILED: this build wrote no link or compile log, so its native library cannot be checked." >&2
+    exit 1
+fi
+rm -rf "$BOM"
+mkdir -p "$BOM"
+LINK_COMMAND="$(sed -n '/^Command Line/{n;n;p}' "$LINK_LOG")"
+RELINK="${LINK_COMMAND/-o $LINKED/-o $PWD/$BOM/relinked.so -Wl,-Map=$PWD/$BOM/libsubstrate.map}"
+if [ "$RELINK" = "$LINK_COMMAND" ] || ! (cd "$GVM" && eval "$RELINK") > "$BOM/relink.log" 2>&1 \
+        || ! cmp -s "$BOM/relinked.so" "$LINKED"; then
+    echo "FAILED: relinking with a map did not reproduce the library, so the map cannot be trusted." >&2
+    exit 1
+fi
+rm "$BOM/relinked.so"
+cp "$LINK_LOG" "$BOM/link.log"
+cp "$COMPILE_LOG" "$BOM/compile.log"
+cp "$LINKED" "$BOM/libInvMgr.so"
+
 # Run here because a release is the one build that leaves this machine, and 1.0.0 went out
-# without it: the check would have failed then, on a class nobody had recorded.
-if ! tools/check-shipped-licenses.sh "$APK" > target/release-licenses.log 2>&1; then
-    echo "FAILED: the license check found code it has no record of. Do not upload this build." >&2
-    grep "NOT ALLOWED" target/release-licenses.log >&2 || tail -20 target/release-licenses.log >&2
+# without any check: the old one would have failed then, on a class nobody had recorded.
+CHECK=(--build target --native-map "$BOM/libsubstrate.map" --linked "$BOM/libInvMgr.so" --compile-log "$BOM/compile.log")
+if ! { python3 tools/licenses/check.py apk "$APK" "${CHECK[@]}" && python3 tools/licenses/check.py aab "$AAB" "${CHECK[@]}"; } \
+        > target/release-licenses.log 2>&1; then
+    echo "FAILED: the license check found something without a proven origin, or an obligation not met." >&2
+    echo "Do not upload this build. The whole report is in target/release-licenses.log:" >&2
+    grep -E "^(PROBLEM|  .*: no |NO PROVEN|CLAIMED)" target/release-licenses.log | sort -u | head -40 >&2
     exit 1
 fi
 
@@ -165,6 +201,10 @@ VERSION="$(printf '%s\n' "$BADGING" | sed -n "s/^package: .*versionCode='\([0-9]
 mkdir -p "$OUT"
 cp "$AAB" "$OUT/InvMgr-$VERSION.aab"
 cp "$APK" "$OUT/InvMgr-$VERSION.apk"
+# The map, the logs and the unstripped library: what the license check needs to check this
+# release again later, with the release folder's source bundles.
+rm -rf "$OUT/InvMgr-$VERSION-bom"
+cp -r "$BOM" "$OUT/InvMgr-$VERSION-bom"
 echo "OK: release build, not debuggable, signed with \"$ALIAS\" ($KEY_SHA), licenses checked."
 printf '%s\n' "$BADGING" | grep "^package:"
 echo "Upload this one: $OUT/InvMgr-$VERSION.aab"

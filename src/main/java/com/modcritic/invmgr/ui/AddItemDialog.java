@@ -185,6 +185,9 @@ public final class AddItemDialog extends ModalDialog {
         // On a phone the strip stops at its ends, rather than stretching past them and springing
         // back (the user, 2026-09-26; see ScrollEnds).
         ScrollEnds.install(scroller);
+        // And it carries on after a flick, sideways, the way the item list does up and down (the
+        // user, 2026-10-31); see ListCoast for why a scroll pane on a phone needs one of its own.
+        ListCoast.installSideways(scroller);
         scroller.setStyle("-fx-background: transparent; -fx-background-color: transparent;"
                 + "-fx-padding: 0;");
         strip.setStyle("-fx-background-color: transparent;");

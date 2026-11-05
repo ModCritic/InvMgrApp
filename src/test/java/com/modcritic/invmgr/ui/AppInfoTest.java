@@ -27,7 +27,7 @@ class AppInfoTest {
                 .matcher(pom);
         assertTrue(project.find(), "could not find the project's own version in pom.xml");
         assertEquals(project.group(1).strip(), AppInfo.VERSION);
-        assertEquals("1.0.1", AppInfo.VERSION, "the first update, 2026-10-27");
+        assertEquals("1.0.2", AppInfo.VERSION, "the second update, 2026-11-04");
     }
 
     @Test
@@ -106,10 +106,11 @@ class AppInfoTest {
     }
 
     @Test
-    @DisplayName("the credit is the FreeType Project's own wording")
-    void theCredit() {
-        assertEquals("This software is based in part on the work of the FreeType Team.",
-                AppInfo.CREDITS.get(0));
-        assertTrue(AppInfo.CREDITS.get(1).contains("© 2025 The FreeType Project"));
+    @DisplayName("the source link is this version's Release, tagged v and the version")
+    void theReleaseAddress() {
+        assertEquals("https://github.com/ModCritic/InvMgrApp/releases/tag/v" + AppInfo.VERSION,
+                AppInfo.RELEASE_URL);
+        assertTrue(AppInfo.SOURCE_URL.equals("https://github.com/ModCritic/InvMgrApp"),
+                "Feedback's issues still go to the repository itself");
     }
 }

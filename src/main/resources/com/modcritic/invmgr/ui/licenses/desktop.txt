@@ -1,0 +1,11 @@
+# Written by tools/licenses/notices.py from tools/licenses/notices.toml. Edit those and run it.
+para	InvMgr's own code is 0BSD. It also contains other people's work, under the licenses listed below.
+para	OpenJFX is under the GNU GPL, version 2, with the Classpath Exception. Its complete source code for InvMgr {version} is on its release page:
+source	Source for {version}
+note	This is a written offer, good for at least three years after {version} was last available: if that page is ever gone, write to contact@asterkazika.com for a copy.
+credit	This software is based in part on the work of the FreeType Team.
+credit	Portions of this software are copyright © 2025 The FreeType Project (https://freetype.org). All rights reserved.
+credit	This software is based in part on the work of the Independent JPEG Group.
+text	GPL 2 + Classpath	/com/modcritic/invmgr/ui/licenses/texts/gpl-2.0-classpath.txt	Used by OpenJFX, the toolkit that draws the whole interface.
+text	Open Font License	/com/modcritic/invmgr/ui/fonts/OFL.txt	Used by Noto Sans Mono, the app's typeface, and Noto Sans Math, which draws two symbols.
+text	MIT (Mesa)	/com/modcritic/invmgr/ui/licenses/texts/mit-mesa.txt	Used by OpenJFX's 3D drawing, which includes headers from the Mesa 3-D Graphics Library.

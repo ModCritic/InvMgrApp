@@ -3,6 +3,7 @@ Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-gree
 
 NotoSansMath-Regular.ttf
 Copyright 2022 The Noto Project Authors (https://github.com/notofonts/math)
+Copyright 2022 Google LLC. All Rights Reserved.
 
 Neither font declares a Reserved Font Name. Both are covered by the single license
 below; upstream ships the two files under identical license text, differing only in
