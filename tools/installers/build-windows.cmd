@@ -27,7 +27,11 @@ mkdir "%WORK%\input" || exit /b 1
 copy "%JAR%" "%WORK%\input\" >nul || exit /b 1
 rem Which parts of Java the app uses, read from the jar each time so a new import is never missed.
 rem cmd drops the outer quotes of a command that starts with one, so it gets two pairs.
+set "MODULES="
 for /f "delims=" %%m in ('""%TEMURIN_HOME%\bin\jdeps" --ignore-missing-deps --multi-release 17 --print-module-deps "%JAR%""') do set "MODULES=%%m"
+rem With no modules the jpackage line below would read --icon as the module list and fail on the
+rem icon's path, which hides the real problem.
+if not defined MODULES (echo jdeps named no Java modules for %JAR% & exit /b 1)
 echo Java modules: %MODULES%
 "%TEMURIN_HOME%\bin\jpackage" --type app-image --name InvMgr --app-version %VERSION% --vendor "Asterkazika LLC" --description "Top-down room inventory manager" --input "%WORK%\input" --main-jar "%~nx1" --main-class com.modcritic.invmgr.Launcher --add-modules %MODULES% --icon "%HERE%..\..\assets\icons\InvMgr.ico" --dest "%OUT%\app" || exit /b 1
 del /q "%OUT%\app\InvMgr\runtime\bin\ucrtbase.dll" "%OUT%\app\InvMgr\runtime\bin\api-ms-win-*.dll" || exit /b 1
