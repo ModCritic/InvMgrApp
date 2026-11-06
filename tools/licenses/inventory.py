@@ -4,10 +4,16 @@ A jar, an APK or an Android App Bundle is a zip file. Every file inside it is a 
 zip inside a zip (a jar inside a jar, say) is a leaf too, which can be opened in turn when
 its own origin is not proven as a whole. Each leaf carries its SHA-256, so it can be
 matched byte for byte against the files the build started from.
+
+A Linux download is unpacked into a folder first (linux.py), and every file under that folder
+is a leaf the same way. A symbolic link there is a leaf of its own kind, "link", whose bytes are
+the path it points to: it carries nothing of anyone's, but it can point outside the download.
 """
 import hashlib
 import io
+import os
 import zipfile
+from pathlib import Path
 from dataclasses import dataclass
 
 ARCHIVE_SUFFIXES = (".jar", ".zip", ".apk", ".aab", ".aar")
@@ -54,7 +60,11 @@ def kind_of(name, data):
 
 
 def leaves(source, prefix=""):
-    """Every file in a zip, as Leaf objects. `source` is a path or the zip's bytes."""
+    """Every file in a zip, or under a folder, as Leaf objects. `source` is a path or the zip's
+    bytes."""
+    if not isinstance(source, bytes) and os.path.isdir(source):
+        yield from folder_leaves(Path(source))
+        return
     handle = io.BytesIO(source) if isinstance(source, bytes) else source
     with zipfile.ZipFile(handle) as z:
         for info in z.infolist():
@@ -65,11 +75,28 @@ def leaves(source, prefix=""):
                        kind_of(info.filename, data))
 
 
+def folder_leaves(root):
+    for folder, dirs, files in os.walk(root):
+        dirs.sort()
+        for name in sorted(files + [d for d in dirs if os.path.islink(os.path.join(folder, d))]):
+            full = Path(folder, name)
+            path = full.relative_to(root).as_posix()
+            if full.is_symlink():
+                target = os.readlink(full).encode()
+                yield Leaf(path, hashlib.sha256(target).hexdigest(), len(target), "link")
+            else:
+                data = full.read_bytes()
+                yield Leaf(path, hashlib.sha256(data).hexdigest(), len(data), kind_of(name, data))
+
+
 def read_entry(source, path):
-    """The bytes of one leaf, following "outer!inner" through nested archives."""
+    """The bytes of one leaf, following "outer!inner" through nested archives. Under a folder,
+    the first part is a file there; a link is read as the file it points to."""
     parts = path.split("!")
     data = None
-    handle = source
+    handle = io.BytesIO(source) if isinstance(source, bytes) else source
+    if not isinstance(source, bytes) and os.path.isdir(source):
+        data = Path(source, parts.pop(0)).read_bytes()
     for part in parts:
         with zipfile.ZipFile(io.BytesIO(data) if data is not None else handle) as z:
             data = z.read(part)

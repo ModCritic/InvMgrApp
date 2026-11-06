@@ -3,6 +3,8 @@
 
     python3 tools/licenses/check.py jar <jar> --classes <compiled classes> [release options]
     python3 tools/licenses/check.py apk <apk> --native-map <map> --linked <so> [release options]
+    python3 tools/licenses/check.py linux <.tar.gz, .AppImage, .deb or .rpm> --classes <compiled classes>
+    python3 tools/licenses/check.py windows <the setup .exe, with app/ and build.log beside it> --classes <...>
 
 It breaks the file into leaves (inventory.py), proves each leaf's origin against the inputs of
 every origin in registry.toml (inputs.py), and then checks each origin's obligations. It exits 1
@@ -18,6 +20,7 @@ them (Android's dex and resources), with Android's own tools reading the names b
 import argparse
 import fnmatch
 import hashlib
+import os
 import re
 import sys
 import tomllib
@@ -107,11 +110,88 @@ def d8_json_ok(data):
     return None if set(doc) <= {"options", "version"} else f"unexpected keys {sorted(doc)}"
 
 
+def ini_ok(data):
+    # A desktop menu entry, or the .cfg file jpackage writes beside the jar: [Section] headers
+    # and key=value lines.
+    for line in data.decode("utf-8", "replace").splitlines():
+        if line and not line.startswith("#") and not re.match(r"^\[[\w .-]+\]$|^[A-Za-z][\w.-]*(\[[\w@.-]+\])?=", line):
+            return f"not a [section] or key=value line: {line[:60]!r}"
+    return None
+
+
+def jpackage_state_ok(data):
+    # lib/app/.jpackage.xml, jpackage's record of how it made the app folder.
+    from xml.etree import ElementTree
+    try:
+        root = ElementTree.fromstring(data)
+    except ElementTree.ParseError:
+        return "not XML"
+    extra = {c.tag for c in root} - {"app-version", "main-launcher", "add-launcher", "signed", "app-store"}
+    if root.tag != "jpackage-state" or extra:
+        return f"unexpected elements: {root.tag} {sorted(extra)}"
+    return None
+
+
+def deb_version_ok(data):
+    # debian-binary, the first member of every .deb: the package format's version.
+    return None if data == b"2.0\n" else f"not dpkg's format version: {data[:20]!r}"
+
+
+def md5_ok(data):
+    return None if len(data) == 16 else f"{len(data)} bytes, not an MD5 digest's 16"
+
+
+def jlink_release_ok(data):
+    # The release file jlink writes into a runtime: KEY="value" lines.
+    for line in data.decode("utf-8", "replace").splitlines():
+        if line and not re.fullmatch(r'[A-Z_]+="[^"]*"', line):
+            return f"not a KEY=\"value\" line: {line[:60]!r}"
+    return None
+
+
+def legal_pointer_ok(data):
+    # On Windows jlink writes one line pointing at java.base's copy where Linux has a link.
+    text = data.decode("utf-8", "replace").strip()
+    names = ("LICENSE", "ASSEMBLY_EXCEPTION", "ADDITIONAL_LICENSE_INFO")
+    return None if text in {f"Please see ..\\java.base\\{n}" for n in names} else f"not a pointer to java.base: {text[:60]!r}"
+
+
 CHECKS = {
     "manifest": manifest_ok, "pom-properties": pom_properties_ok, "properties": properties_ok,
     "textproto": textproto_ok, "pkcs7": pkcs7_ok, "art-profile": art_profile_ok,
     "bundle-config": bundle_config_ok, "native-pb": native_pb_ok, "d8-json": d8_json_ok,
+    "ini": ini_ok, "jpackage-state": jpackage_state_ok, "deb-version": deb_version_ok, "md5": md5_ok,
+    "jlink-release": jlink_release_ok, "legal-pointer": legal_pointer_ok,
 }
+
+
+def rule_mismatch(data, rule, places):
+    """None when a file a tool wrote is what its rule says, else a reason. A rule names a content
+    check, one of jpackage's templates, a script whose lines the file must all be, or a file in a
+    tar archive whose opening the file must be (a notice cut from the top of a source file)."""
+    if "template" in rule:
+        import linux
+        return linux.template_mismatch(data, rule, places)
+    if "pe_like" in rule or "jimage_names_in" in rule or "built_twice" in rule:
+        import windows
+        if "pe_like" in rule:
+            return windows.launcher_mismatch(data, rule, places)
+        if "jimage_names_in" in rule:
+            return windows.jimage_mismatch(data, rule, places)
+        return windows.built_twice_mismatch(data, places)
+    if "prefix_of" in rule:
+        import tarfile
+        archive, _, member = expand(rule["prefix_of"], places).partition("!")
+        with tarfile.open(archive) as tar:
+            whole = tar.extractfile(member).read()
+        return None if data and whole.startswith(data) else f"it is not the start of {member}"
+    if "lines_from" in rule:
+        script = Path(expand(rule["lines_from"], places)).read_text().splitlines()
+        for line in data.decode("utf-8", "replace").splitlines():
+            if line not in script:
+                return f"the line {line[:60]!r} is not in {rule['lines_from']}"
+        return None
+    return CHECKS[rule["check"]](data)
 
 
 class Report:
@@ -151,9 +231,11 @@ def load_registry(path=HERE / "registry.toml"):
 
 
 def narrow(candidates, name, origins, field):
-    """Drops origins whose `files` (or `classes`) patterns do not name this leaf."""
+    """Drops origins whose `files` (or `classes`) patterns do not name this leaf, and those whose
+    `not_files` do."""
     return {i for i in candidates
-            if not origins[i].get(field) or any(matches(p, name) for p in origins[i][field])}
+            if (not origins[i].get(field) or any(matches(p, name) for p in origins[i][field]))
+            and not any(matches(p, name) for p in origins[i].get("not_" + field, []))}
 
 
 def owner(origin_ids, name, origins, field="files"):
@@ -164,6 +246,13 @@ def owner(origin_ids, name, origins, field="files"):
     Microsoft's. Anything else claimed by two origins is ambiguous and fails.
     """
     specific = {i for i in origin_ids if origins[i].get(field)}
+    # Two that both name their files: the one inside the other is the more specific. Temurin's
+    # Visual C++ files arrive in Temurin's Windows runtime, whose own patterns cover them too.
+    nested = {i for i in specific if origins[i].get("inside") in origin_ids}
+    if len(nested) == 1:
+        chosen = next(iter(nested))
+        if origin_ids - {chosen} == {origins[chosen]["inside"]}:
+            return chosen, None
     general = origin_ids - specific
     if len(specific) == 1:
         chosen = next(iter(specific))
@@ -212,6 +301,14 @@ def attribute(source, ctx, report, prefix=""):
         if leaf.kind == "empty":
             report.claim("(empty files)", leaf)
             continue
+        if leaf.kind == "link":
+            root = Path(source).resolve()
+            target = Path(source, leaf.path).resolve()
+            if target.is_relative_to(root) and target.exists():
+                report.claim("(links inside the download)", leaf)
+            else:
+                report.unproven.append((leaf.path, "a link to something outside the download"))
+            continue
         candidates = narrow({oid for oid, _, _ in ctx.index.find(leaf.sha256)}, leaf.path, ctx.origins, "files")
         if candidates:
             chosen, tied = owner(candidates, leaf.path, ctx.origins)
@@ -228,9 +325,11 @@ def attribute(source, ctx, report, prefix=""):
             continue
         if not prefix and ctx.target in ("apk", "aab") and attribute_android(leaf, source, ctx, report):
             continue
-        rule_origin, rule = generated_rule(ctx.origins, "path", leaf.path)
+        # A rule names a path inside the archive the leaf is in: the jar's META-INF/MANIFEST.MF
+        # is the same file whether the jar ships alone or inside a Linux download.
+        rule_origin, rule = generated_rule(ctx.origins, "path", inner)
         if rule:
-            why = CHECKS[rule["check"]](read_entry(source, inner))
+            why = rule_mismatch(read_entry(source, inner), rule, ctx.places)
             if why:
                 report.unproven.append((leaf.path, f"written by {rule['tool']}, but {why}"))
             else:
@@ -413,15 +512,24 @@ def satisfied(spec, shipped, places):
 
     `shipped` maps each path in the artifact to a function returning its bytes. On a phone build
     that includes the resources native-image copied into the library, which are no file in the
-    APK but are where the app reads its license texts from."""
+    APK but are where the app reads its license texts from.
+
+    An artifact: path is found where it is, or at the end of a longer one, so that a path inside
+    the jar is found inside a Linux download's jar, and lib/runtime/... under whatever folder
+    each download puts the app in."""
     spec = expand(spec, places)
     if spec.startswith("artifact:"):
         if places.get("target") == "repo":
             return "skip", spec    # a path inside a shipped file means nothing for the repository
         path, _, text = spec[len("artifact:"):].partition("~")
-        if path not in shipped or not text:
-            return path in shipped, path
-        return text in shipped[path]().decode("utf-8", "replace"), f"{path} contains {text!r}"
+        found = path if path in shipped else next(
+            (p for p in sorted(shipped) if p.endswith(("/" + path, "!" + path))), None)
+        if found is None or not text:
+            return found is not None, found or path
+        # Windows programs keep their text in UTF-16, so a notice there is found that way too.
+        data = shipped[found]()
+        return (text in data.decode("utf-8", "replace") or text.encode("utf-16-le") in data,
+                f"{found} contains {text!r}")
     if spec.startswith("release:"):
         if "release" not in places:
             return None, "needs --release"
@@ -466,7 +574,15 @@ def check_completeness(report, origins, index, places):
         if not o:
             continue
         legal = o.get("legal_files")
-        if legal:
+        if legal and legal.startswith("artifact:"):
+            # The origin ships its own legal folder, so what ships is what has to be covered.
+            pattern = "*" + legal[len("artifact:"):]
+            found = {leaf.path.rsplit("/", 1)[-1] for held in report.claimed.values() for leaf in held
+                     if fnmatch.fnmatchcase(leaf.path, pattern)}
+            named = {c.get("legal_file") for c in o.get("component", [])}
+            for missing in sorted(found - named):
+                report.problems.append(f"{o['name']}: it ships third-party notices in {missing}, and no component records it")
+        elif legal:
             archive, _, pattern = expand(legal, places).partition("!")
             if "{" in archive or "release" not in places and "{release}" in legal:
                 report.notes.append(f"{o['name']}: legal-file coverage needs --release, not checked")
@@ -570,9 +686,9 @@ def print_report(report, origins):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("target", choices=["jar", "apk", "aab", "repo"])
+    parser.add_argument("target", choices=["jar", "apk", "aab", "linux", "windows", "repo"])
     parser.add_argument("artifact", help="the file to check; for repo, the git branch or commit that is published")
-    parser.add_argument("--classes", type=Path, help="jar: the compiled classes of the build that made it")
+    parser.add_argument("--classes", type=Path, help="jar, linux: the compiled classes of the build that made the jar")
     parser.add_argument("--repo", type=Path, default=REPO, help="the source at the commit the artifact was built from")
     parser.add_argument("--build", type=Path, help="apk: the build folder the logs and objects are in (default: target/)")
     parser.add_argument("--native-map", type=Path, help="apk: the linker map of libsubstrate.so")
@@ -587,8 +703,8 @@ def main():
     parser.add_argument("--registry", type=Path, default=HERE / "registry.toml",
                         help="another registry, for the self-test's deliberately broken copies")
     args = parser.parse_args()
-    if args.target == "jar" and not args.classes:
-        parser.error("a jar check needs --classes")
+    if args.target in ("jar", "linux", "windows") and not args.classes:
+        parser.error(f"a {args.target} check needs --classes")
 
     places = dict(PLACES, repo=str(args.repo.resolve()), build=str((args.build or REPO / "target").resolve()),
                   target=args.target)
@@ -596,9 +712,34 @@ def main():
         if getattr(args, key):
             places[key] = str(getattr(args, key))
     origins = load_registry(args.registry)
+    if args.target == "linux":
+        # The download is unpacked into a folder, and its Java runtime made again by jlink to be
+        # matched against, both in a scratch folder that goes when the check ends.
+        import linux
+        import tempfile
+        scratch = tempfile.TemporaryDirectory(prefix="invmgr-license-")
+        unpacked = Path(scratch.name, "download")
+        kind = linux.unpack(args.artifact, unpacked)
+        shipped_runtime = linux.shipped_runtime(unpacked)
+        places["runtime"] = str(linux.runtime(shipped_runtime, places["temurin"], scratch.name))
+        print(f"{args.artifact}: a {kind}; its Java runtime was made again with jlink to compare\n")
+        args.artifact = unpacked
+    if args.target == "windows":
+        # The setup can't be opened here; see windows.py for how it is proven. Temurin for Windows,
+        # unzipped on this machine, is what the app folder's runtime is matched against.
+        import tempfile
+        import windows
+        scratch = tempfile.TemporaryDirectory(prefix="invmgr-license-")
+        places["temurin_windows"] = os.environ.get(
+            "TEMURIN_WINDOWS", str(Path.home() / "ClaudeWorkspace/InvMgr-build/windows/jdk-17.0.21+9"))
+        args.artifact = windows.prepare(args.artifact, Path(scratch.name, "download"), places)
+        shipped_runtime = args.artifact / "app" / "InvMgr" / "runtime"
     # A bundle holds the same Android app as the APK, so the same origins apply.
     index = build_index(origins, "apk" if args.target == "aab" else args.target, places) if args.target != "repo" else Index()
     report = Report()
+    if args.target in ("linux", "windows"):
+        import linux
+        report.image_modules = linux.class_counts(shipped_runtime, places["temurin"])
     for origin_id, spec, path in index.missing:
         report.problems.append(f"input of {origin_id} not on this machine: {spec} ({path})")
     if args.target == "repo":
@@ -608,7 +749,10 @@ def main():
         ctx = Context(args.target, args.artifact, index, origins, places, args)
         attribute(args.artifact, ctx, report)
     print_report(report, origins)
-    if report.image_modules:
+    if report.image_modules and args.target in ("linux", "windows"):
+        print("\nJava modules in the bundled runtime (entries each has in lib/modules):")
+        print("  " + ", ".join(f"{m} {n}" for m, n in sorted(report.image_modules.items(), key=lambda kv: -kv[1])))
+    elif report.image_modules:
         print("\nClass library modules with code in the native image (classes only that module defines):")
         print("  " + ", ".join(f"{m} {n}" for m, n in sorted(report.image_modules.items(), key=lambda kv: -kv[1])))
     check_obligations(report, origins, places, None if args.target == "repo" else args.artifact)

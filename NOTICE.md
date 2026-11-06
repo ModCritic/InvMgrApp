@@ -8,7 +8,8 @@ about screen wherever one exists.
 ## InvMgr's icons
 
 **The app's icons are not under 0BSD: they are copyright Asterkazika LLC, all rights reserved.** That covers
-`assets/icons/icon-source.png`, `assets/icons/icon-play-512.png`, the launcher images in
+`assets/icons/icon-source.png`, the icons made from it (`assets/icons/icon-play-512.png`,
+`assets/icons/icon-linux-512.png` and the Windows `assets/icons/InvMgr.ico`), the launcher images in
 `src/android/res/`, and the HTML version's install icons `assets/icons/icon-192.png`,
 `icon-512.png` and `icon-512-maskable.png`. They are in this repository so the app builds the way
 it ships; using them for anything else needs permission, and a fork or a build of your own should

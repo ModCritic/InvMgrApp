@@ -11,13 +11,16 @@ real registry to pass where it should, so a case cannot succeed by the check fai
 unrelated reason.
 
 It needs a release's files on this machine; the paths below are 1.0.1's, and can be changed
-with the environment variables named beside them.
+with the environment variables named beside them. The Linux cases use the downloads in
+target/installers and the classes in target/classes, from the last build.
 """
+import io
 import os
 import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
@@ -36,6 +39,9 @@ MAP = Path(os.environ.get("INVMGR_LINK_MAP", BOM / "libsubstrate.map"))
 LINKED = Path(os.environ.get("INVMGR_LINKED", BOM / "libInvMgr.so"))
 COMPILE_LOG = Path(os.environ.get("INVMGR_COMPILE_LOG", BOM / "compile.log"))
 REGISTRY = (HERE / "registry.toml").read_text()
+INSTALLERS = Path(os.environ.get("INVMGR_INSTALLERS", REPO / "target/installers"))
+WINDOWS = Path(os.environ.get("INVMGR_WINDOWS", REPO / "target/installers-windows"))
+LINUX_CLASSES = Path(os.environ.get("INVMGR_LINUX_CLASSES", REPO / "target/classes"))
 
 
 def run(*args):
@@ -55,6 +61,42 @@ def without_component(text, legal_file):
     start = text.rindex("  [[origin.component]]", 0, i)
     end = text.index("  [[origin.component]]", i)
     return text[:start] + text[end:]
+
+
+def retar(source, dest, change=None, extra=()):
+    """A copy of a .tar.gz with `change(name, bytes)` applied to each file and `extra` (TarInfo,
+    bytes or None) members added."""
+    with tarfile.open(source) as src, tarfile.open(dest, "w:gz") as out:
+        for member in src:
+            data = src.extractfile(member).read() if member.isfile() else None
+            if data is not None and change:
+                data = change(member.name, data)
+                member.size = len(data)
+            out.addfile(member, io.BytesIO(data) if data is not None else None)
+        for member, data in extra:
+            out.addfile(member, io.BytesIO(data) if data is not None else None)
+
+
+def deb_with_script(source, dest, name, script):
+    """A copy of a .deb whose control archive has `script` in place of the file `name`."""
+    import linux
+    data = source.read_bytes()
+    out = bytearray(b"!<arch>\n")
+    for member, body in linux.ar_members(data):
+        if member.startswith("control.tar"):
+            buffer = io.BytesIO()
+            with tarfile.open(fileobj=io.BytesIO(body)) as src, tarfile.open(fileobj=buffer, mode="w:xz") as new:
+                for info in src:
+                    payload = src.extractfile(info).read() if info.isfile() else None
+                    if info.name.lstrip("./") == name:
+                        payload = script
+                        info.size = len(payload)
+                    new.addfile(info, io.BytesIO(payload) if payload is not None else None)
+            body = buffer.getvalue()
+        out += f"{member:<16}{0:<12}{0:<6}{0:<6}{'100644':<8}{len(body):<10}`\n".encode() + body
+        if len(body) & 1:
+            out += b"\n"
+    dest.write_bytes(bytes(out))
 
 
 def main():
@@ -130,6 +172,96 @@ def main():
              ["aab", AAB, *apk_args[2:]], without_origin(REGISTRY, "guava-listenablefuture"))
     else:
         results.append((False, "apk and aab cases", f"skipped: no link map at {MAP}"))
+
+    downloads = sorted(INSTALLERS.glob("*.tar.gz")) + sorted(INSTALLERS.glob("*.AppImage")) \
+        + sorted(INSTALLERS.glob("*.deb")) + sorted(INSTALLERS.glob("*.rpm"))
+    if len(downloads) == 4 and LINUX_CLASSES.exists():
+        sys.path.insert(0, str(HERE))
+        tar, appimage, deb, _ = downloads
+        linux_args = ["--classes", LINUX_CLASSES]
+        for download in downloads:
+            passes(f"linux {download.name}: every file has one origin",
+                   [r"NO PROVEN ORIGIN", r"CLAIMED BY MORE", r"Traceback"], ["linux", download, *linux_args])
+
+        stray = work / "stray.tar.gz"
+        info = tarfile.TarInfo("InvMgr/lib/libstray.so")
+        body = b"\x7fELF" + os.urandom(64)
+        info.size = len(body)
+        retar(tar, stray, extra=[(info, body)])
+        case("linux: unknown file", r"InvMgr/lib/libstray\.so.*match no input", ["linux", stray, *linux_args])
+
+        changed = work / "changed.tar.gz"
+        retar(tar, changed, change=lambda name, data: data + b"# added\n" if name.endswith("conf/net.properties") else data)
+        case("linux: a runtime file jlink did not write", r"conf/net\.properties.*match no input", ["linux", changed, *linux_args])
+
+        escaping = work / "escaping.tar.gz"
+        link = tarfile.TarInfo("InvMgr/lib/escape")
+        link.type, link.linkname = tarfile.SYMTYPE, "../../../../etc/hostname"
+        retar(tar, escaping, extra=[(link, None)])
+        case("linux: link out of the download", r"InvMgr/lib/escape: a link to something outside", ["linux", escaping, *linux_args])
+
+        script = work / "script.deb"
+        deb_with_script(deb, script, "postinst", b"#!/bin/sh\nset -e\nrm -rf /var/tmp/x\n")
+        case("linux: package script that is not ours", r"postinst: written by jpackage.*not postinst with its blanks",
+             ["linux", script, *linux_args])
+
+        case("linux: legal file not recorded", r"notices in gcc\.md, and no component records it",
+             ["linux", tar, *linux_args], without_component(REGISTRY, "gcc.md"))
+
+        case("linux: a notice that is not the start of its source file",
+             r"runtime\.c-notice\.txt: written by .*not the start of",
+             ["linux", appimage, *linux_args],
+             REGISTRY.replace("dd6cebedcbddde9c82f89b011e8e1d40b6e43868/src/runtime/runtime.c\"",
+                              "dd6cebedcbddde9c82f89b011e8e1d40b6e43868/LICENSE\"", 1))
+
+        runtime = work / "runtime.AppImage"
+        data = bytearray(appimage.read_bytes())
+        data[0x1000] ^= 0xFF
+        runtime.write_bytes(bytes(data))
+        case("linux: AppImage runtime that is not the pinned one", r"(?m)^  runtime \[elf.*match no input",
+             ["linux", runtime, *linux_args])
+    else:
+        results.append((False, "linux cases", f"skipped: needs the four downloads in {INSTALLERS} and {LINUX_CLASSES}"))
+
+    setups = sorted(WINDOWS.glob("*-windows-x64-setup.exe"))
+    if setups and LINUX_CLASSES.exists():
+        setup = setups[0]
+        passes("windows: every file has one origin", [r"NO PROVEN ORIGIN", r"CLAIMED BY MORE", r"Traceback"],
+               ["windows", setup, "--classes", LINUX_CLASSES])
+
+        def broken_copy(name, change):
+            folder = work / name
+            shutil.copytree(WINDOWS, folder)
+            change(folder)
+            return ["windows", folder / setup.name, "--classes", LINUX_CLASSES]
+
+        def other_hash(folder):
+            log = folder / "build.log"
+            log.write_text(re.sub(r"both builds: [0-9a-fA-F]{64}", "both builds: " + "0" * 64, log.read_text()))
+        case("windows: a setup that is not the one both builds made", r"setup\.exe: written by .*not the one both builds made",
+             broken_copy("other-setup", other_hash))
+
+        def add_to_runtime(folder):
+            conf = folder / "app/InvMgr/runtime/conf/net.properties"
+            conf.chmod(0o644)
+            conf.write_bytes(conf.read_bytes() + b"# added\n")
+        case("windows: a runtime file Temurin does not have", r"runtime/conf/net\.properties.*match no input",
+             broken_copy("changed-runtime", add_to_runtime))
+
+        def patch_launcher(folder):
+            exe = folder / "app/InvMgr/InvMgr.exe"
+            exe.chmod(0o644)
+            sys.path.insert(0, str(HERE))
+            import windows
+            data = bytearray(exe.read_bytes())
+            text = windows.pe_sections(bytes(data))[".text"]
+            at = bytes(data).index(text[:64]) + 200
+            data[at] ^= 0xFF
+            exe.write_bytes(bytes(data))
+        case("windows: a launcher that is not jpackage's", r"InvMgr\.exe: written by .*section \.text differs",
+             broken_copy("changed-launcher", patch_launcher))
+    else:
+        results.append((False, "windows cases", f"skipped: needs a setup in {WINDOWS}"))
 
     # The published repository, through a throwaway clone so the real one is never touched.
     clone = work / "repo"

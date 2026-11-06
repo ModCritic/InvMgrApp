@@ -1,0 +1,11 @@
+#!/bin/sh
+# dpkg runs this before it removes or replaces InvMgr's files. It takes InvMgr out of the
+# desktop's app menu, with the command jpackage writes in when it builds the package, after any
+# helper functions that command needs.
+set -e
+UTILITY_SCRIPTS
+case "$1" in
+    remove|upgrade|deconfigure)
+        DESKTOP_COMMANDS_UNINSTALL
+        ;;
+esac

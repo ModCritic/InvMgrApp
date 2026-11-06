@@ -11,13 +11,15 @@
 #   id, name, version, url       what it is
 #   license                      an SPDX expression (https://spdx.org/licenses/)
 #   evidence                     where the license was read, never from memory or a summary
-#   targets                      which shipped things it can appear in: jar, apk, repo
+#   targets                      which shipped things it can appear in: jar, apk, linux, windows, repo
 #   inputs                       where its bytes come from (see inputs.py for the forms)
 #   files                        optional: only leaves whose name matches one of these patterns.
 #                                An origin with `files` and `inside` takes those leaves from
 #                                the origin it is inside, because its author differs from the
 #                                package it arrived in
 #   inside                       the origin whose input carries this one's files
+#   not_files                    optional: leaves whose name matches one of these are never this
+#                                origin's, whatever their bytes
 #
 #   [[origin.component]]         third-party code built into one of this origin's files
 #                                (a library compiled into a native library, say), with its own
@@ -50,11 +52,14 @@ id = "invmgr"
 name = "InvMgr itself"
 license = "0BSD"
 evidence = ["repo:LICENSE"]
-targets = ["jar", "apk", "repo"]
+targets = ["jar", "apk", "linux", "windows", "repo"]
 inputs = [
-  "dir:{classes}", "file:{repo}/pom.xml",
+  "dir:{classes}", "file:{repo}/pom.xml", "file:{repo}/LICENSE",
   "src:{repo}/src/android/java", "file:{repo}/src/android/AndroidManifest.xml",
 ]
+# Our compiled classes hold copies of the runtime's legal files for the Licenses page, so the
+# runtime's own copies in a Linux download would otherwise match here too.
+not_files = ["*lib/runtime/*", "*InvMgr/runtime/*"]
 # The Android app's own C, compiled by the build from native/*.c, and its Java, which
 # native-image compiles from the build's classes folder.
 native_inputs = ["{build}/gluonfx/aarch64-android/gvm/InvMgr/invmgr_*.o"]
@@ -80,6 +85,7 @@ repo_markers = [
   { path = "src/test/java/com/modcritic/invmgr/ui/MenuWindowAppTest.java", why = "checks the Licenses page shows the GPL's own first line" },
   { path = "src/main/resources/com/modcritic/invmgr/ui/licenses/*.txt", why = "the Licenses page's index: the credits and license names the app shows, written by notices.py" },
   { path = "tools/licenses/*", why = "the license check, which names licenses" },
+  { path = "tools/installers/build-linux.sh", why = "writes the AppImage's licenses/README.txt, which names the runtime's licenses, and copies the license files" },
 ]
 
 [[origin]]
@@ -91,7 +97,7 @@ evidence = [
   "the user approved this origin on 2026-10-31",
   "each is the license or notice of an origin in this registry that the app contains, carried because that origin's license asks for it; the GPL text's own header permits verbatim copies",
 ]
-targets = ["jar", "apk", "repo"]
+targets = ["jar", "apk", "linux", "windows", "repo"]
 inside = "invmgr"
 inputs = ["dir:{classes}"]
 files = ["*/ui/licenses/texts/*"]
@@ -102,10 +108,11 @@ id = "invmgr-icon"
 name = "InvMgr's launcher icon"
 license = "LicenseRef-Asterkazika-All-Rights-Reserved"
 evidence = ["repo:NOTICE.md, section 'InvMgr's icons': copyright Asterkazika LLC, all rights reserved"]
-targets = ["apk", "repo"]
+targets = ["apk", "linux", "windows", "repo"]
 inside = "invmgr"
-inputs = ["dir:{repo}/src/android/res"]
-repo_paths = ["assets/icons/icon-source.png", "assets/icons/icon-play-512.png", "src/android/res/**"]
+# The Linux downloads carry icon-linux-512.png as the menu icon.
+inputs = ["dir:{repo}/src/android/res", "file:{repo}/assets/icons/icon-linux-512.png"]
+repo_paths = ["assets/icons/icon-source.png", "assets/icons/icon-play-512.png", "assets/icons/icon-linux-512.png", "assets/icons/InvMgr.ico", "src/android/res/**"]
 
 [[origin]]
 id = "pwa-icons"
@@ -122,7 +129,7 @@ name = "Noto Sans Mono, the interface typeface"
 url = "https://github.com/notofonts"
 license = "OFL-1.1"
 evidence = ["artifact:com/modcritic/invmgr/ui/fonts/OFL.txt"]
-targets = ["jar", "apk", "repo"]
+targets = ["jar", "apk", "linux", "windows", "repo"]
 inside = "invmgr"
 inputs = ["dir:{classes}"]
 files = ["*/fonts/NotoSansMono-*.ttf", "*/fonts/OFL.txt"]
@@ -139,7 +146,7 @@ name = "Noto Sans Math, two glyphs Noto Sans Mono lacks"
 url = "https://github.com/notofonts"
 license = "OFL-1.1"
 evidence = ["artifact:com/modcritic/invmgr/ui/fonts/OFL.txt"]
-targets = ["jar", "apk", "repo"]
+targets = ["jar", "apk", "linux", "windows", "repo"]
 inside = "invmgr"
 inputs = ["dir:{classes}"]
 files = ["*/fonts/NotoSansMath-*.ttf"]
@@ -179,7 +186,7 @@ version = "21"
 url = "https://repo1.maven.org/maven2/org/openjfx/"
 license = "GPL-2.0-only WITH Classpath-exception-2.0"
 evidence = ["input:{m2}/org/openjfx/javafx/21/javafx-21.pom lines 240-247, <name>GPLv2+CE</name>"]
-targets = ["jar"]
+targets = ["jar", "linux", "windows"]
 inputs = [
   "maven:org.openjfx:javafx-base:21", "maven:org.openjfx:javafx-base:21:linux",
   "maven:org.openjfx:javafx-base:21:win", "maven:org.openjfx:javafx-base:21:mac-aarch64",
@@ -239,7 +246,7 @@ evidence = [
   "Visual Studio 2022 Community license terms, section 4 'Distributable Code', the .docx embedded at https://visualstudio.microsoft.com/license-terms/vs2022-ga-community/ (last modified 2022-07-12, read 2026-10-29)",
   "version info inside each DLL: CompanyName Microsoft Corporation, FileVersion 14.34.31938.0",
 ]
-targets = ["jar"]
+targets = ["jar", "linux", "windows"]
 pe_company = ["Microsoft Corporation"]
 inside = "openjfx-desktop"
 inputs = ["maven:org.openjfx:javafx-graphics:21:win"]
@@ -257,7 +264,7 @@ name = "Microsoft Universal C Runtime 10.0.17763.132, from the Windows 10 SDK"
 url = "https://learn.microsoft.com/en-us/cpp/windows/universal-crt-deployment"
 license = "LicenseRef-Microsoft-Windows-SDK"
 evidence = ["version info inside each DLL: ProductName Microsoft Windows Operating System, FileVersion 10.0.17763.132"]
-targets = ["jar"]
+targets = ["jar", "linux", "windows"]
 pe_company = ["Microsoft Corporation"]
 inside = "openjfx-desktop"
 inputs = ["maven:org.openjfx:javafx-graphics:21:win"]
@@ -277,7 +284,7 @@ id = "build-generated"
 name = "Files the build tools write from our own inputs"
 license = "0BSD"
 evidence = ["written by our build from our own sources; see each rule's check"]
-targets = ["jar", "apk"]
+targets = ["jar", "apk", "linux", "windows"]
 
   [[origin.generated]]
   path = "META-INF/MANIFEST.MF"
@@ -360,6 +367,735 @@ targets = ["jar", "apk"]
   [[origin.generated]]
   native_input = "<internal>"
   tool = "the linker: symbol tables, relocations and the other sections it writes from its inputs"
+
+  # The Linux downloads. jpackage writes the first two into every app folder from our build's
+  # arguments; the menu entry is ours, tools/installers/InvMgr.desktop, filled in.
+
+  [[origin.generated]]
+  path = "*app/InvMgr.cfg"
+  tool = "jpackage: the jar and main class the launcher starts"
+  check = "ini"
+
+  [[origin.generated]]
+  path = "*app/.jpackage.xml"
+  tool = "jpackage: its record of how it made the app folder"
+  check = "jpackage-state"
+
+  [[origin.generated]]
+  path = "*lib/invmgr-InvMgr.desktop"
+  tool = "jpackage, from tools/installers/InvMgr.desktop"
+  template = "{repo}/tools/installers/InvMgr.desktop"
+
+  [[origin.generated]]
+  path = "squashfs/invmgr.desktop"
+  tool = "tools/installers/build-linux.sh: the AppImage's menu entry"
+  check = "ini"
+
+  [[origin.generated]]
+  path = "*runtime/legal/java.base/cacerts.md"
+  tool = "the installer builds: the notice for the runtime's certificate list, tools/installers/cacerts.md"
+  template = "{repo}/tools/installers/cacerts.md"
+
+  [[origin.generated]]
+  path = "squashfs/licenses/README.txt"
+  tool = "tools/installers/build-linux.sh: what the licenses folder holds, and where the source is"
+  lines_from = "{repo}/tools/installers/build-linux.sh"
+
+  [[origin.generated]]
+  path = "squashfs/AppRun"
+  tool = "tools/installers/build-linux.sh: the script the AppImage runtime starts"
+  lines_from = "{repo}/tools/installers/build-linux.sh"
+
+  [[origin.generated]]
+  path = "runtime.digest_md5"
+  tool = "appimagetool: an MD5 digest of the image, written into the runtime's .digest_md5 section"
+  check = "md5"
+
+  [[origin.generated]]
+  path = "debian-binary"
+  tool = "dpkg-deb: the package format's version"
+  check = "deb-version"
+
+  # The .deb's control file and scripts: ours, in tools/installers/deb/, filled in by jpackage in
+  # place of its own templates, which the user decided against on 2026-11-05.
+
+  [[origin.generated]]
+  path = "control.tar.*/control"
+  tool = "jpackage, from tools/installers/deb/control"
+  template = "{repo}/tools/installers/deb/control"
+
+  [[origin.generated]]
+  path = "control.tar.*/postinst"
+  tool = "jpackage, from tools/installers/deb/postinst"
+  template = "{repo}/tools/installers/deb/postinst"
+
+  [[origin.generated]]
+  path = "control.tar.*/prerm"
+  tool = "jpackage, from tools/installers/deb/prerm"
+  template = "{repo}/tools/installers/deb/prerm"
+
+# ---------------------------------------------------------------------------------------------
+# The Linux downloads: the Java runtime and launcher jpackage builds in, jpackage's package
+# scripts, and the AppImage runtime. Checked with check.py linux, which unpacks the download and
+# makes the runtime again with jlink (linux.py).
+
+[[origin]]
+id = "temurin-17"
+name = "Eclipse Temurin 17.0.21+9: the Java runtime jlink cuts from its modules, and jpackage's launcher"
+version = "17.0.21+9"
+url = "https://github.com/adoptium/temurin17-binaries/releases/tag/jdk-17.0.21%2B9"
+license = "GPL-2.0-only WITH Classpath-exception-2.0 AND GPL-2.0-only"
+evidence = [
+  "{temurin}/legal/java.base/LICENSE: the GNU General Public License version 2, and the CLASSPATH EXCEPTION at line 326, which reaches only files whose header says Oracle designates them",
+  "HotSpot, the virtual machine in lib/server/libjvm.so, is GPLv2 only with no designation: src/hotspot/share/runtime/thread.cpp lines 1-12 in the jdk17u archive (two readers, 2026-11-05, and read by the main session)",
+  "the launcher's sources carry GPLv2 and 'Oracle designates this particular file as subject to the Classpath exception': src/jdk.jpackage/linux/native/applauncher/LinuxLauncher.c and src/jdk.jpackage/linux/native/libapplauncher/LinuxLauncherLib.cpp lines 5-9 at the build's commit (read 2026-11-05)",
+  "{temurin}/release: SOURCE=.:git:551f220d8884 in https://github.com/adoptium/jdk17u, which is tag jdk-17.0.21+9_adopt (three files past the upstream tag jdk-17.0.21+9, one a build file); built by adoptium/temurin-build at 1cf43d7a",
+]
+targets = ["linux", "windows"]
+pe_company = ["Eclipse Adoptium"]
+# {runtime} is what check.py makes with jlink from Temurin's jmods for the modules the shipped
+# runtime's release file names: byte for byte the runtime jpackage built in, lib/modules
+# included (checked 2026-11-05). jpackage's launcher and its helper library are in its module.
+# On Windows, {temurin_windows} is Temurin's Windows JDK, unzipped here: the runtime's files are
+# its files, bar the three written on Windows that the rules below prove.
+inputs = ["dir:{runtime}", "zip:{temurin}/jmods/jdk.jpackage.jmod", "dir:{temurin_windows}"]
+files = ["*lib/runtime/*", "*/bin/InvMgr", "*/lib/libapplauncher.so", "*InvMgr/runtime/*", "*InvMgr/InvMgr.exe"]
+legal_files = "artifact:runtime/legal/*/*.md"
+
+  # Windows: the launcher is jpackage's with our icon and version in its resources; jlink writes
+  # lib/modules and release there, and a one-line pointer where Linux has a link to java.base's
+  # legal files.
+
+  [[origin.generated]]
+  path = "*InvMgr/InvMgr.exe"
+  tool = "jpackage: its launcher, with the app's icon and version added to the resources"
+  pe_like = "{temurin_windows}/jmods/jdk.jpackage.jmod!classes/jdk/jpackage/internal/resources/jpackageapplauncherw.exe"
+
+  [[origin.generated]]
+  path = "*InvMgr/runtime/lib/modules"
+  tool = "jlink, on Windows: the class library file, holding only entries Temurin's own has"
+  jimage_names_in = "{temurin_windows}/lib/modules"
+
+  [[origin.generated]]
+  path = "*InvMgr/runtime/release"
+  tool = "jlink, on Windows: the runtime's version and modules"
+  check = "jlink-release"
+
+  [[origin.generated]]
+  path = "*InvMgr/runtime/legal/*/[A-Z]*"
+  tool = "jlink, on Windows: a pointer to java.base's copy of a license file"
+  check = "legal-pointer"
+
+  # The .rpm's two scripts hold none of template.spec's own text, only the commands jpackage's
+  # DesktopIntegration.java writes into its blanks (two readers, 2026-11-05), and that file has the
+  # Classpath designation.
+
+  [[origin.generated]]
+  path = "scripts/%post"
+  tool = "jpackage: its menu-entry command, in the %post section of template.spec"
+  template = "{temurin}/jmods/jdk.jpackage.jmod!classes/jdk/jpackage/internal/resources/template.spec"
+  section = "%post"
+
+  [[origin.generated]]
+  path = "scripts/%preun"
+  tool = "jpackage: its menu-entry command, in the %preun section of template.spec"
+  template = "{temurin}/jmods/jdk.jpackage.jmod!classes/jdk/jpackage/internal/resources/template.spec"
+  section = "%preun"
+
+  [[origin.obligation]]
+  kind = "license-text"
+  why = "GPLv2 section 1, which section 3 applies to object code: give any other recipients of the Program a copy of this License along with the Program"
+  met_by = ["artifact:runtime/legal/java.base/LICENSE~GNU General Public License", "artifact:runtime/legal/java.base/LICENSE~CLASSPATH"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "GPLv2 section 3: accompany the binary with the complete corresponding source, including the scripts that control compilation"
+  met_by = [
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/jdk17u-jdk-17.0.21+9_adopt-source.tar.gz=4e295d4a3213bcbe52c6d90cbedf28498f58e149fca399926bd425a49bff4c92",
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/temurin-build-1cf43d7a-source.tar.gz=f524e42fdb6480934dae49e59b07bd979763dfb413046f73b8cbceefe5b08591",
+  ]
+
+  [[origin.component]]
+  name = "Mozilla's list of trusted certificate authorities, lib/security/cacerts"
+  license = "MPL-2.0"
+  evidence = [
+    "temurin-build at 1cf43d7a: security/certdata.txt lines 2-4, the MPL-2.0 notice, and security/README.md line 38, 'The resulting cacerts file is licensed under the terms of the source file ... the Mozilla Public License, v.2.0'",
+    "the shipped cacerts is byte-identical to Temurin's, and its 118 certificates are the server-authentication roots of that certdata.txt (two readers, 2026-11-05); the runtime's legal folder has no notice for it",
+  ]
+  in = ["*runtime/lib/security/cacerts"]
+  # Temurin's legal folder has no notice for it; build-linux.sh adds this one.
+  legal_file = "cacerts.md"
+
+    [[origin.component.obligation]]
+    kind = "source"
+    why = "MPL-2.0 section 3.2(a): the Covered Software's source must be available to recipients of the executable form; certdata.txt is in temurin-build"
+    met_by = ["release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/temurin-build-1cf43d7a-source.tar.gz=f524e42fdb6480934dae49e59b07bd979763dfb413046f73b8cbceefe5b08591"]
+
+    [[origin.component.obligation]]
+    kind = "source-offer"
+    why = "MPL-2.0 sections 3.1 and 3.2(a): inform recipients of the executable how they can obtain the source, and that it is governed by the MPL. Temurin's legal folder says nothing about it, so the build adds legal/java.base/cacerts.md (the user, 2026-11-05)"
+    met_by = ["artifact:runtime/legal/java.base/cacerts.md~Mozilla Public", "artifact:runtime/legal/java.base/cacerts.md~security/certdata.txt"]
+
+  [[origin.component]]
+  name = "glibc 2.12's start-up files and libc_nonshared.a, from the CentOS 6 system Temurin builds on"
+  license = "LicenseRef-glibc-LGPL-2.1-or-later-with-link-exception"
+  evidence = [
+    "every native file's .comment section names GCC (GNU) 4.4.7 20120313 (Red Hat 4.4.7-23), the CentOS 6 compiler that built the system's own start-up objects (two readers, 2026-11-05)",
+    "glibc at tag glibc-2.12 (https://sourceware.org/git/?p=glibc.git, read 2026-11-05): csu/elf-init.c, sysdeps/x86_64/elf/start.S, sysdeps/x86_64/elf/initfini.c, stdlib/atexit.c and io/stat.c are LGPL 2.1 or later, each with 'unlimited permission to link the compiled version of this file with other programs, and to distribute those programs without any restriction coming from the use of this file'",
+  ]
+  in = ["*libjvm.so"]
+
+  [[origin.component]]
+  name = "wepoll 1.5.8, in the Windows runtime's nio.dll (Java module java.base)"
+  license = "BSD-2-Clause"
+  evidence = ["artifact:runtime/legal/java.base/wepoll.md: Bert Belder's wepoll, the two-condition BSD license"]
+  legal_file = "wepoll.md"
+  in = ["*runtime/bin/nio.dll"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "BSD-2-Clause condition 2: redistributions in binary form must reproduce the copyright notice, conditions and disclaimer in the documentation and/or other materials provided with the distribution; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.base/wepoll.md"]
+
+  # One component per notice file in the runtime's legal folder. jlink copies a module's legal
+  # files exactly when it includes the module, so a component is present when its module is.
+
+  [[origin.component]]
+  name = "Cryptix AES 3.2.0 (Java module java.base)"
+  license = "LicenseRef-Cryptix"
+  evidence = ["artifact:runtime/legal/java.base/aes.md"]
+  legal_file = "aes.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.base/aes.md"]
+
+  [[origin.component]]
+  name = "ASM Bytecode Manipulation Framework 8.0.1 (Java module java.base)"
+  license = "BSD-3-Clause"
+  evidence = ["artifact:runtime/legal/java.base/asm.md"]
+  legal_file = "asm.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.base/asm.md"]
+
+  [[origin.component]]
+  name = "Unicode CLDR 39 data (Java module java.base)"
+  license = "Unicode-DFS-2016"
+  evidence = ["artifact:runtime/legal/java.base/cldr.md line 7: UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE"]
+  legal_file = "cldr.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Unicode license: the copyright and permission notice must appear (a) with all copies of the Data Files or Software, or (b) in associated documentation"
+    met_by = ["artifact:runtime/legal/java.base/cldr.md"]
+
+  [[origin.component]]
+  name = "c-libutl 20160225, in the launcher library libjli.so (Java module java.base)"
+  license = "BSD-2-Clause"
+  evidence = ["artifact:runtime/legal/java.base/c-libutl.md: two conditions"]
+  legal_file = "c-libutl.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.base/c-libutl.md"]
+
+  [[origin.component]]
+  name = "GCC 10.3.0's libgcc and libstdc++, linked statically into libjvm.so, libfontmanager.so and the launcher (Java module java.base)"
+  license = "GPL-3.0-or-later WITH GCC-exception-3.1"
+  evidence = [
+    "artifact:runtime/legal/java.base/gcc.md line 560: the GCC Runtime Library Exception 3.1, which lifts the GPL from code compiled with them",
+    "the legal file's heading says 14.2.0, which is upstream's; every native file's .comment section says GCC (GNU) 10.3.0, and none needs libstdc++ or libgcc_s (readelf, two readers, 2026-11-05, and by the main session); temurin-build's linux.sh picks gcc-10.3 for JDK 17",
+  ]
+  legal_file = "gcc.md"
+  in = ["*libjvm.so"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "the Runtime Library Exception asks nothing of compiled code; the legal file also reproduces BSD notices (The Regents of the University of California, The Go Authors) without saying which parts are linked in, and shipping it keeps them"
+    met_by = ["artifact:runtime/legal/java.base/gcc.md"]
+
+    [[origin.component.obligation]]
+    kind = "source"
+    why = "GPLv2 section 3, read strictly: the complete source of everything the executable contains; its exception for parts of the compiler may or may not cover a library linked in statically. The user, 2026-11-05: GCC's source if necessary, and the strict reading cannot be ruled out"
+    met_by = ["release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/gcc-10.3.0.tar.xz=64f404c1a650f27fc33da242e1f2df54952e3963a49e06e73f6940f3223ac344"]
+
+  [[origin.component]]
+  name = "ICU4J 67.1 (Java module java.base)"
+  license = "Unicode-DFS-2016 AND ICU"
+  evidence = ["artifact:runtime/legal/java.base/icu.md line 6: COPYRIGHT AND PERMISSION NOTICE (ICU 58 and later), and further down the ICU license for ICU 1.8.1 to 57.1"]
+  legal_file = "icu.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Unicode license: the copyright and permission notice must appear (a) with all copies of the Data Files or Software, or (b) in associated documentation"
+    met_by = ["artifact:runtime/legal/java.base/icu.md"]
+
+  [[origin.component]]
+  name = "Mozilla Public Suffix List, lib/security/public_suffix_list.dat (Java module java.base)"
+  license = "MPL-2.0"
+  evidence = ["artifact:runtime/legal/java.base/public_suffix.md"]
+  legal_file = "public_suffix.md"
+  in = ["*runtime/lib/security/public_suffix_list.dat"]
+
+    [[origin.component.obligation]]
+    kind = "source"
+    why = "MPL-2.0 section 3.2(a): the Covered Software's source must be available to recipients of the executable form; the shipped file is the list compiled into the runtime's own format, and its source is in Temurin's"
+    met_by = [
+      "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/jdk17u-jdk-17.0.21+9_adopt-source.tar.gz=4e295d4a3213bcbe52c6d90cbedf28498f58e149fca399926bd425a49bff4c92",
+    ]
+
+    [[origin.component.obligation]]
+    kind = "source-offer"
+    why = "MPL-2.0 sections 3.1 and 3.2(a): inform recipients of the executable how they can obtain the source, and that it is governed by the MPL"
+    met_by = ["artifact:runtime/legal/java.base/public_suffix.md~The Source Code of this file is available"]
+
+  [[origin.component]]
+  name = "SipHash reference C implementation 1.0-68c8a7c (Java module java.base)"
+  license = "CC0-1.0 OR MIT"
+  evidence = ["artifact:runtime/legal/java.base/siphash.md: dual-licensed CC0 and MIT"]
+  legal_file = "siphash.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.base/siphash.md"]
+
+  [[origin.component]]
+  name = "Unicode Character Database 13.0.0 (Java module java.base)"
+  license = "Unicode-DFS-2016"
+  evidence = ["artifact:runtime/legal/java.base/unicode.md line 6: UNICODE, INC. LICENSE AGREEMENT - DATA FILES AND SOFTWARE"]
+  legal_file = "unicode.md"
+  module = "java.base"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Unicode license: the copyright and permission notice must appear (a) with all copies of the Data Files or Software, or (b) in associated documentation"
+    met_by = ["artifact:runtime/legal/java.base/unicode.md"]
+
+  [[origin.component]]
+  name = "zlib 1.3.2, in libzip.so (Java module java.base)"
+  license = "Zlib"
+  evidence = ["artifact:runtime/legal/java.base/zlib.md: its conditions bind altered versions and source distributions only"]
+  legal_file = "zlib.md"
+  module = "java.base"
+
+  [[origin.component]]
+  name = "Eastman Kodak color management portions (Java module java.desktop)"
+  license = "NOASSERTION"
+  evidence = ["artifact:runtime/legal/java.desktop/colorimaging.md: a copyright line and no license"]
+  legal_file = "colorimaging.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "no license of its own: a copyright line OpenJDK keeps for code it took in, and shipping the legal file keeps it with the copy"
+    met_by = ["artifact:runtime/legal/java.desktop/colorimaging.md~Eastman Kodak"]
+
+  [[origin.component]]
+  name = "FreeType 2.14.3, lib/libfreetype.so (Java module java.desktop)"
+  license = "FTL AND MIT"
+  evidence = ["artifact:runtime/legal/java.desktop/freetype.md: the FTL or GPLv2, and this project elected the FTL for FreeType on 2026-09-20; its MIT License section covers fthash.c"]
+  legal_file = "freetype.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "FTL section 2: redistribution in binary form must provide a disclaimer, in the distribution documentation, that the software is based in part on the work of the FreeType Team"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/desktop.txt~This software is based in part on the work of the FreeType Team."]
+
+  [[origin.component]]
+  name = "GIFLIB 6.1.3 (Java module java.desktop)"
+  license = "MIT"
+  evidence = ["artifact:runtime/legal/java.desktop/giflib.md"]
+  legal_file = "giflib.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.desktop/giflib.md"]
+
+  [[origin.component]]
+  name = "HarfBuzz 14.2.0, in libfontmanager.so (Java module java.desktop)"
+  license = "LicenseRef-HarfBuzz-Old-MIT AND ISC"
+  evidence = ["artifact:runtime/legal/java.desktop/harfbuzz.md: the so-called Old MIT license, and ISC for hb-ucd.cc; it points to Unicode's terms by web address for hb-unicode-emoji-table.hh, and whether that table is compiled in is not established"]
+  legal_file = "harfbuzz.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.desktop/harfbuzz.md"]
+
+  [[origin.component]]
+  name = "IJG JPEG release 6b, in libjavajpeg.so (Java module java.desktop)"
+  license = "IJG"
+  evidence = ["artifact:runtime/legal/java.desktop/jpeg.md"]
+  legal_file = "jpeg.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "IJG README condition 2: if only executable code is distributed, the accompanying documentation must state that this software is based in part on the work of the Independent JPEG Group"
+    met_by = ["artifact:com/modcritic/invmgr/ui/licenses/desktop.txt~This software is based in part on the work of the Independent JPEG Group."]
+
+  [[origin.component]]
+  name = "Little CMS 2.19.1, lib/liblcms.so (Java module java.desktop)"
+  license = "MIT AND softSurfer"
+  evidence = ["artifact:runtime/legal/java.desktop/lcms.md: MIT, and the softSurfer license for cmssm.c"]
+  legal_file = "lcms.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.desktop/lcms.md"]
+
+  [[origin.component]]
+  name = "libpng 1.6.58, in libsplashscreen.so (Java module java.desktop)"
+  license = "libpng-2.0"
+  evidence = ["artifact:runtime/legal/java.desktop/libpng.md: PNG Reference Library License version 2, whose conditions bind source distributions only"]
+  legal_file = "libpng.md"
+  module = "java.desktop"
+
+  [[origin.component]]
+  name = "Mesa 3-D Graphics Library 21.0.3 headers (Java module java.desktop)"
+  license = "MIT AND MIT-Khronos-old"
+  evidence = ["artifact:runtime/legal/java.desktop/mesa3d.md: MIT for Mesa's headers, and the Khronos text that says Materials for theirs"]
+  legal_file = "mesa3d.md"
+  module = "java.desktop"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.desktop/mesa3d.md"]
+
+  [[origin.component]]
+  name = "PipeWire 1.3.81 headers (Java module java.desktop)"
+  license = "MIT"
+  evidence = ["artifact:runtime/legal/java.desktop/pipewire.md"]
+  legal_file = "pipewire.md"
+  in = ["*libawt_xawt.so"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.desktop/pipewire.md"]
+
+  [[origin.component]]
+  name = "xwd 1.0.7 portions, in libawt_xawt.so (Java module java.desktop)"
+  license = "LicenseRef-xwd"
+  evidence = ["artifact:runtime/legal/java.desktop/xwd.md"]
+  legal_file = "xwd.md"
+  in = ["*libawt_xawt.so"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.desktop/xwd.md"]
+
+  [[origin.component]]
+  name = "Apache Commons BCEL 6.10.0 (Java module java.xml)"
+  license = "Apache-2.0"
+  evidence = ["artifact:runtime/legal/java.xml/bcel.md"]
+  legal_file = "bcel.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "Apache-2.0 section 4(a): give any other recipients a copy of this License; the legal file holds the whole text"
+    met_by = ["artifact:runtime/legal/java.xml/bcel.md~TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Apache-2.0 section 4(d): pass on the attribution notices of the NOTICE file, which the legal file reproduces"
+    met_by = ["artifact:runtime/legal/java.xml/bcel.md"]
+
+  [[origin.component]]
+  name = "W3C DOM Level 3 Core (Java module java.xml)"
+  license = "W3C"
+  evidence = ["artifact:runtime/legal/java.xml/dom.md"]
+  legal_file = "dom.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.xml/dom.md"]
+
+  [[origin.component]]
+  name = "CUP Parser Generator 0.11b (Java module java.xml)"
+  license = "LicenseRef-CUP"
+  evidence = ["artifact:runtime/legal/java.xml/jcup.md"]
+  legal_file = "jcup.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "its license asks that its copyright and permission notice accompany copies, binaries included; the runtime ships its legal file"
+    met_by = ["artifact:runtime/legal/java.xml/jcup.md"]
+
+  [[origin.component]]
+  name = "Apache Xalan 2.7.2 (Java module java.xml)"
+  license = "Apache-2.0 AND LicenseRef-JLex"
+  evidence = ["artifact:runtime/legal/java.xml/xalan.md: the Apache license and NOTICE, then the JLex license, which asks its notice in all copies and supporting documentation"]
+  legal_file = "xalan.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "Apache-2.0 section 4(a): give any other recipients a copy of this License; the legal file holds the whole text"
+    met_by = ["artifact:runtime/legal/java.xml/xalan.md~TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Apache-2.0 section 4(d): pass on the attribution notices of the NOTICE file, which the legal file reproduces"
+    met_by = ["artifact:runtime/legal/java.xml/xalan.md"]
+
+  [[origin.component]]
+  name = "Apache Xerces 2.12.2 (Java module java.xml)"
+  license = "Apache-2.0"
+  evidence = ["artifact:runtime/legal/java.xml/xerces.md"]
+  legal_file = "xerces.md"
+  module = "java.xml"
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "Apache-2.0 section 4(a): give any other recipients a copy of this License; the legal file holds the whole text"
+    met_by = ["artifact:runtime/legal/java.xml/xerces.md~TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION"]
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "Apache-2.0 section 4(d): pass on the attribution notices of the NOTICE file, which the legal file reproduces"
+    met_by = ["artifact:runtime/legal/java.xml/xerces.md"]
+
+[[origin]]
+id = "appimage-runtime"
+name = "The AppImage runtime, release 20251108 of AppImage/type2-runtime: the program at the front of the AppImage that mounts the rest"
+version = "20251108"
+url = "https://github.com/AppImage/type2-runtime/releases/tag/20251108"
+license = "MIT"
+evidence = [
+  "LICENSE in AppImage/type2-runtime at the release's commit dd6cebedcbdd (read 2026-11-05): MIT, Copyright (c) 2004-23 probonopd, then the libraries the runtime links in statically",
+  "src/runtime/runtime.c lines 1-33 there: MIT again, Copyright (c) 2004-24 Simon Peter, portions (c) 2007 Alexander Larsson, and public-domain MD5 code",
+  "src/runtime/Makefile there links -lsquashfuse -lsquashfuse_ll -lzstd -lz -lfuse3 -lmimalloc with -static; mimalloc is missing from LICENSE's list",
+  "built in Alpine 3.21 (scripts/docker/Dockerfile): libfuse 3.15.0 with patches/libfuse/mount.c.diff and squashfuse 0.5.2 from source (scripts/common/install-dependencies.sh, by SHA-256), zstd, zlib, musl and mimalloc from Alpine's packages; the runtime holds the version strings 3.15.0, squashfuse 0.5.2, 1.5.6 (zstd) and inflate 1.3.1",
+  "the runtime file's signature checked against the release's signing-pubkey.asc, 2026-11-04",
+]
+targets = ["linux"]
+# linux.py writes the runtime out with its .digest_md5 section blanked, which is the released file.
+inputs = ["file:{appimage_runtime}"]
+
+  [[origin.obligation]]
+  kind = "notice"
+  why = "MIT: the copyright notice and this permission notice shall be included in all copies or substantial portions of the Software"
+  met_by = ["artifact:licenses/appimage-runtime/LICENSE~Copyright (c) 2004-23 probonopd", "artifact:licenses/appimage-runtime/runtime.c-notice.txt~Copyright (c) 2004-24 Simon Peter"]
+
+  [[origin.obligation]]
+  kind = "source"
+  why = "not the MIT license's; libfuse's LGPL-2.1 section 6 asks for the rest of the runtime as source or object code, so a user can relink it with a changed libfuse. Alpine's recipes and patches for musl, mimalloc, zstd and zlib are there too, since the runtime linked Alpine's builds of them"
+  met_by = [
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/alpine-3.21-aports-runtime-libs.tar.gz=a282b99405bddb866016f0bd4711dd312e90a4cdd7c4ce14094892efeea16890",
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/type2-runtime-dd6cebed-source.tar.gz=f5fec23be76e50e2445ed2d018bac49b367490fc483c62c4637e99ec705d27ba",
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/squashfuse-0.5.2.tar.gz=db0238c5981dabbd80ee09ae15387f390091668ca060a7bc38047912491443d3",
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/zstd-1.5.6.tar.gz=8c29e06cf42aacc1eafc4077ae2ec6c6fcb96a626157e0593d5e82a34fd403c1",
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/zlib-1.3.1.tar.gz=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/musl-1.2.5.tar.gz=a9a118bbe84d8764da0ea0d28b3ab3fae8477fc7e4085d90102b8596fc7c75e4",
+    "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/mimalloc-2.1.7-source.tar.gz=0eed39319f139afde8515010ff59baf24de9e47ea316a315398e8027d198202d",
+  ]
+
+  [[origin.component]]
+  name = "libfuse 3.15.0, with the runtime's patch to lib/mount.c"
+  license = "LGPL-2.1-only"
+  evidence = ["libfuse/libfuse at tag fuse-3.15.0 (read 2026-11-05): lib/mount.c and lib/fuse.c lines 1-9, 'This program can be distributed under the terms of the GNU LGPLv2'; LGPL2.txt is the GNU Lesser General Public License version 2.1, with no 'or later' in either"]
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "LGPL-2.1 section 6: give prominent notice with each copy of the work that the Library is used in it and that the Library and its use are covered by this License"
+    met_by = ["artifact:licenses/README.txt~libfuse 3.15.0", "artifact:licenses/README.txt~the GNU Lesser General Public License, version 2.1"]
+
+    [[origin.component.obligation]]
+    kind = "license-text"
+    why = "LGPL-2.1 section 6: you must supply a copy of this License"
+    met_by = ["artifact:licenses/libfuse/LGPL2.txt~GNU LESSER GENERAL PUBLIC LICENSE"]
+
+    [[origin.component.obligation]]
+    kind = "source"
+    why = "LGPL-2.1 section 6(a) or 6(d): the Library's complete corresponding source, with the changes used, offered from the same place as the binary"
+    met_by = [
+      "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/fuse-3.15.0.tar.xz=70589cfd5e1cff7ccd6ac91c86c01be340b227285c5e200baa284e401eea2ca0",
+      "release:InvMgr-{version}-installers-third-party-source.zip!InvMgr-{version}-installers-third-party-source/type2-runtime-dd6cebed-source.tar.gz=f5fec23be76e50e2445ed2d018bac49b367490fc483c62c4637e99ec705d27ba",
+    ]
+
+  [[origin.component]]
+  name = "squashfuse 0.5.2"
+  license = "BSD-2-Clause"
+  evidence = ["LICENSE in vasi/squashfuse at tag 0.5.2 (read 2026-11-05)"]
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "BSD-2-Clause condition 2: redistributions in binary form must reproduce the copyright notice, conditions and disclaimer in the documentation and/or other materials provided with the distribution"
+    met_by = ["artifact:licenses/squashfuse/LICENSE~Dave Vasilevsky"]
+
+  [[origin.component]]
+  name = "zstd 1.5.6, Alpine 3.21's static library"
+  license = "BSD-3-Clause OR GPL-2.0-only"
+  evidence = ["facebook/zstd at tag v1.5.6 (read 2026-11-05): README.md, 'dual-licensed under BSD OR GPLv2'; LICENSE is the three-condition BSD license"]
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "BSD-3-Clause, the license chosen of the two: redistributions in binary form must reproduce the copyright notice, conditions and disclaimer in the documentation and/or other materials provided with the distribution"
+    met_by = ["artifact:licenses/zstd/LICENSE~Meta Platforms"]
+
+  [[origin.component]]
+  name = "zlib 1.3.1, Alpine 3.21's static library"
+  license = "Zlib"
+  evidence = ["the runtime holds 'inflate 1.3.1 Copyright 1995-2024 Mark Adler'; zlib's license binds altered versions and source distributions only"]
+  always = true
+
+  [[origin.component]]
+  name = "Alpine 3.21's GCC 14.2.0 libgcc or start-up files, if linked"
+  license = "GPL-3.0-or-later WITH GCC-exception-3.1"
+  evidence = ["the runtime's .comment section names GCC (Alpine 14.2.0) and Alpine clang 19.1.4, and Alpine's clang depends on GCC for libgcc; whether any of it is linked into the stripped runtime is not established (two readers, 2026-11-05). The Runtime Library Exception asks nothing of compiled code"]
+  always = true
+
+  [[origin.component]]
+  name = "musl libc 1.2.5, Alpine 3.21's"
+  license = "MIT"
+  evidence = [
+    "COPYRIGHT in musl at tag v1.2.5 (https://git.musl-libc.org/cgit/musl/plain/COPYRIGHT?h=v1.2.5, read 2026-11-05): musl as a whole is MIT; Alpine 3.21 had 1.2.5-r9, with its patches, when the runtime was built (aports main/musl at efd4d5df7be0, two readers, 2026-11-05)",
+    "of the parts COPYRIGHT lists under other terms, qsort.c asks for its own notice; it is not linked, since no source the runtime builds calls qsort, regcomp, glob, scandir or name lookup, musl's callers of it (read 2026-11-05)",
+  ]
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "MIT: the copyright notice and this permission notice shall be included in all copies or substantial portions of the Software"
+    met_by = ["artifact:licenses/musl/COPYRIGHT~Rich Felker"]
+
+  [[origin.component]]
+  name = "mimalloc 2.1.7, Alpine 3.21's mimalloc2"
+  license = "MIT"
+  evidence = ["LICENSE in microsoft/mimalloc at tag v2.1.7 (read 2026-11-05); 2.1.7-r0 is what Alpine 3.21 had when the runtime was built (aports community/mimalloc2 at 5a1a5dc3216a, two readers, 2026-11-05), which the runtime does not print"]
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "notice"
+    why = "MIT: the copyright notice and this permission notice shall be included in all copies or substantial portions of the Software"
+    met_by = ["artifact:licenses/mimalloc/LICENSE~Microsoft Corporation, Daan Leijen"]
+
+[[origin]]
+id = "appimage-license-texts"
+name = "The license files the AppImage carries in licenses/, copied unchanged from the runtime's and its libraries' source archives"
+license = "LicenseRef-Each-Origins-Own-Notice"
+evidence = [
+  "tools/installers/build-linux.sh copies each one out of the source archive the Linux source zip holds; each is the license of the AppImage runtime or of a library built into it, carried because that license asks for it",
+  "the user, 2026-11-05: the AppImage gets a licenses folder",
+]
+targets = ["linux"]
+inputs = [
+  "tar:{linux_sources}/type2-runtime-dd6cebed-source.tar.gz", "tar:{linux_sources}/fuse-3.15.0.tar.xz",
+  "tar:{linux_sources}/squashfuse-0.5.2.tar.gz", "tar:{linux_sources}/zstd-1.5.6.tar.gz",
+  "tar:{linux_sources}/zlib-1.3.1.tar.gz", "tar:{linux_sources}/musl-1.2.5.tar.gz",
+  "tar:{linux_sources}/mimalloc-2.1.7-source.tar.gz",
+]
+files = ["squashfs/licenses/*"]
+
+  [[origin.generated]]
+  path = "squashfs/licenses/appimage-runtime/runtime.c-notice.txt"
+  tool = "tools/installers/build-linux.sh: the opening comment of runtime.c, its copyright and license notice"
+  prefix_of = "{linux_sources}/type2-runtime-dd6cebed-source.tar.gz!type2-runtime-dd6cebedcbddde9c82f89b011e8e1d40b6e43868/src/runtime/runtime.c"
+
+[[origin]]
+id = "microsoft-vc-runtime-temurin"
+name = "Microsoft Visual C++ runtime 14.40.33810, in Temurin for Windows: msvcp140.dll, vcruntime140.dll, vcruntime140_1.dll"
+url = "https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution"
+license = "LicenseRef-Microsoft-VS2022-Distributable-Code"
+evidence = [
+  "Visual Studio 2022 Community license terms, section 4 'Distributable Code', the .docx embedded at https://visualstudio.microsoft.com/license-terms/vs2022-ga-community/ (last modified 2022-07-12, read 2026-10-29)",
+  "version info inside each DLL: CompanyName Microsoft Corporation, FileVersion 14.40.33810.0 (read 2026-11-05)",
+]
+targets = ["windows"]
+pe_company = ["Microsoft Corporation"]
+inside = "temurin-17"
+inputs = ["dir:{temurin_windows}"]
+files = ["*runtime/bin/msvcp140.dll", "*runtime/bin/vcruntime140.dll", "*runtime/bin/vcruntime140_1.dll"]
+
+  [[origin.obligation]]
+  kind = "notice"
+  why = "Section 4: the developer who distributes Distributable Code must require distributors and end users to agree to terms that protect it at least as much as Microsoft's license"
+  met_by = []
+  gap = "That duty sits with the Eclipse Foundation's Adoptium, who built Temurin with Visual Studio and ship these files with it. The user decided on 2026-11-05 to keep these three, which the app can't start without, as the jar's are kept (decision of 2026-10-29), and to have the build delete the 46 Universal C Runtime files Temurin also carries, which Windows 10 and later have built in."
+
+[[origin]]
+id = "inno-setup"
+name = "Inno Setup 7.1.1's setup program: the Windows installer around the app folder"
+version = "7.1.1"
+url = "https://jrsoftware.org/isinfo.php"
+license = "LicenseRef-InnoSetup"
+evidence = [
+  "license.txt in jrsoftware/issrc at tag is-7_1_1 (read 2026-11-05): permissive, commercial use allowed; binary redistributions must keep its copyright notice and web addresses where they are, as in the About box",
+  "innosetup-7.1.1-x64.exe from the release, SHA-256 8a5a6711c3766a6e5fb74f280ba0e3551e719ce94538d901fdbd1f8f9920b3f0 as GitHub publishes it, checked 2026-11-05",
+  "Projects/Src/Setup.WizardForm.pas at that tag: the About box keeps Inno's lines and may have lines added at the end, which invmgr.iss does with AboutSetupNote",
+]
+targets = ["windows"]
+
+  # The setup is made twice, in separate builds from the same pinned tools and inputs, and kept
+  # only when both are the same; build.log beside it records the hash both produced. That is the
+  # proof of what it holds, since nothing here can open it.
+
+  [[origin.generated]]
+  path = "*-windows-x64-setup.exe"
+  tool = "Inno Setup 7.1.1's compiler, from tools/installers/invmgr.iss and the app folder beside the setup"
+  built_twice = true
+
+  [[origin.obligation]]
+  kind = "notice"
+  why = "Inno Setup License condition 2: all redistributions in binary form must retain all occurrences of the copyright notice and web site addresses that are currently in place; the setup is the compiler's unaltered output"
+  met_by = ["artifact:InvMgr-{version}-windows-x64-setup.exe~jrsoftware.org"]
+
+  [[origin.component]]
+  name = "RemObjects Pascal Script, the setup program's script engine"
+  license = "LicenseRef-RemObjects-PascalScript"
+  evidence = ["Components/UniPs/LICENSE.md in jrsoftware/issrc at tag is-7_1_1 (read 2026-11-05): Copyright (C) 2000-2014 Carlo Kok and RemObjects Software; condition 3 asks for a visible line in the program's about box or documentation that it is made using RemObjects Pascal Script and where it can be found"]
+  always = true
+
+    [[origin.component.obligation]]
+    kind = "credit"
+    why = "Pascal Script license condition 3: a visible line in the program's about box or documentation that it is made using RemObjects Pascal Script and where RemObjects Pascal Script can be found"
+    met_by = ["repo:tools/installers/invmgr.iss~AboutSetupNote=This setup program uses RemObjects Pascal Script, https://github.com/remobjects/pascalscript"]
+
+  [[origin.component]]
+  name = "LZMA SDK, the setup program's decompressor"
+  license = "LicenseRef-Public-Domain"
+  evidence = ["Components/Lzma2/7zC.txt in jrsoftware/issrc at tag is-7_1_1: LZMA SDK is written and placed in the public domain by Igor Pavlov"]
+  always = true
+
+  [[origin.component]]
+  name = "MD5, from Colin Plumb's public-domain C code"
+  license = "LicenseRef-Public-Domain"
+  evidence = ["Components/MD5.pas in jrsoftware/issrc at tag is-7_1_1: still in the public domain; written by Colin Plumb in 1993, no copyright is claimed"]
+  always = true
+
+  [[origin.component]]
+  name = "ChaCha20, first based on Ginurx/chacha20-c"
+  license = "Unlicense"
+  evidence = ["Components/ChaCha20.pas in jrsoftware/issrc at tag is-7_1_1 names https://github.com/Ginurx/chacha20-c as its start; that repository's license is the Unlicense (GitHub's license API, read 2026-11-05). The Unlicense asks nothing"]
+  always = true
 
 # ---------------------------------------------------------------------------------------------
 # The Android app: libraries the Android build adds

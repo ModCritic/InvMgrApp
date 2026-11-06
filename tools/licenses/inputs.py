@@ -5,6 +5,7 @@ An input is written as a short spec in the registry:
     maven:<group>:<artifact>:<version>[:<classifier>]   a jar in the local Maven repository
     gradle:<group>:<artifact>:<version>                  an aar or jar in Gradle's download cache
     zip:<path>                                           every file inside a zip, jar or aar
+    tar:<path>                                           every file inside a tar archive, compressed or not
     dir:<path>                                           every file under a directory
     file:<path>                                          one file
     src:<path>                                           Java sources: the classes they define,
@@ -21,6 +22,7 @@ import hashlib
 import io
 import os
 import re
+import tarfile
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree
@@ -30,6 +32,11 @@ PLACES = {
     "gradle": str(Path.home() / ".gradle" / "caches" / "modules-2" / "files-2.1"),
     "gluon": str(Path.home() / ".gluon" / "substrate"),
     "graalvm": str(Path.home() / "graalvm-svm-java17-linux-gluon-22.1.0.1-Final"),
+    # The Linux downloads' Java and AppImage runtime, where tools/installers/build-linux.sh finds
+    # them, and moved by the same two variables.
+    "temurin": os.environ.get("TEMURIN_HOME", str(Path.home() / "ClaudeWorkspace" / "InvMgr-build" / "temurin" / "jdk-17.0.21+9")),
+    "appimage_runtime": os.environ.get("APPIMAGE_RUNTIME", str(Path.home() / "ClaudeWorkspace" / "InvMgr-build" / "appimage" / "runtime-20251108" / "runtime-x86_64")),
+    "linux_sources": os.environ.get("LINUX_SOURCES", str(Path.home() / "ClaudeWorkspace" / "InvMgr-build" / "linux-sources")),
 }
 
 ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
@@ -65,7 +72,7 @@ def resolve(spec, places):
         return "zip", maven_path(rest, places)
     if how == "gradle":
         return "zip", gradle_path(rest, places)
-    if how in ("zip", "dir", "file", "src"):
+    if how in ("zip", "tar", "dir", "file", "src"):
         # "src:<archive>!<folder>" names a folder of Java sources inside an archive.
         return how, Path(expand(rest.split("!", 1)[0], places))
     raise ValueError(f"unknown input kind in {spec!r}")
@@ -102,6 +109,11 @@ def members(spec, places):
                 yield inner[len(root):], data
     elif how == "zip":
         yield from zip_members(str(path))
+    elif how == "tar":
+        with tarfile.open(path) as tar:
+            for info in tar:
+                if info.isfile():
+                    yield info.name, tar.extractfile(info).read()
     elif how in ("dir", "src"):
         for root, _, files in os.walk(path):
             for name in sorted(files):

@@ -50,18 +50,33 @@ Metric, Settings (on Android, hiding the phone's status and navigation bars), Fe
 
 ## Getting Started
 
-The [Releases](https://github.com/ModCritic/InvMgrApp/releases) page has the desktop jar and the Android APK.
+The [Releases](https://github.com/ModCritic/InvMgrApp/releases) page has installers for Windows and Linux, the desktop jar, and the Android APK.
 
 ### Android
 Install the APK from Releases, or get it on [Google Play](https://play.google.com/store/apps/details?id=com.asterkazika.invmgr). [Privacy policy](https://invmgr.asterkazika.com/privacy/).
 
 It needs a 64-bit phone. 32-bit phones can't install it at all, because GraalVM, which compiles the Android version, only produces 64-bit code. The app asks for Android 5.0 or newer, but it has only been tested on Android 10 (a Galaxy S9) and on Android 15 and 16 emulators.
 
-### Desktop
+### Windows
+Download `InvMgr-<version>-windows-x64-setup.exe` and run it. It installs for your account without asking for admin rights (it offers to install for everyone instead), puts InvMgr in the Start menu, and carries its own Java, so there's nothing else to install. Uninstall it from Windows' list of installed apps; your rooms stay where they are.
+
+It needs 64-bit Windows 10 or newer. The setup isn't signed, so Windows may show a SmartScreen warning the first time you run it. It's been tested on Windows 10 in a virtual machine.
+
+### Linux
+Four downloads, each carrying its own Java:
+
+- `InvMgr-<version>-x86_64.AppImage`: one file; mark it executable and run it.
+- `InvMgr-<version>-linux-x64.tar.gz`: unpack it anywhere and run `InvMgr/bin/InvMgr`.
+- `invmgr_<version>-1_amd64.deb` for Debian, Ubuntu and their relatives: `sudo apt install ./invmgr_<version>-1_amd64.deb`
+- `invmgr-<version>-1.x86_64.rpm` for Fedora and its relatives: `sudo dnf install ./invmgr-<version>-1.x86_64.rpm`
+
+The two packages install to `/opt/invmgr` and add InvMgr to the app menu. All four have been tested on Debian testing, Ubuntu 26.04 and Fedora 45, on 64-bit x86.
+
+### Any desktop, with Java
 Download the jar from Releases and run it with Java 17 or newer:
 
 ```bash
-java -jar invmgr-1.0.0.jar
+java -jar invmgr-<version>.jar
 ```
 
 The jar carries JavaFX for Windows, Linux, and Apple Silicon Macs, so Java is the only thing to install. It's been tested on Linux and Windows, but not yet on a Mac.
@@ -70,7 +85,7 @@ To build it yourself instead, you need JDK 17 or newer and Maven:
 
 ```bash
 mvn -B -Pdesktop-jar -DskipTests package
-java -jar target/invmgr-1.0.0.jar
+java -jar target/invmgr-<version>.jar
 ```
 
 Or run it straight from the source with `mvn javafx:run`.
@@ -81,10 +96,12 @@ Java 17 and JavaFX 21, built with Maven. The 3D view uses JavaFX's own 3D, with 
 
 The Android version is compiled ahead of time with GraalVM Native Image through GluonFX. It runs on a small Android host layer written for this project (`native/` and `src/android/`) instead of Gluon's own, so none of Gluon's GPL-3.0 code ends up in the app. Building it needs a patched Gluon Substrate: three small changes that leave Gluon's Android code out of the build, kept in `tools/substrate/` as a patch on Gluon's 0.0.69 release. `tools/android/build-substrate.sh` applies it, builds it and installs it where Maven looks, once per machine, before the first Android build.
 
+The Windows and Linux downloads are made by `jpackage` from the desktop jar, with a Java runtime cut from Eclipse Temurin 17. `tools/installers/build-linux.sh` makes the four Linux downloads on Linux, and `tools/installers/build-windows.cmd` makes the Windows setup on Windows, with Inno Setup 7. Before a download is published, `tools/licenses/check.py` proves where every file in it came from and checks what every license it carries asks for.
+
 ## Status
 
 1.0.0 is the first release of the rewrite. It does everything the HTML version does, and it's where new features go from here. If you find a bug, open an issue.
 
 ## License
 
-Original code is released under the 0BSD license (see `LICENSE`), with two exceptions. `tools/substrate/`, a patch to Gluon Substrate, is GPL-3.0-or-later like Substrate itself; it's a build tool, and nothing from it ends up in the app. And the app's icons are copyright Asterkazika LLC, all rights reserved: they're here so the app builds the way it ships, but a fork should use its own. The app also ships work by others: the Noto fonts, OpenJFX, FreeType in the Android build, and the AndroidX and Kotlin libraries the Android build pulls in. See `NOTICE.md` for those.
+Original code is released under the 0BSD license (see `LICENSE`), with two exceptions. `tools/substrate/`, a patch to Gluon Substrate, is GPL-3.0-or-later like Substrate itself; it's a build tool, and nothing from it ends up in the app. And the app's icons are copyright Asterkazika LLC, all rights reserved: they're here so the app builds the way it ships, but a fork should use its own. The app also ships work by others: the Noto fonts, OpenJFX, FreeType in the Android build, and the AndroidX and Kotlin libraries the Android build pulls in. See `NOTICE.md` for those. The Windows and Linux downloads also carry Eclipse Temurin's Java runtime, which is GPL-2.0 with the Classpath Exception; each download includes the licenses of what's inside it, and every Release has the source code those licenses ask for.

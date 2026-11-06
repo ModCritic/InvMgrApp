@@ -1,0 +1,7 @@
+#!/bin/sh
+# dpkg runs this once InvMgr's files are in place. It adds InvMgr to the desktop's app menu, with
+# the command jpackage writes in when it builds the package.
+set -e
+if [ "$1" = configure ]; then
+    DESKTOP_COMMANDS_INSTALL
+fi

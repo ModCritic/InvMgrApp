@@ -19,6 +19,8 @@ each step's measurements, and the script prints the fish-eye model it fits.
 
 Writes:
     assets/icons/icon-play-512.png                     the Play Store icon, a full square
+    assets/icons/InvMgr.ico                            the Windows icon, the artwork as drawn, 16 to 256 px
+    assets/icons/icon-linux-512.png                    the Linux icon, the artwork as drawn, 512 px
     src/android/res/mipmap-*/ic_launcher_background.png  the launcher icon's layer, Android 8+
     src/android/res/mipmap-*/ic_launcher.png           the artwork as drawn, Android 5 to 7
     src/android/res/mipmap-anydpi-v26/ic_launcher.xml  the file that tells Android 8+ to use it
@@ -480,6 +482,9 @@ ADAPTIVE_XML = """<?xml version="1.0" encoding="utf-8"?>
 """
 
 
+ICO_SIZES = (16, 20, 24, 32, 40, 48, 64, 96, 128, 256)
+
+
 def write(out, art, square, layer):
     icons = os.path.join(out, "assets", "icons")
     res = os.path.join(out, "src", "android", "res")
@@ -499,6 +504,14 @@ def write(out, art, square, layer):
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "ic_launcher.xml"), "w") as f:
         f.write(ADAPTIVE_XML)
+    # Windows draws an icon's own transparency, so it gets the artwork with its rounded corners,
+    # at every size Windows asks for: the taskbar, the Start menu, Explorer's views.
+    frames = [art_img.resize((size, size), Image.LANCZOS) for size in ICO_SIZES]
+    frames[-1].save(os.path.join(icons, "InvMgr.ico"), format="ICO",
+                    sizes=[(size, size) for size in ICO_SIZES], append_images=frames[:-1])
+    # Linux desktops draw an icon's transparency as well, so the Linux downloads get the same
+    # rounded artwork, as one 512 px picture that the desktop scales for the menu and the dock.
+    art_img.resize((512, 512), Image.LANCZOS).save(os.path.join(icons, "icon-linux-512.png"), optimize=True)
 
 
 def preview(path, art, square, layer):
